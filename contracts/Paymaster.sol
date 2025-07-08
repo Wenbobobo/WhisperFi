@@ -2,26 +2,13 @@
 pragma solidity ^0.8.24;
 
 import "./lib/interfaces/IPaymaster.sol";
-import "./lib/interfaces/IEntryPoint.sol";
+import { IEntryPoint } from "./lib/interfaces/IEntryPoint.sol";
 import "./lib/core/UserOperationLib.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-struct UserOperation {
-    address sender;
-    uint256 nonce;
-    bytes initCode;
-    bytes callData;
-    uint256 callGasLimit;
-    uint256 verificationGasLimit;
-    uint256 preVerificationGas;
-    uint256 maxFeePerGas;
-    uint256 maxPriorityFeePerGas;
-    bytes paymasterAndData;
-    bytes signature;
-    address target;
-}
-
 contract Paymaster is IPaymaster, Ownable {
+    using UserOperationLib for PackedUserOperation;
+
     IEntryPoint public immutable entryPoint;
     
     // A mapping to whitelist specific target contracts
@@ -29,6 +16,8 @@ contract Paymaster is IPaymaster, Ownable {
 
     // Custom errors for gas efficiency
     error UnsupportedTarget();
+    error InvalidPaymasterAndDataLength();
+    error InvalidTimestamp();
 
     event TargetSupportChanged(address indexed target, bool supported);
     event FundsDeposited(address indexed depositor, uint256 amount);
@@ -57,42 +46,98 @@ contract Paymaster is IPaymaster, Ownable {
      * @dev Validates a UserOperation to determine if it should be sponsored.
      */
     function validatePaymasterUserOp(
-        PackedUserOperation calldata packedUserOp,
-        bytes32 /*userOpHash*/,
-        uint256 /*maxCost*/
+        PackedUserOperation calldata userOp,
+        bytes32 /* userOpHash */,
+        uint256 /* maxCost */
     ) external view override returns (bytes memory context, uint256 validationData) {
-        UserOperation memory userOp;
-        userOp.sender = packedUserOp.sender;
-        userOp.nonce = packedUserOp.nonce;
-        userOp.initCode = packedUserOp.initCode;
-        userOp.callData = packedUserOp.callData;
-        (userOp.verificationGasLimit, userOp.callGasLimit) = UserOperationLib.unpackUints(packedUserOp.accountGasLimits);
-        userOp.preVerificationGas = packedUserOp.preVerificationGas;
-        (userOp.maxPriorityFeePerGas, userOp.maxFeePerGas) = UserOperationLib.unpackUints(packedUserOp.gasFees);
-        userOp.paymasterAndData = packedUserOp.paymasterAndData;
-        userOp.signature = packedUserOp.signature;
-        userOp.target = address(bytes20(packedUserOp.callData[4:24]));
+        // Extract paymaster fields from paymasterAndData
+        (address paymaster, , ) = UserOperationLib.unpackPaymasterStaticFields(userOp.paymasterAndData);
 
-        if (!supportedTargets[userOp.target]) {
-            revert UnsupportedTarget();
-        }
-        // For this simple paymaster, we don't need any context, so we return an empty bytes array.
-        // We also don't have any time-based validation, so validationData is 0.
-        return (bytes(""), 0);
+        // Ensure the paymaster in the data is this contract
+        require(paymaster == address(this), "AA93 invalid paymasterAndData");
+
+        // Extract target from callData (assuming it's encoded as target + data)
+        address target = _extractTargetFromCallData(userOp.callData);
+
+        // Check if target is supported
+        if (!supportedTargets[target]) revert UnsupportedTarget();
+
+        // Extract time validation data from paymasterAndData
+        (uint48 validUntil, uint48 validAfter) = _extractTimeValidation(userOp.paymasterAndData);
+
+        // Validate time range
+        if (block.timestamp < validAfter || block.timestamp > validUntil) revert InvalidTimestamp();
+        
+        // Pack validation data
+        validationData = _packValidationData(false, validUntil, validAfter);
+
+        // Return empty context for this simple paymaster
+        return ("", validationData);
     }
 
     /**
      * @dev The function that the EntryPoint calls after the execution to charge the Paymaster.
      */
     function postOp(
-        PostOpMode /*mode*/, 
-        bytes calldata /*context*/, 
-        uint256 /*actualGasCost*/,
-        uint256 /*actualUserOpFeePerGas*/
-    ) external view override {
-        // In this simple implementation, we don't need to do anything here.
-        // The EntryPoint will automatically deduct the gas cost from our deposit.
-        // Adding view call to prevent empty block warning
-        entryPoint.balanceOf(address(this));
+        PostOpMode /* mode */,
+        bytes calldata /* context */,
+        uint256 /* actualGasCost */,
+        uint256 /* actualUserOpFeePerGas */
+    ) external override {
+        // For this simple paymaster, we don't need to do anything in postOp
+        // The EntryPoint has already deducted the gas cost from our deposit
+    }
+
+    /**
+     * @dev Helper function to extract target address from callData.
+     * Assumes callData format: target(20 bytes) + function call data
+     */
+    function _extractTargetFromCallData(bytes calldata callData) internal pure returns (address) {
+        // This function now assumes the callData is for a function like `execute(address dest, ...)`
+        // where the target address is the first argument.
+        // The address is encoded in the first 32-byte word after the 4-byte selector.
+        require(callData.length >= 36, "Paymaster: invalid callData for target extraction");
+        // Extract the address from the first parameter of the ABI-encoded calldata.
+        // An address is a 20-byte value, right-padded in a 32-byte word. We slice from byte 16 to 36.
+        return address(bytes20(callData[16:36]));
+    }
+
+    /**
+     * @dev Extract time validation data from paymasterAndData.
+     * Format after static fields: validUntil(6 bytes) + validAfter(6 bytes)
+     */
+    function _extractTimeValidation(bytes calldata paymasterAndData) internal pure returns (uint48 validUntil, uint48 validAfter) {
+        require(paymasterAndData.length >= UserOperationLib.PAYMASTER_DATA_OFFSET + 12, "Paymaster: invalid time data");
+        
+        validUntil = uint48(bytes6(paymasterAndData[UserOperationLib.PAYMASTER_DATA_OFFSET:UserOperationLib.PAYMASTER_DATA_OFFSET + 6]));
+        validAfter = uint48(bytes6(paymasterAndData[UserOperationLib.PAYMASTER_DATA_OFFSET + 6:UserOperationLib.PAYMASTER_DATA_OFFSET + 12]));
+    }
+
+    /**
+     * @dev Pack validation data according to ERC-4337 standard.
+     */
+    function _packValidationData(bool sigFailed, uint48 validUntil, uint48 validAfter) internal pure returns (uint256) {
+        return
+            (sigFailed ? 1 : 0) |
+            (uint256(validUntil) << 160) |
+            (uint256(validAfter) << (160 + 48));
+    }
+
+    /**
+     * @dev Create paymasterAndData for a UserOperation.
+     */
+    function createPaymasterAndData(
+        uint256 verificationGasLimit,
+        uint256 postOpGasLimit,
+        uint48 validUntil,
+        uint48 validAfter
+    ) external view returns (bytes memory) {
+        return abi.encodePacked(
+            address(this),                    // paymaster address (20 bytes)
+            uint128(verificationGasLimit),    // verification gas limit (16 bytes)
+            uint128(postOpGasLimit),          // post-op gas limit (16 bytes)
+            validUntil,                       // valid until (6 bytes)
+            validAfter                        // valid after (6 bytes)
+        );
     }
 }

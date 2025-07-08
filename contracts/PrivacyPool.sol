@@ -11,6 +11,7 @@ contract PrivacyPool is Ownable {
     using MerkleTree for MerkleTree.Bytes32PushTree;
 
     uint256 public constant LEVELS = 20;
+    uint256 public constant DEPOSIT_AMOUNT = 0.1 ether;
     bytes32 public root;
     mapping(bytes32 => bool) public nullifiers;
     address public verifier; // This will be the Verifier.sol contract address
@@ -27,6 +28,7 @@ contract PrivacyPool is Ownable {
     }
 
     function deposit(bytes32 _commitment) external payable {
+        require(msg.value == DEPOSIT_AMOUNT, "Invalid deposit amount");
         (uint256 index, bytes32 newRoot) = tree.push(_commitment);
         root = newRoot;
         emit Deposit(_commitment, uint32(index), block.timestamp);

@@ -26,6 +26,7 @@ import type {
 export interface PrivacyPoolInterface extends Interface {
   getFunction(
     nameOrSignature:
+      | "DEPOSIT_AMOUNT"
       | "LEVELS"
       | "deposit"
       | "nullifiers"
@@ -46,6 +47,10 @@ export interface PrivacyPoolInterface extends Interface {
       | "Withdrawal"
   ): EventFragment;
 
+  encodeFunctionData(
+    functionFragment: "DEPOSIT_AMOUNT",
+    values?: undefined
+  ): string;
   encodeFunctionData(functionFragment: "LEVELS", values?: undefined): string;
   encodeFunctionData(functionFragment: "deposit", values: [BytesLike]): string;
   encodeFunctionData(
@@ -91,6 +96,10 @@ export interface PrivacyPoolInterface extends Interface {
     ]
   ): string;
 
+  decodeFunctionResult(
+    functionFragment: "DEPOSIT_AMOUNT",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "LEVELS", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "deposit", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "nullifiers", data: BytesLike): Result;
@@ -222,6 +231,8 @@ export interface PrivacyPool extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
+  DEPOSIT_AMOUNT: TypedContractMethod<[], [bigint], "view">;
+
   LEVELS: TypedContractMethod<[], [bigint], "view">;
 
   deposit: TypedContractMethod<[_commitment: BytesLike], [void], "payable">;
@@ -277,6 +288,9 @@ export interface PrivacyPool extends BaseContract {
     key: string | FunctionFragment
   ): T;
 
+  getFunction(
+    nameOrSignature: "DEPOSIT_AMOUNT"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
     nameOrSignature: "LEVELS"
   ): TypedContractMethod<[], [bigint], "view">;

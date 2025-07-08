@@ -51,7 +51,8 @@ describe("PrivacyPool", function () {
       const commitment = ethers.randomBytes(32);
       const initialRoot = await privacyPool.root();
 
-      const tx = await privacyPool.deposit(commitment);
+      const depositAmount = await privacyPool.DEPOSIT_AMOUNT();
+      const tx = await privacyPool.deposit(commitment, { value: depositAmount });
       const receipt = await tx.wait();
       const block = await ethers.provider.getBlock(receipt.blockNumber);
       const timestamp = block!.timestamp;
@@ -80,7 +81,8 @@ describe("PrivacyPool", function () {
 
     it("should fail for an invalid proof", async function () {
         const commitment = ethers.randomBytes(32);
-        await privacyPool.deposit(commitment);
+        const depositAmount = await privacyPool.DEPOSIT_AMOUNT();
+        await privacyPool.deposit(commitment, { value: depositAmount });
         const currentRoot = await privacyPool.root();
 
         const [pA, pB, pC] = generateMockProof(); // This is a mock proof
@@ -112,7 +114,8 @@ describe("PrivacyPool", function () {
 
     it("should fail for an invalid proof", async function () {
         const commitment = ethers.randomBytes(32);
-        await privacyPool.deposit(commitment);
+        const depositAmount = await privacyPool.DEPOSIT_AMOUNT();
+        await privacyPool.deposit(commitment, { value: depositAmount });
         const currentRoot = await privacyPool.root();
 
         const [pA, pB, pC] = generateMockProof();

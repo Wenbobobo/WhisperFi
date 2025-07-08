@@ -59,7 +59,7 @@ export type PackedUserOperationStructOutput = [
 
 export interface TestAccountInterface extends Interface {
   getFunction(
-    nameOrSignature: "entryPoint" | "executeUserOp" | "owner" | "validateUserOp"
+    nameOrSignature: "entryPoint" | "execute" | "owner" | "validateUserOp"
   ): FunctionFragment;
 
   getEvent(nameOrSignatureOrTopic: "AccountInitialized"): EventFragment;
@@ -69,8 +69,8 @@ export interface TestAccountInterface extends Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "executeUserOp",
-    values: [PackedUserOperationStruct, BytesLike]
+    functionFragment: "execute",
+    values: [AddressLike, BigNumberish, BytesLike]
   ): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(
@@ -79,10 +79,7 @@ export interface TestAccountInterface extends Interface {
   ): string;
 
   decodeFunctionResult(functionFragment: "entryPoint", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "executeUserOp",
-    data: BytesLike
-  ): Result;
+  decodeFunctionResult(functionFragment: "execute", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "validateUserOp",
@@ -148,8 +145,8 @@ export interface TestAccount extends BaseContract {
 
   entryPoint: TypedContractMethod<[], [string], "view">;
 
-  executeUserOp: TypedContractMethod<
-    [userOp: PackedUserOperationStruct, userOpHash: BytesLike],
+  execute: TypedContractMethod<
+    [dest: AddressLike, value: BigNumberish, func: BytesLike],
     [void],
     "nonpayable"
   >;
@@ -174,9 +171,9 @@ export interface TestAccount extends BaseContract {
     nameOrSignature: "entryPoint"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "executeUserOp"
+    nameOrSignature: "execute"
   ): TypedContractMethod<
-    [userOp: PackedUserOperationStruct, userOpHash: BytesLike],
+    [dest: AddressLike, value: BigNumberish, func: BytesLike],
     [void],
     "nonpayable"
   >;

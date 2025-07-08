@@ -18,3 +18,4 @@ cache
 account-abstraction
 temp_circom
 typechain-types
+cache/solidity-files-cache.json
