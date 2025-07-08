@@ -12,7 +12,9 @@ wheels/
 
 # Other common files
 node_modules
+
 artifacts
 cache
 account-abstraction
 temp_circom
+typechain-types
