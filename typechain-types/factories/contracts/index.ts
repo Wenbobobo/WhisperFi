@@ -7,4 +7,5 @@ export { IExecutor__factory } from "./IExecutor__factory";
 export { IVerifier__factory } from "./IVerifier__factory";
 export { Paymaster__factory } from "./Paymaster__factory";
 export { PrivacyPool__factory } from "./PrivacyPool__factory";
+export { TestAccount__factory } from "./TestAccount__factory";
 export { Verifier__factory } from "./Verifier__factory";

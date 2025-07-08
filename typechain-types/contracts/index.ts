@@ -8,4 +8,5 @@ export type { IExecutor } from "./IExecutor";
 export type { IVerifier } from "./IVerifier";
 export type { Paymaster } from "./Paymaster";
 export type { PrivacyPool } from "./PrivacyPool";
+export type { TestAccount } from "./TestAccount";
 export type { Verifier } from "./Verifier";

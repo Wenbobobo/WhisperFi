@@ -60,6 +60,7 @@ export type PackedUserOperationStructOutput = [
 export interface PaymasterInterface extends Interface {
   getFunction(
     nameOrSignature:
+      | "createPaymasterAndData"
       | "depositToEntryPoint"
       | "entryPoint"
       | "owner"
@@ -78,6 +79,10 @@ export interface PaymasterInterface extends Interface {
       | "TargetSupportChanged"
   ): EventFragment;
 
+  encodeFunctionData(
+    functionFragment: "createPaymasterAndData",
+    values: [BigNumberish, BigNumberish, BigNumberish, BigNumberish]
+  ): string;
   encodeFunctionData(
     functionFragment: "depositToEntryPoint",
     values?: undefined
@@ -112,6 +117,10 @@ export interface PaymasterInterface extends Interface {
     values: [PackedUserOperationStruct, BytesLike, BigNumberish]
   ): string;
 
+  decodeFunctionResult(
+    functionFragment: "createPaymasterAndData",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "depositToEntryPoint",
     data: BytesLike
@@ -223,6 +232,17 @@ export interface Paymaster extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
+  createPaymasterAndData: TypedContractMethod<
+    [
+      verificationGasLimit: BigNumberish,
+      postOpGasLimit: BigNumberish,
+      validUntil: BigNumberish,
+      validAfter: BigNumberish
+    ],
+    [string],
+    "view"
+  >;
+
   depositToEntryPoint: TypedContractMethod<[], [void], "payable">;
 
   entryPoint: TypedContractMethod<[], [string], "view">;
@@ -237,7 +257,7 @@ export interface Paymaster extends BaseContract {
       arg3: BigNumberish
     ],
     [void],
-    "view"
+    "nonpayable"
   >;
 
   renounceOwnership: TypedContractMethod<[], [void], "nonpayable">;
@@ -257,11 +277,7 @@ export interface Paymaster extends BaseContract {
   >;
 
   validatePaymasterUserOp: TypedContractMethod<
-    [
-      packedUserOp: PackedUserOperationStruct,
-      arg1: BytesLike,
-      arg2: BigNumberish
-    ],
+    [userOp: PackedUserOperationStruct, arg1: BytesLike, arg2: BigNumberish],
     [[string, bigint] & { context: string; validationData: bigint }],
     "view"
   >;
@@ -270,6 +286,18 @@ export interface Paymaster extends BaseContract {
     key: string | FunctionFragment
   ): T;
 
+  getFunction(
+    nameOrSignature: "createPaymasterAndData"
+  ): TypedContractMethod<
+    [
+      verificationGasLimit: BigNumberish,
+      postOpGasLimit: BigNumberish,
+      validUntil: BigNumberish,
+      validAfter: BigNumberish
+    ],
+    [string],
+    "view"
+  >;
   getFunction(
     nameOrSignature: "depositToEntryPoint"
   ): TypedContractMethod<[], [void], "payable">;
@@ -289,7 +317,7 @@ export interface Paymaster extends BaseContract {
       arg3: BigNumberish
     ],
     [void],
-    "view"
+    "nonpayable"
   >;
   getFunction(
     nameOrSignature: "renounceOwnership"
@@ -310,11 +338,7 @@ export interface Paymaster extends BaseContract {
   getFunction(
     nameOrSignature: "validatePaymasterUserOp"
   ): TypedContractMethod<
-    [
-      packedUserOp: PackedUserOperationStruct,
-      arg1: BytesLike,
-      arg2: BigNumberish
-    ],
+    [userOp: PackedUserOperationStruct, arg1: BytesLike, arg2: BigNumberish],
     [[string, bigint] & { context: string; validationData: bigint }],
     "view"
   >;

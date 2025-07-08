@@ -600,8 +600,8 @@
       ]
     },
     "D:\\zWenbo\\AI\\Private Defi\\contracts\\Paymaster.sol": {
-      "lastModificationDate": 1751963734672,
-      "contentHash": "3e36f394d8b0727f82d9eb4f87791ae8",
+      "lastModificationDate": 1751983107299,
+      "contentHash": "af96ee16f31055fd933c5544fe4e689b",
       "sourceName": "contracts/Paymaster.sol",
       "solcConfig": {
         "version": "0.8.28",
@@ -1667,6 +1667,85 @@
       ],
       "artifacts": [
         "IERC165"
+      ]
+    },
+    "D:\\zWenbo\\AI\\Private Defi\\contracts\\TestAccount.sol": {
+      "lastModificationDate": 1751983080169,
+      "contentHash": "d58274f6189b9b7c2bbbaa4cfc82090b",
+      "sourceName": "contracts/TestAccount.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./lib/interfaces/IAccount.sol",
+        "./lib/interfaces/IAccountExecute.sol",
+        "./lib/interfaces/IEntryPoint.sol",
+        "./lib/core/UserOperationLib.sol",
+        "@openzeppelin/contracts/utils/cryptography/ECDSA.sol",
+        "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.24"
+      ],
+      "artifacts": [
+        "TestAccount"
+      ]
+    },
+    "D:\\zWenbo\\AI\\Private Defi\\node_modules\\@openzeppelin\\contracts\\utils\\cryptography\\ECDSA.sol": {
+      "lastModificationDate": 1751877479920,
+      "contentHash": "81de029d56aa803972be03c5d277cb6c",
+      "sourceName": "@openzeppelin/contracts/utils/cryptography/ECDSA.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "ECDSA"
       ]
     }
   }
