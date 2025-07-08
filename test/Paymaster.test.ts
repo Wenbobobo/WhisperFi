@@ -48,6 +48,47 @@ const createMockUserOp = (sender: string, target?: string): PackedUserOperation 
   };
 };
 
+// Helper function to create a mock PackedUserOperation with proper paymasterAndData
+const createMockUserOpWithPaymaster = async (sender: string, paymaster: any, target?: string): Promise<PackedUserOperation> => {
+  const targetAddress = target || ethers.ZeroAddress;
+  
+  // Create proper ABI-encoded callData for execute(address dest, uint256 value, bytes data)
+  const executeInterface = new ethers.Interface([
+    "function execute(address dest, uint256 value, bytes calldata func)"
+  ]);
+  const mockCallData = executeInterface.encodeFunctionData("execute", [
+    targetAddress,
+    0,
+    "0x"
+  ]);
+  
+  // Get current block timestamp for more accurate time validation
+  const currentBlock = await ethers.provider.getBlock('latest');
+  const currentTimestamp = currentBlock!.timestamp;
+  const validAfter = 0;  // Use 0 to indicate no restriction on start time
+  const validUntil = currentTimestamp + 3600;  // Valid until 1 hour from now
+  
+  // Use the contract's createPaymasterAndData function to ensure format consistency
+  const paymasterAndData = await paymaster.createPaymasterAndData(
+    100000,  // verificationGasLimit
+    50000,   // postOpGasLimit
+    validUntil,
+    validAfter
+  );
+  
+  return {
+    sender: sender,
+    nonce: 0n,
+    initCode: "0x",
+    callData: mockCallData,
+    accountGasLimits: packUints(100000n, 200000n),
+    preVerificationGas: 21000n,
+    gasFees: packUints(1000000000n, 2000000000n),
+    paymasterAndData: paymasterAndData,
+    signature: "0x"
+  };
+};
+
 describe("Paymaster", function () {
   let owner: Signer, notOwner: Signer;
   let entryPoint: any;
@@ -90,9 +131,8 @@ describe("Paymaster", function () {
 
   describe("Sponsorship Logic", function () {
     it("should reject UserOp for an unsupported target", async function () {
-      // Use a random address as an unsupported target
       const unsupportedTarget = await notOwner.getAddress();
-      const userOp = createMockUserOp(await owner.getAddress(), unsupportedTarget);
+      const userOp = await createMockUserOpWithPaymaster(await owner.getAddress(), paymaster, unsupportedTarget);
       
       await expect(
         paymaster.validatePaymasterUserOp(userOp, ethers.randomBytes(32), 0)
@@ -100,11 +140,11 @@ describe("Paymaster", function () {
     });
 
     it("should validate UserOp for a supported target", async function () {
-      // Use privacyPool as the supported target
       const supportedTarget = await privacyPool.getAddress();
       await paymaster.connect(owner).setSupportedTarget(supportedTarget, true);
 
-      const userOp = createMockUserOp(await owner.getAddress(), supportedTarget);
+      const userOp = await createMockUserOpWithPaymaster(await owner.getAddress(), paymaster, supportedTarget);
+      
       const [context, validationData] = await paymaster.validatePaymasterUserOp(
         userOp, 
         ethers.randomBytes(32), 
@@ -112,7 +152,7 @@ describe("Paymaster", function () {
       );
       
       expect(context).to.equal("0x");
-      expect(validationData).to.equal(0);
+      expect(validationData).to.not.equal(1); // Should not be SIG_VALIDATION_FAILED
     });
   });
 

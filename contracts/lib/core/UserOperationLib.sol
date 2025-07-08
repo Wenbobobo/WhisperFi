@@ -110,11 +110,11 @@ library UserOperationLib {
     function unpackPaymasterStaticFields(
         bytes calldata paymasterAndData
     ) internal pure returns (address paymaster, uint256 validationGasLimit, uint256 postOpGasLimit) {
-        return (
-            address(bytes20(paymasterAndData[: PAYMASTER_VALIDATION_GAS_OFFSET])),
-            uint128(bytes16(paymasterAndData[PAYMASTER_VALIDATION_GAS_OFFSET : PAYMASTER_POSTOP_GAS_OFFSET])),
-            uint128(bytes16(paymasterAndData[PAYMASTER_POSTOP_GAS_OFFSET : PAYMASTER_DATA_OFFSET]))
-        );
+        require(paymasterAndData.length >= PAYMASTER_DATA_OFFSET, "AA93 invalid paymasterAndData");
+        
+        paymaster = address(bytes20(paymasterAndData[0:20]));
+        validationGasLimit = uint128(bytes16(paymasterAndData[PAYMASTER_VALIDATION_GAS_OFFSET:PAYMASTER_POSTOP_GAS_OFFSET]));
+        postOpGasLimit = uint128(bytes16(paymasterAndData[PAYMASTER_POSTOP_GAS_OFFSET:PAYMASTER_DATA_OFFSET]));
     }
 
     /**

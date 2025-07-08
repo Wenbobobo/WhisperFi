@@ -98,9 +98,11 @@ describe("Account Abstraction E2E", function () {
       depositCallData,
     ]);
 
-    // 3. Create time parameters
-    const validAfter = Math.floor(Date.now() / 1000) - 60; // Valid from 1 minute ago
-    const validUntil = Math.floor(Date.now() / 1000) + 3600; // Valid for 1 hour
+    // 3. Create time parameters using block timestamp for better accuracy
+    const currentBlock = await ethers.provider.getBlock('latest');
+    const currentTimestamp = currentBlock!.timestamp;
+    const validAfter = 0; // Use 0 to indicate no restriction on start time
+    const validUntil = currentTimestamp + 3600; // Valid for 1 hour from now
 
     // 4. Create paymasterAndData
     const paymasterAndData = await paymaster.createPaymasterAndData(
@@ -202,8 +204,11 @@ describe("Account Abstraction E2E", function () {
       "0x",
     ]);
 
-    const validAfter = Math.floor(Date.now() / 1000) - 60;
-    const validUntil = Math.floor(Date.now() / 1000) + 3600;
+    // Use block timestamp for time validation
+    const currentBlock = await ethers.provider.getBlock('latest');
+    const currentTimestamp = currentBlock!.timestamp;
+    const validAfter = 0;  // Use 0 to indicate no restriction on start time
+    const validUntil = currentTimestamp + 3600;  // Valid until 1 hour from now
 
     const paymasterAndData = await paymaster.createPaymasterAndData(
       100000,
@@ -252,9 +257,11 @@ describe("Account Abstraction E2E", function () {
       depositCallData,
     ]);
 
-    // Create expired time parameters
-    const validAfter = Math.floor(Date.now() / 1000) - 7200; // 2 hours ago
-    const validUntil = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago (expired)
+    // Create expired time parameters using block timestamp
+    const currentBlock = await ethers.provider.getBlock('latest');
+    const currentTimestamp = currentBlock!.timestamp;
+    const validAfter = currentTimestamp - 7200; // 2 hours ago
+    const validUntil = currentTimestamp - 3600; // 1 hour ago (expired)
 
     const paymasterAndData = await paymaster.createPaymasterAndData(
       100000,

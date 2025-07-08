@@ -65,8 +65,9 @@ contract Paymaster is IPaymaster, Ownable {
         // Extract time validation data from paymasterAndData
         (uint48 validUntil, uint48 validAfter) = _extractTimeValidation(userOp.paymasterAndData);
 
-        // Validate time range
-        if (block.timestamp < validAfter || block.timestamp > validUntil) revert InvalidTimestamp();
+        // Validate time range - ensure current time is within the valid window
+        if (validAfter > 0 && block.timestamp < validAfter) revert InvalidTimestamp();
+        if (validUntil > 0 && block.timestamp > validUntil) revert InvalidTimestamp();
         
         // Pack validation data
         validationData = _packValidationData(false, validUntil, validAfter);
@@ -90,15 +91,18 @@ contract Paymaster is IPaymaster, Ownable {
 
     /**
      * @dev Helper function to extract target address from callData.
-     * Assumes callData format: target(20 bytes) + function call data
+     * Assumes callData format for execute(address dest, uint256 value, bytes data)
      */
     function _extractTargetFromCallData(bytes calldata callData) internal pure returns (address) {
-        // This function now assumes the callData is for a function like `execute(address dest, ...)`
-        // where the target address is the first argument.
-        // The address is encoded in the first 32-byte word after the 4-byte selector.
         require(callData.length >= 36, "Paymaster: invalid callData for target extraction");
+        
+        // Check if this is an execute function call (selector: 0xb61d27f6)
+        bytes4 selector = bytes4(callData[0:4]);
+        require(selector == 0xb61d27f6, "Paymaster: not an execute function call");
+        
         // Extract the address from the first parameter of the ABI-encoded calldata.
-        // An address is a 20-byte value, right-padded in a 32-byte word. We slice from byte 16 to 36.
+        // The address parameter starts at offset 4 (after selector) and is 32 bytes long
+        // but addresses are only 20 bytes, so we extract from bytes 16-36 (right-aligned)
         return address(bytes20(callData[16:36]));
     }
 
@@ -107,37 +111,38 @@ contract Paymaster is IPaymaster, Ownable {
      * Format after static fields: validUntil(6 bytes) + validAfter(6 bytes)
      */
     function _extractTimeValidation(bytes calldata paymasterAndData) internal pure returns (uint48 validUntil, uint48 validAfter) {
-        require(paymasterAndData.length >= UserOperationLib.PAYMASTER_DATA_OFFSET + 12, "Paymaster: invalid time data");
+        require(paymasterAndData.length >= 64, "Invalid paymasterAndData length");
         
-        validUntil = uint48(bytes6(paymasterAndData[UserOperationLib.PAYMASTER_DATA_OFFSET:UserOperationLib.PAYMASTER_DATA_OFFSET + 6]));
-        validAfter = uint48(bytes6(paymasterAndData[UserOperationLib.PAYMASTER_DATA_OFFSET + 6:UserOperationLib.PAYMASTER_DATA_OFFSET + 12]));
+        // For abi.encodePacked, uint128 takes 16 bytes and uint48 takes 6 bytes
+        // Layout: address(20) + uint128(16) + uint128(16) + uint48(6) + uint48(6) = 64 bytes
+        // validUntil is at offset 52 (20 + 16 + 16)
+        validUntil = uint48(bytes6(paymasterAndData[52:58]));
+        // validAfter is at offset 58 (20 + 16 + 16 + 6)
+        validAfter = uint48(bytes6(paymasterAndData[58:64]));
     }
 
     /**
      * @dev Pack validation data according to ERC-4337 standard.
      */
     function _packValidationData(bool sigFailed, uint48 validUntil, uint48 validAfter) internal pure returns (uint256) {
-        return
-            (sigFailed ? 1 : 0) |
-            (uint256(validUntil) << 160) |
-            (uint256(validAfter) << (160 + 48));
+        return uint256(validAfter) << 208 | uint256(validUntil) << 160 | (sigFailed ? 1 : 0);
     }
 
     /**
      * @dev Create paymasterAndData for a UserOperation.
      */
     function createPaymasterAndData(
-        uint256 verificationGasLimit,
-        uint256 postOpGasLimit,
+        uint128 verificationGasLimit,
+        uint128 postOpGasLimit,
         uint48 validUntil,
         uint48 validAfter
     ) external view returns (bytes memory) {
         return abi.encodePacked(
             address(this),                    // paymaster address (20 bytes)
             uint128(verificationGasLimit),    // verification gas limit (16 bytes)
-            uint128(postOpGasLimit),          // post-op gas limit (16 bytes)
-            validUntil,                       // valid until (6 bytes)
-            validAfter                        // valid after (6 bytes)
+            uint128(postOpGasLimit),          // post op gas limit (16 bytes)
+            uint48(validUntil),               // valid until (6 bytes)
+            uint48(validAfter)                // valid after (6 bytes)
         );
     }
 }
