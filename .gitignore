@@ -11,3 +11,8 @@ wheels/
 .gemini
 node_modules
 artifacts
+artifacts/contracts/Paymaster.sol/Paymaster.dbg.json
+artifacts/contracts/Paymaster.sol/Paymaster.json
+artifacts/contracts/TestAccount.sol/TestAccount.dbg.json
+artifacts/contracts/TestAccount.sol/TestAccount.json
+cache/solidity-files-cache.json
