@@ -10,3 +10,4 @@ wheels/
 .venv
 .gemini
 node_modules
+artifacts
