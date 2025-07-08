@@ -110,57 +110,83 @@ describe("Account Abstraction E2E", function () {
       validAfter
     );
 
-    // 5. Create the UserOperation
+    // 5. 确保 TestAccount 有足够的 ETH
+    const requiredBalance = depositAmount + ethers.parseEther("0.1");
+    const currentBalance = await ethers.provider.getBalance(testAccountAddress);
+    if (currentBalance < requiredBalance) {
+      await owner.sendTransaction({
+        to: testAccountAddress,
+        value: requiredBalance - currentBalance
+      });
+    }
+
+    // 6. Create the UserOperation
     const userOp: PackedUserOperation = {
       sender: testAccountAddress,
       nonce: 0n,
       initCode: "0x",
       callData: executionCallData,
-      accountGasLimits: packUints(100000n, 500000n), // verificationGasLimit, callGasLimit
+      accountGasLimits: packUints(500000n, 1000000n), // 增加 gas limits
       preVerificationGas: 21000n,
       gasFees: packUints(1000000000n, 2000000000n), // maxPriorityFeePerGas, maxFeePerGas
       paymasterAndData: paymasterAndData,
       signature: "0x"
     };
 
-    // 6. Sign the UserOperation
+    // 7. Sign the UserOperation
     const userOpHash = await entryPoint.getUserOpHash(userOp);
     const signature = await user.signMessage(ethers.getBytes(userOpHash));
     userOp.signature = signature;
 
-    // 7. Get initial state
+    // 8. Get initial state
     const initialRoot = await privacyPool.root();
     const initialPaymasterBalance = await entryPoint.balanceOf(paymasterAddress);
-    const initialAccountBalance = await testAccount.getAddress().then(addr => 
-      ethers.provider.getBalance(addr)
-    );
+    const initialAccountBalance = await ethers.provider.getBalance(testAccountAddress);
 
     console.log("Initial privacy pool root:", initialRoot);
     console.log("Initial paymaster balance:", ethers.formatEther(initialPaymasterBalance));
     console.log("Initial account balance:", ethers.formatEther(initialAccountBalance));
+    console.log("Deposit amount:", ethers.formatEther(depositAmount));
 
-    // 8. Submit the UserOperation
+    // 9. Submit the UserOperation
     const tx = await entryPoint.connect(bundler).handleOps([userOp], await bundler.getAddress());
     const receipt = await tx.wait();
 
     console.log("Transaction hash:", receipt.hash);
     console.log("Gas used:", receipt.gasUsed.toString());
 
-    // 9. Verify the results
+    // 10. 检查交易日志
+    const logs = receipt.logs;
+    console.log("Transaction logs:", logs.length);
+    let depositEventFound = false;
+    
+    for (let i = 0; i < logs.length; i++) {
+      try {
+        const parsedLog = privacyPool.interface.parseLog(logs[i]);
+        console.log(`Privacy pool event ${i}:`, parsedLog.name, parsedLog.args);
+        if (parsedLog.name === "Deposit") {
+          depositEventFound = true;
+        }
+      } catch (e) {
+        // 不是 PrivacyPool 的事件，忽略
+      }
+    }
+
+    // 11. Verify the results
     const finalRoot = await privacyPool.root();
     const finalPaymasterBalance = await entryPoint.balanceOf(paymasterAddress);
-    const finalAccountBalance = await testAccount.getAddress().then(addr => 
-      ethers.provider.getBalance(addr)
-    );
+    const finalAccountBalance = await ethers.provider.getBalance(testAccountAddress);
 
     console.log("Final privacy pool root:", finalRoot);
     console.log("Final paymaster balance:", ethers.formatEther(finalPaymasterBalance));
     console.log("Final account balance:", ethers.formatEther(finalAccountBalance));
+    console.log("Deposit event found:", depositEventFound);
 
     // Assertions
+    expect(depositEventFound).to.be.true;
     expect(finalRoot).to.not.equal(initialRoot, "Privacy pool root should change after deposit");
     expect(finalPaymasterBalance).to.be.lessThan(initialPaymasterBalance, "Paymaster should pay for gas");
-    expect(finalAccountBalance).to.equal(initialAccountBalance, "Account balance should remain unchanged (paymaster pays)");
+    expect(finalAccountBalance).to.be.lessThan(initialAccountBalance, "Account should pay deposit amount");
 
     console.log(`✅ Test passed! Paymaster sponsored the transaction.`);
     console.log(`   Gas cost: ${ethers.formatEther(initialPaymasterBalance - finalPaymasterBalance)} ETH`);
