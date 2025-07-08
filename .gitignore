@@ -9,7 +9,10 @@ wheels/
 # Virtual environments
 .venv
 .gemini
+
+# Other common files
 node_modules
 artifacts
 cache
-artifacts/contracts/Paymaster.sol/Paymaster.dbg.json
+account-abstraction
+temp_circom
