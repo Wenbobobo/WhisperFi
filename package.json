@@ -25,6 +25,7 @@
     "circomlib": "^2.0.5",
     "cross-env": "^7.0.3",
     "erc4337": "^0.0.1-security",
-    "ethers": "^6.15.0"
+    "ethers": "^6.15.0",
+    "pino-pretty": "^13.0.0"
   }
 }
