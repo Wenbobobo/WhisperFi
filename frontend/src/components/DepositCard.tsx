@@ -1,18 +1,25 @@
 // src/components/DepositCard.tsx
 "use client";
 
-import { useState } from 'react';
-import { Box, Button, Card, CardContent, TextField, Typography, CircularProgress } from '@mui/material';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useState, useMemo } from 'react';
+import { Box, Button, Card, CardContent, TextField, Typography, CircularProgress, Link, Alert } from '@mui/material';
+import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
 import { ethers } from 'ethers';
 
-// You would get the ABI and address from your deployment artifacts
+// We will get the ABI and address from a centralized config file later
 import PrivacyPoolAbi from '../abi/PrivacyPool.json';
 const PRIVACY_POOL_ADDRESS = '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9'; // Replace with your deployed address
 
 export default function DepositCard() {
-  const [commitment, setCommitment] = useState('');
-  const { data: hash, writeContract, isPending } = useWriteContract();
+  const [secret, setSecret] = useState('');
+  const { chain } = useAccount();
+  const { data: hash, writeContract, isPending, error } = useWriteContract();
+
+  // Automatically generate the commitment from the secret
+  const commitment = useMemo(() => {
+    if (!secret) return '0x';
+    return ethers.keccak256(ethers.toUtf8Bytes(secret));
+  }, [secret]);
 
   const { isLoading: isConfirming, isSuccess: isConfirmed } = 
     useWaitForTransactionReceipt({ 
@@ -20,50 +27,50 @@ export default function DepositCard() {
     });
 
   const handleDeposit = async () => {
-    if (!commitment) {
-      alert('Please enter a commitment.');
+    if (!secret) {
+      alert('Please enter a secret note to generate a commitment.');
       return;
     }
-
-    const formattedCommitment = ethers.isHexString(commitment, 32) 
-      ? commitment 
-      : ethers.encodeBytes32String(commitment);
 
     writeContract({
       address: PRIVACY_POOL_ADDRESS,
       abi: PrivacyPoolAbi,
       functionName: 'deposit',
-      args: [formattedCommitment],
+      args: [commitment],
       value: ethers.parseEther('0.1'), // Matching the DEPOSIT_AMOUNT in the contract
     });
   };
 
   return (
-    <Card sx={{ mt: 4 }}>
+    <Card sx={{ mt: 4, maxWidth: 600, mx: 'auto' }}>
       <CardContent>
         <Typography variant="h5" component="h2" gutterBottom>
           Make a Deposit
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          To deposit, generate a secret and its corresponding commitment. Keep the secret safe!
-          You will need it for withdrawals. For now, you can enter any string as a secret.
-        </Typography>
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          <strong>Important:</strong> Save your secret note! You will need it to withdraw your funds. Losing it means losing your funds.
+        </Alert>
         <TextField
           fullWidth
-          label="Secret / Commitment"
+          label="Your Secret Note"
           variant="outlined"
-          value={commitment}
-          onChange={(e) => setCommitment(e.target.value)}
+          value={secret}
+          onChange={(e) => setSecret(e.target.value)}
           disabled={isPending || isConfirming}
           sx={{ mb: 2 }}
+          helperText="Enter any text. We will generate a secure commitment for you."
         />
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, wordWrap: 'break-word' }}>
+          <strong>Generated Commitment:</strong> {commitment}
+        </Typography>
         <Box sx={{ position: 'relative' }}>
           <Button
             variant="contained"
             color="primary"
             onClick={handleDeposit}
-            disabled={isPending || isConfirming}
+            disabled={!secret || isPending || isConfirming}
             fullWidth
+            size="large"
           >
             {isPending ? 'Confirm in wallet...' : isConfirming ? 'Depositing...' : 'Deposit 0.1 ETH'}
           </Button>
@@ -81,9 +88,17 @@ export default function DepositCard() {
           )}
         </Box>
         {isConfirmed && (
-          <Typography sx={{ mt: 2 }} color="success.main">
-            Deposit successful! Transaction Hash: {hash}
-          </Typography>
+          <Alert severity="success" sx={{ mt: 2 }}>
+            Deposit successful! 
+            <Link href={`${chain?.blockExplorers?.default.url}/tx/${hash}`} target="_blank" rel="noopener">
+              View on Explorer
+            </Link>
+          </Alert>
+        )}
+        {error && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+                Error: {error.shortMessage || error.message}
+            </Alert>
         )}
       </CardContent>
     </Card>
