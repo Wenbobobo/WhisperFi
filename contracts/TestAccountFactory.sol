@@ -23,22 +23,23 @@ contract TestAccountFactory {
      * @param _salt A unique value to ensure a unique address.
      * @return The predicted address of the new account.
      */
-    function getAddress(address _owner, uint256 _salt) public view returns (address) {
-        // Use the stored entryPoint variable directly, not this.entryPoint()
-        bytes32 initCodeHash = keccak256(abi.encodePacked(
+    function getAccountAddress(address _owner, uint256 _salt) public view returns (address) {
+        bytes32 salt = bytes32(_salt);
+        
+        // Calculate the complete init code (creation code + constructor args)
+        bytes memory initCode = abi.encodePacked(
             type(TestAccount).creationCode,
             abi.encode(entryPoint, _owner)
-        ));
-        
-        // Use CREATE2 formula: keccak256(0xff ++ address ++ salt ++ keccak256(init_code))
-        bytes32 finalHash = keccak256(abi.encodePacked(
+        );
+        bytes32 initCodeHash = keccak256(initCode);
+
+        // Calculate the CREATE2 address
+        return address(uint160(uint256(keccak256(abi.encodePacked(
             bytes1(0xff),
             address(this),
-            bytes32(_salt),
+            salt,
             initCodeHash
-        ));
-        
-        return address(uint160(uint256(finalHash)));
+        )))))
     }
 
     /**
@@ -48,7 +49,7 @@ contract TestAccountFactory {
      * @return The newly created TestAccount instance.
      */
     function createAccount(address _owner, uint256 _salt) public returns (address) {
-        address predictedAddress = getAddress(_owner, _salt);
+        address predictedAddress = getAccountAddress(_owner, _salt);
         bytes32 salt = bytes32(_salt);
         TestAccount account = new TestAccount{salt: salt}(entryPoint, _owner);
         require(address(account) == predictedAddress, "CREATE2_PREDICTION_MISMATCH");

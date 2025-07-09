@@ -30,11 +30,12 @@ contract TestAccountFactoryDebug {
         salt = bytes32(_salt);
         factory = address(this);
         
-        // Calculate initCodeHash exactly as in getAddress
-        initCodeHash = keccak256(abi.encodePacked(
+        // Calculate the complete init code (creation code + constructor args)
+        bytes memory initCode = abi.encodePacked(
             type(TestAccount).creationCode,
             abi.encode(entryPoint, _owner)
-        ));
+        );
+        initCodeHash = keccak256(initCode);
         
         // Calculate finalHash
         finalHash = keccak256(abi.encodePacked(
@@ -53,20 +54,23 @@ contract TestAccountFactoryDebug {
      * @param _salt A unique value to ensure a unique address.
      * @return The predicted address of the new account.
      */
-    function getAddress(address _owner, uint256 _salt) public view returns (address) {
-        bytes32 initCodeHash = keccak256(abi.encodePacked(
+    function getAccountAddress(address _owner, uint256 _salt) public view returns (address) {
+        bytes32 salt = bytes32(_salt);
+        
+        // Calculate the complete init code (creation code + constructor args)
+        bytes memory initCode = abi.encodePacked(
             type(TestAccount).creationCode,
             abi.encode(entryPoint, _owner)
-        ));
+        );
+        bytes32 initCodeHash = keccak256(initCode);
         
-        bytes32 finalHash = keccak256(abi.encodePacked(
+        // Calculate the CREATE2 address
+        return address(uint160(uint256(keccak256(abi.encodePacked(
             bytes1(0xff),
             address(this),
-            bytes32(_salt),
+            salt,
             initCodeHash
-        ));
-        
-        return address(uint160(uint256(finalHash)));
+        )))));
     }
 
     /**
@@ -77,7 +81,7 @@ contract TestAccountFactoryDebug {
         address actualAddress,
         bool matches
     ) {
-        predictedAddress = getAddress(_owner, _salt);
+        predictedAddress = getAccountAddress(_owner, _salt);
         bytes32 salt = bytes32(_salt);
         TestAccount account = new TestAccount{salt: salt}(entryPoint, _owner);
         actualAddress = address(account);
@@ -94,7 +98,7 @@ contract TestAccountFactoryDebug {
      * @return The newly created TestAccount instance.
      */
     function createAccount(address _owner, uint256 _salt) public returns (address) {
-        address predictedAddress = getAddress(_owner, _salt);
+        address predictedAddress = getAccountAddress(_owner, _salt);
         bytes32 salt = bytes32(_salt);
         TestAccount account = new TestAccount{salt: salt}(entryPoint, _owner);
         require(address(account) == predictedAddress, "CREATE2_PREDICTION_MISMATCH");

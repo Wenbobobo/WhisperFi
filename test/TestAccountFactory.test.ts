@@ -32,15 +32,26 @@ describe("TestAccountFactory", function () {
   // This test is the core of the problem. It directly compares the view function and the static call.
   it("should correctly predict the account address", async function () {
     const salt = 1;
-    const predictedAddress = await factory.getAddress(userAddress, salt);
+    const predictedAddress = await factory.getAccountAddress(userAddress, salt);
 
-    // The static call will return the address created by the `new` keyword.
-    // The `require` statement inside the contract ensures they match.
-    // If this test passes, it means the prediction is correct.
     const actualAddress = await factory.createAccount.staticCall(
       userAddress,
       salt
     );
+
+    // Improved manual calculation for debugging
+    const TestAccount = await ethers.getContractFactory("TestAccount");
+    const entryPointAddress = await entryPoint.getAddress();
+    const deployTx = await TestAccount.getDeployTransaction(entryPointAddress, userAddress);
+    const initCode = deployTx.data;
+    const initCodeHash = ethers.keccak256(initCode);
+    const factoryAddress = await factory.getAddress();
+    const saltHex = ethers.toBeHex(salt, 32);
+    const predictedAddressManual = ethers.getCreate2Address(factoryAddress, saltHex, initCodeHash);
+
+    console.log("Contract Prediction:", predictedAddress);
+    console.log("Manual Prediction:  ", predictedAddressManual);
+    console.log("Actual Address:     ", actualAddress);
 
     expect(actualAddress).to.equal(predictedAddress);
   });
