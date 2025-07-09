@@ -28,7 +28,7 @@ describe("Account Abstraction E2E", function () {
   let entryPoint: any;
   let paymaster: any;
   let privacyPool: any;
-  let testAccount: any;
+  let smartAccount: any;  // 改为小写，这是合约实例
   let verifier: any;
 
   beforeEach(async function () {
@@ -53,17 +53,17 @@ describe("Account Abstraction E2E", function () {
     );
     await privacyPool.waitForDeployment();
 
-    // Deploy TestAccount
-    const TestAccount = await ethers.getContractFactory("TestAccount");
-    testAccount = await TestAccount.deploy(
+    // Deploy SmartAccount
+    const SmartAccount = await ethers.getContractFactory("SmartAccount");  // 合约工厂保持大写
+    smartAccount = await SmartAccount.deploy(  // 合约实例使用小写
       await entryPoint.getAddress(),
       await user.getAddress()
     );
-    await testAccount.waitForDeployment();
+    await smartAccount.waitForDeployment();
 
     // Fund the test account
     await owner.sendTransaction({
-      to: await testAccount.getAddress(),
+      to: await smartAccount.getAddress(),  // 使用小写的实例
       value: ethers.parseEther("1")
     });
 
@@ -81,7 +81,7 @@ describe("Account Abstraction E2E", function () {
   });
 
   it("should sponsor a deposit transaction into the PrivacyPool", async function () {
-    const testAccountAddress = await testAccount.getAddress();
+    const smartAccountAddress = await smartAccount.getAddress();  // 修复：改为小写
     const paymasterAddress = await paymaster.getAddress();
     const privacyPoolAddress = await privacyPool.getAddress();
 
@@ -91,8 +91,8 @@ describe("Account Abstraction E2E", function () {
     const commitment = ethers.randomBytes(32);
     const depositCallData = privacyPool.interface.encodeFunctionData("deposit", [commitment]);
 
-    // 2. Create the execution call data for the TestAccount's `execute` function
-    const executionCallData = testAccount.interface.encodeFunctionData("execute", [
+    // 2. Create the execution call data for the SmartAccount's `execute` function
+    const executionCallData = smartAccount.interface.encodeFunctionData("execute", [
       privacyPoolAddress,
       depositAmount, // value
       depositCallData,
@@ -112,19 +112,19 @@ describe("Account Abstraction E2E", function () {
       validAfter
     );
 
-    // 5. 确保 TestAccount 有足够的 ETH
+    // 5. 确保 SmartAccount 有足够的 ETH
     const requiredBalance = depositAmount + ethers.parseEther("0.1");
-    const currentBalance = await ethers.provider.getBalance(testAccountAddress);
+    const currentBalance = await ethers.provider.getBalance(smartAccountAddress);  // 修复：改为小写
     if (currentBalance < requiredBalance) {
       await owner.sendTransaction({
-        to: testAccountAddress,
+        to: smartAccountAddress,  // 修复：改为小写
         value: requiredBalance - currentBalance
       });
     }
 
     // 6. Create the UserOperation
     const userOp: PackedUserOperation = {
-      sender: testAccountAddress,
+      sender: smartAccountAddress,  // 修复：改为小写
       nonce: 0n,
       initCode: "0x",
       callData: executionCallData,
@@ -143,7 +143,7 @@ describe("Account Abstraction E2E", function () {
     // 8. Get initial state
     const initialRoot = await privacyPool.root();
     const initialPaymasterBalance = await entryPoint.balanceOf(paymasterAddress);
-    const initialAccountBalance = await ethers.provider.getBalance(testAccountAddress);
+    const initialAccountBalance = await ethers.provider.getBalance(smartAccountAddress);  // 修复：改为小写
 
     console.log("Initial privacy pool root:", initialRoot);
     console.log("Initial paymaster balance:", ethers.formatEther(initialPaymasterBalance));
@@ -177,7 +177,7 @@ describe("Account Abstraction E2E", function () {
     // 11. Verify the results
     const finalRoot = await privacyPool.root();
     const finalPaymasterBalance = await entryPoint.balanceOf(paymasterAddress);
-    const finalAccountBalance = await ethers.provider.getBalance(testAccountAddress);
+    const finalAccountBalance = await ethers.provider.getBalance(smartAccountAddress);  // 修复：改为小写
 
     console.log("Final privacy pool root:", finalRoot);
     console.log("Final paymaster balance:", ethers.formatEther(finalPaymasterBalance));
@@ -195,11 +195,11 @@ describe("Account Abstraction E2E", function () {
   });
 
   it("should reject unsupported targets", async function () {
-    const testAccountAddress = await testAccount.getAddress();
+    const smartAccountAddress = await smartAccount.getAddress();  // 修复：改为小写和使用实例
     
     // Create a call to an unsupported target (the test account itself) using the `execute` function
-    const callData = testAccount.interface.encodeFunctionData("execute", [
-      testAccountAddress, // The target is an unsupported contract
+    const callData = smartAccount.interface.encodeFunctionData("execute", [
+      smartAccountAddress, // The target is an unsupported contract  // 修复：改为小写
       0,
       "0x",
     ]);
@@ -218,7 +218,7 @@ describe("Account Abstraction E2E", function () {
     );
 
     const userOp: PackedUserOperation = {
-      sender: testAccountAddress,
+      sender: smartAccountAddress,  // 修复：改为小写
       nonce: 0n,
       initCode: "0x",
       callData: callData,
@@ -245,13 +245,13 @@ describe("Account Abstraction E2E", function () {
   });
 
   it("should reject expired UserOperations", async function () {
-    const testAccountAddress = await testAccount.getAddress();
+    const smartAccountAddress = await smartAccount.getAddress();  // 修复：改为小写和使用实例
     const privacyPoolAddress = await privacyPool.getAddress();
     const depositAmount = await privacyPool.DEPOSIT_AMOUNT();
 
     const commitment = ethers.randomBytes(32);
     const depositCallData = privacyPool.interface.encodeFunctionData("deposit", [commitment]);
-    const executionCallData = testAccount.interface.encodeFunctionData("execute", [
+    const executionCallData = smartAccount.interface.encodeFunctionData("execute", [  // 修复：使用实例
       privacyPoolAddress,
       depositAmount,
       depositCallData,
@@ -271,7 +271,7 @@ describe("Account Abstraction E2E", function () {
     );
 
     const userOp: PackedUserOperation = {
-      sender: testAccountAddress,
+      sender: smartAccountAddress,  // 修复：改为小写
       nonce: 0n,
       initCode: "0x",
       callData: executionCallData,

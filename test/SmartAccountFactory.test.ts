@@ -1,9 +1,9 @@
-// test/TestAccountFactory.test.ts
+// test/SmartAccountFactory.test.ts
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { Signer, Contract } from "ethers";
 
-describe("TestAccountFactory", function () {
+describe("SmartAccountFactory", function () {
   let owner: Signer, user: Signer;
   let entryPoint: Contract;
   let factory: Contract;
@@ -19,9 +19,9 @@ describe("TestAccountFactory", function () {
     await entryPoint.waitForDeployment();
     const entryPointAddress = await entryPoint.getAddress();
     
-    // Deploy the TestAccountFactory
-    const TestAccountFactory = await ethers.getContractFactory("TestAccountFactory");
-    factory = await TestAccountFactory.deploy(entryPointAddress);
+    // Deploy the SmartAccountFactory
+    const SmartAccountFactory = await ethers.getContractFactory("SmartAccountFactory");
+    factory = await SmartAccountFactory.deploy(entryPointAddress);
     await factory.waitForDeployment();
   });
 
@@ -40,9 +40,9 @@ describe("TestAccountFactory", function () {
     );
 
     // Improved manual calculation for debugging
-    const TestAccount = await ethers.getContractFactory("TestAccount");
+    const SmartAccount = await ethers.getContractFactory("SmartAccount");
     const entryPointAddress = await entryPoint.getAddress();
-    const deployTx = await TestAccount.getDeployTransaction(entryPointAddress, userAddress);
+    const deployTx = await SmartAccount.getDeployTransaction(entryPointAddress, userAddress);
     const initCode = deployTx.data;
     const initCodeHash = ethers.keccak256(initCode);
     const factoryAddress = await factory.getAddress();
@@ -73,7 +73,7 @@ describe("TestAccountFactory", function () {
     expect(event, "AccountCreated event not found").to.not.be.undefined;
     const actualAddress = event.args.account;
 
-    const accountContract = await ethers.getContractAt("TestAccount", actualAddress);
+    const accountContract = await ethers.getContractAt("SmartAccount", actualAddress);
     expect(await accountContract.owner()).to.equal(userAddress);
     expect(await accountContract.entryPoint()).to.equal(await entryPoint.getAddress());
   });

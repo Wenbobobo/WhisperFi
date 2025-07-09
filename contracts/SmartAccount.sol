@@ -6,7 +6,7 @@ import "./lib/interfaces/IEntryPoint.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
-contract TestAccount is IAccount {
+contract SmartAccount is IAccount {
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
 
