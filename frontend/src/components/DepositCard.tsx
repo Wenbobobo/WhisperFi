@@ -7,8 +7,9 @@ import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagm
 import { ethers } from 'ethers';
 
 // We will get the ABI and address from a centralized config file later
-import PrivacyPoolAbi from '../abi/PrivacyPool.json';
+import PrivacyPoolArtifact from '../abi/PrivacyPool.json';
 const PRIVACY_POOL_ADDRESS = '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9'; // Replace with your deployed address
+const PrivacyPoolAbi = PrivacyPoolArtifact.abi;
 
 export default function DepositCard() {
   const [secret, setSecret] = useState('');
