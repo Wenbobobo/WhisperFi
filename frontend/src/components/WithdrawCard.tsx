@@ -3,15 +3,16 @@
 
 import { useState } from 'react';
 import { Box, Button, Card, CardContent, TextField, Typography, CircularProgress, Link, Alert, Stepper, Step, StepLabel } from '@mui/material';
-import { useWriteContract, useWaitForTransactionReceipt, useAccount, useReadContract } from 'wagmi';
+import { useWriteContract, useWaitForTransactionReceipt, useAccount, useReadContract, usePublicClient } from 'wagmi';
 import { ethers } from 'ethers';
+import { MerkleTree } from 'fixed-merkle-tree';
 // @ts-ignore
 import { groth16 } from 'snarkjs';
 
 import PrivacyPoolArtifact from '../abi/PrivacyPool.json';
+
 const PRIVACY_POOL_ADDRESS = '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9';
 const PrivacyPoolAbi = PrivacyPoolArtifact.abi;
-
 const steps = ['Generate Proof', 'Submit Transaction'];
 
 export default function WithdrawCard() {
@@ -22,7 +23,7 @@ export default function WithdrawCard() {
   const [publicSignals, setPublicSignals] = useState<any>(null);
 
   const { chain, address } = useAccount();
-  // Remove simulation flag, use actual transaction confirmation
+  const publicClient = usePublicClient();
   const { data: hash, writeContract, isPending, error } = useWriteContract();
 
   const { data: currentRoot } = useReadContract({
@@ -35,7 +36,7 @@ export default function WithdrawCard() {
     useWaitForTransactionReceipt({ hash });
 
   const generateProof = async () => {
-    if (!address) {
+    if (!address || !publicClient) {
       alert('Please connect your wallet first.');
       return;
     }
@@ -43,63 +44,61 @@ export default function WithdrawCard() {
     setIsProving(true);
     setActiveStep(0);
 
-    // Calculate the commitment from the secret (same as in deposit)
-    const commitment = ethers.keccak256(ethers.toUtf8Bytes(secret));
-
     try {
-      console.log('Generating proof for commitment:', commitment);
-      
-      // In a production system, we would:
-      // 1. Fetch all deposit events from the blockchain
-      // 2. Build the Merkle tree with all commitments 
-      // 3. Find our commitment in the tree
-      // 4. Generate Merkle proof (path elements and indices)
-      // 5. Use a proper withdraw circuit that proves:
-      //    - Knowledge of the secret that generates the commitment
-      //    - The commitment exists in the Merkle tree
-      //    - Generate a unique nullifier to prevent double spending
-      
-      // For this demo, we'll simulate a working proof system
-      console.log('Demo: Simulating zk-SNARK proof generation...');
-      
-      // Simulate the time it takes to generate a real proof
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Create a mock proof that matches the expected format
-      const mockProof = {
-        pi_a: [
-          "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-          "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
-        ],
-        pi_b: [
-          [
-            "0x2345678901bcdef02345678901bcdef02345678901bcdef02345678901bcdef0",
-            "0xbcdef02345678901bcdef02345678901bcdef02345678901bcdef02345678901"
-          ],
-          [
-            "0x3456789012cdef013456789012cdef013456789012cdef013456789012cdef01",
-            "0xcdef013456789012cdef013456789012cdef013456789012cdef013456789012"
+      // 1. Fetch all deposit events to build the tree
+      const depositEvents = await publicClient.getLogs({
+        address: PRIVACY_POOL_ADDRESS,
+        event: {
+          type: 'event',
+          name: 'Deposit',
+          inputs: [
+            { name: 'commitment', type: 'bytes32', indexed: true },
+            { name: 'leafIndex', type: 'uint256', indexed: false },
+            { name: 'timestamp', type: 'uint256', indexed: false }
           ]
-        ],
-        pi_c: [
-          "0x456789013def0234456789013def0234456789013def0234456789013def0234",
-          "0xdef0234456789013def0234456789013def0234456789013def0234456789013"
-        ]
+        },
+        fromBlock: 0n,
+        toBlock: 'latest',
+      });
+      const commitments = depositEvents.map(event => event.args.commitment);
+      
+      // 2. Build the Merkle tree
+      const tree = new MerkleTree(20, commitments, { 
+        hashFunction: (left, right) => ethers.keccak256(ethers.concat([left, right])),
+        zeroElement: ethers.ZeroHash 
+      });
+
+      // 3. Find the commitment and generate the Merkle proof
+      const commitment = ethers.keccak256(ethers.toUtf8Bytes(secret));
+      const leafIndex = commitments.findIndex(c => c === commitment);
+      if (leafIndex < 0) {
+        throw new Error('Secret note not found in deposits.');
+      }
+      const { pathElements, pathIndices } = tree.path(leafIndex);
+
+      // 4. Prepare inputs for the ZK circuit
+      const input = {
+        root: currentRoot,
+        nullifier: ethers.keccak256(ethers.toUtf8Bytes(`nullifier-${secret}`)),
+        recipient: address,
+        amount: ethers.parseEther('0.1'),
+        pathElements: pathElements,
+        pathIndices: pathIndices,
       };
 
-      const mockPublicSignals = [commitment]; // The commitment is the main public signal
+      // 5. Generate the ZK proof
+      const { proof, publicSignals } = await groth16.fullProve(
+        input,
+        '/zk/withdraw.wasm',
+        '/zk/withdraw.zkey'
+      );
 
-      console.log('Mock proof generated successfully');
-      console.log('Proof:', mockProof);
-      console.log('Public signals:', mockPublicSignals);
-
-      setProof(mockProof);
-      setPublicSignals(mockPublicSignals);
+      setProof(proof);
+      setPublicSignals(publicSignals);
       setActiveStep(1);
-      
     } catch (err) {
-      console.error('Error generating proof:', err);
-      alert('Error in proof generation process. Please try again.');
+      console.error(err);
+      alert(`Error generating proof: ${err.message}`);
     } finally {
       setIsProving(false);
     }
