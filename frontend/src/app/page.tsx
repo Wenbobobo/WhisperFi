@@ -11,7 +11,36 @@ import WithdrawCard from '../components/WithdrawCard';
 
 // Wallet Connection Component
 function ConnectWalletButton() {
-  // ... (same as before)
+  const [mounted, setMounted] = useState(false);
+  const { isConnected } = useAccount();
+  const { connect } = useConnect();
+  const { disconnect } = useDisconnect();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <Button color="inherit" disabled>
+        Loading...
+      </Button>
+    );
+  }
+
+  if (isConnected) {
+    return (
+      <Button color="inherit" onClick={() => disconnect()}>
+        Disconnect
+      </Button>
+    );
+  }
+
+  return (
+    <Button color="inherit" onClick={() => connect({ connector: injected() })}>
+      Connect Wallet
+    </Button>
+  );
 }
 
 // Tab Panel Component
@@ -42,6 +71,32 @@ export default function Home() {
     setTabValue(newValue);
   };
 
+  // 避免 SSR/客户端不匹配问题
+  if (!mounted) {
+    return (
+      <Box sx={{ flexGrow: 1 }}>
+        <AppBar position="static">
+          <Toolbar>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+              Private DeFi
+            </Typography>
+            <Button color="inherit" disabled>
+              Loading...
+            </Button>
+          </Toolbar>
+        </AppBar>
+        <Container sx={{ mt: 4 }}>
+          <Typography variant="h4" component="h1" gutterBottom>
+            Welcome to the Next Generation of Private Finance
+          </Typography>
+          <Typography variant="body1">
+            Loading...
+          </Typography>
+        </Container>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ flexGrow: 1 }}>
       <AppBar position="static">
@@ -57,7 +112,7 @@ export default function Home() {
           Welcome to the Next Generation of Private Finance
         </Typography>
         
-        {mounted && isConnected ? (
+        {isConnected ? (
           <Box sx={{ width: '100%' }}>
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
               <Tabs value={tabValue} onChange={handleTabChange} centered>
@@ -81,4 +136,3 @@ export default function Home() {
     </Box>
   );
 }
-
