@@ -5,7 +5,8 @@ include "../node_modules/circomlib/circuits/poseidon.circom";
 template MerkleTreeChecker(levels) {
     signal input leaf;
     signal input root;
-    signal input path[levels];
+    signal input pathElements[levels];
+    signal input pathIndices[levels];
     signal input enabled;
 
     component hashers[levels];
@@ -19,11 +20,11 @@ template MerkleTreeChecker(levels) {
     for (var i = 0; i < levels; i++) {
         hashers[i] = Poseidon(2);
         
-        // 根据路径位确定哈希顺序
-        // path[i] = 0 表示当前节点是左子节点
-        // path[i] = 1 表示当前节点是右子节点
-        hashers[i].inputs[0] <== hashes[i] + path[i] * (0 - hashes[i]);
-        hashers[i].inputs[1] <== hashes[i] + (1 - path[i]) * (0 - hashes[i]);
+        // 根据路径索引确定哈希顺序
+        // pathIndices[i] = 0 表示当前节点是左子节点，sibling在右边
+        // pathIndices[i] = 1 表示当前节点是右子节点，sibling在左边
+        hashers[i].inputs[0] <== hashes[i] + pathIndices[i] * (pathElements[i] - hashes[i]);
+        hashers[i].inputs[1] <== pathElements[i] + pathIndices[i] * (hashes[i] - pathElements[i]);
         
         hashes[i + 1] <== hashers[i].out;
     }
@@ -71,11 +72,16 @@ template Withdraw(levels) {
     // 私有输入
     signal input secret;
     signal input amount;
-    signal input merklePath[levels];
+    signal input pathElements[levels];
+    signal input pathIndices[levels];
 
     // 公共输入
     signal input merkleRoot;
     signal input nullifier;
+    
+    // 公共输出 - 这些是验证者可以看到的
+    signal output root;
+    signal output nullifierHash;
 
     // 1. 从secret和amount计算commitment
     component commitmentHasher = Poseidon(2);
@@ -88,7 +94,8 @@ template Withdraw(levels) {
     merkleProof.leaf <== commitment;
     merkleProof.root <== merkleRoot;
     for (var i = 0; i < levels; i++) {
-        merkleProof.path[i] <== merklePath[i];
+        merkleProof.pathElements[i] <== pathElements[i];
+        merkleProof.pathIndices[i] <== pathIndices[i];
     }
     merkleProof.enabled <== 1;
 
@@ -99,6 +106,10 @@ template Withdraw(levels) {
 
     // 4. 约束公共nullifier必须等于从secret计算出的nullifier
     nullifier === calculatedNullifier;
+    
+    // 5. 输出公共信号
+    root <== merkleRoot;
+    nullifierHash <== calculatedNullifier;
 }
 
 // 定义主组件 - 使用深度为20的Merkle树

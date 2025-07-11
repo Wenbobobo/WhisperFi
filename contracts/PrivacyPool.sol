@@ -34,6 +34,16 @@ contract PrivacyPool is Ownable {
         emit Deposit(_commitment, uint32(index), block.timestamp);
     }
 
+    // Function to get Merkle proof for a given leaf index
+    function getMerkleProof(uint256 _leafIndex) external view returns (bytes32[] memory proof) {
+        return tree.getProof(_leafIndex);
+    }
+
+    // Function to get total number of leaves
+    function getLeafCount() external view returns (uint256) {
+        return tree.length();
+    }
+
     // NOTE: The MerkleProof.verify function does not exist. The logic for verifying a proof against the root
     // is typically done within the ZK circuit itself. The smart contract only needs to ensure that the public
     // inputs used for the proof (like the root) are valid and that the nullifier has not been used.

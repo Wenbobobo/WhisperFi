@@ -1,56 +1,76 @@
-const fs = require("fs");
-const path = require("path");
+const snarkjs = require("snarkjs");
 
-async function analyzeCircuit() {
-    console.log("Analyzing circuit files...");
+async function testCircuit() {
+    console.log("Testing ZK circuit...");
     
-    const wasmPath = path.join(__dirname, "frontend", "public", "zk", "withdraw.wasm");
-    const zkeyPath = path.join(__dirname, "frontend", "public", "zk", "withdraw.zkey");
+    // 使用更合理的测试输入
+    // 首先计算一个真实的commitment
+    const secret = "123456789";
+    const amount = "1000000000000000000"; // 1 ETH in wei
     
-    console.log("WASM path:", wasmPath);
-    console.log("ZKEY path:", zkeyPath);
+    // 计算commitment (这应该和frontend的逻辑一致)
+    // commitment = poseidon(secret, amount)
     
-    console.log("WASM file exists:", fs.existsSync(wasmPath));
-    console.log("ZKEY file exists:", fs.existsSync(zkeyPath));
+    // 为了简化测试，我们先使用前端实际生成的数据
+    const testInput = {
+        secret: "412751969686212317183224422699247202503396124546729434965558837283898434369",
+        amount: "100000000000000000",
+        pathElements: [
+            "6956647971303550402864470313562122023557337426668974955427941456100583922896",
+            "12922096265945505237623163189073161225030891023774459701575761064772403723680",
+            "12915725955914709442620130836227016886604777936222038579281010733579144864884",
+            "10214682998902546044578314075520686239372730160930721575672938779383107075954",
+            "3607627140608796879659380071776844901612302623152076817094415224584923813162",
+            "19712377064642672829441595136074946683621277828620209496774504837737984048981",
+            "20775607673010627194014556968476266066927294572720319469184847051418138353016",
+            "3396914609616007258851405644437304192397291162432396347162513310381425243293",
+            "21551820661461729022865262380882070649935529853313286572328683688269863701601",
+            "6573136701248752079028194407151022595060682063033565181951145966236778420039",
+            "12413880268183407374852357075976609371175688755676981206018884971008854919922",
+            "14271763308400718165336499097156975241954733520325982997864342600795471836726",
+            "20066985985293572387227381049700832219069292839614107140851619262827735677018",
+            "9394776414966240069580838672673694685292165040808226440647796406499139370960",
+            "11331146992410411304059858900317123658895005918277453009197229807340014528524",
+            "15819538789928229930262697811477882737253464456578333862691129291651619515538",
+            "19217088683336594659449020493828377907203207941212636669271704950158751593251",
+            "21035245323335827719745544373081896983162834604456827698288649288827293579666",
+            "6939770416153240137322503476966641397417391950902474480970945462551409848591",
+            "10941962436777715901943463195175331263348098796018438960955633645115732864202"
+        ],
+        pathIndices: [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        merkleRoot: "6839182738578166561275625423068501978047462923729285890925921479731370866161",
+        nullifier: "4210381214875763521185201282071167655375158662322512630316769198343461271"
+    };
     
-    if (fs.existsSync(wasmPath)) {
-        const stats = fs.statSync(wasmPath);
-        console.log("WASM file size:", stats.size, "bytes");
+    console.log("Input prepared:");
+    console.log("- secret:", testInput.secret);
+    console.log("- amount:", testInput.amount);
+    console.log("- pathElements length:", testInput.pathElements.length);
+    console.log("- pathIndices length:", testInput.pathIndices.length);
+    console.log("- merkleRoot:", testInput.merkleRoot);
+    console.log("- nullifier:", testInput.nullifier);
+    
+    try {
+        console.log("Generating proof...");
+        const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+            testInput,
+            './public/zk/withdraw.wasm',
+            './public/zk/withdraw.zkey'
+        );
+        
+        console.log("SUCCESS! Proof generated:");
+        console.log("- Proof structure valid:", !!(proof.pi_a && proof.pi_b && proof.pi_c));
+        console.log("- pi_a length:", proof.pi_a ? proof.pi_a.length : 'undefined');
+        console.log("- pi_b length:", proof.pi_b ? proof.pi_b.length : 'undefined');
+        console.log("- pi_c length:", proof.pi_c ? proof.pi_c.length : 'undefined');
+        console.log("- Public signals count:", publicSignals ? publicSignals.length : 'undefined');
+        console.log("- Public signals:", publicSignals);
+        
+    } catch (error) {
+        console.error("ERROR generating proof:");
+        console.error("Message:", error.message);
+        console.error("Full error:", error);
     }
-    
-    if (fs.existsSync(zkeyPath)) {
-        const stats = fs.statSync(zkeyPath);
-        console.log("ZKEY file size:", stats.size, "bytes");
-    }
-    
-    // Check if we have the original circom files
-    const circuitPath = path.join(__dirname, "circuits", "withdraw.circom");
-    const newCircuitPath = path.join(__dirname, "circuits", "withdraw_new.circom");
-    
-    console.log("Original circuit exists:", fs.existsSync(circuitPath));
-    console.log("New circuit exists:", fs.existsSync(newCircuitPath));
-    
-    // Look for symbol files that might give us clues
-    const symFiles = [
-        path.join(__dirname, "circuits", "withdraw.sym"),
-        path.join(__dirname, "withdraw.sym")
-    ];
-    
-    symFiles.forEach(symPath => {
-        if (fs.existsSync(symPath)) {
-            console.log("Symbol file found:", symPath);
-            try {
-                const content = fs.readFileSync(symPath, 'utf8');
-                if (content.trim()) {
-                    console.log("Symbol file content preview:", content.substring(0, 200));
-                } else {
-                    console.log("Symbol file is empty");
-                }
-            } catch (e) {
-                console.log("Could not read symbol file:", e.message);
-            }
-        }
-    });
 }
 
-analyzeCircuit();
+testCircuit().catch(console.error);

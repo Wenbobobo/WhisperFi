@@ -53,6 +53,7 @@ export default function WithdrawCard() {
       const nullifierHash = await generateNullifierHash(secret); // 根据电路，使用 secret 计算 nullifier
 
       console.log('Generated commitment:', commitment);
+      console.log('Generated commitment (BigInt):', BigInt(commitment).toString());
       console.log('Secret:', secret);
       console.log('Nullifier:', nullifier);
       console.log('Amount:', depositAmount.toString());
@@ -174,50 +175,74 @@ export default function WithdrawCard() {
       console.log('Contract address used:', PRIVACY_POOL_ADDRESS.toLowerCase());
       console.log('Event signature used:', depositEventSignature);
       
-      // 3. Initialize Poseidon and build the Merkle tree
+      // 3. Initialize Poseidon and build the Merkle tree using OpenZeppelin-compatible logic
       const poseidon = await buildPoseidon();
+      
+      // OpenZeppelin style hash function (but using Poseidon instead of Keccak256)
       const hashFunction = (left: any, right: any) => {
-        const result = poseidon([BigInt(left), BigInt(right)]);
+        const leftBigInt = BigInt(left);
+        const rightBigInt = BigInt(right);
+        
+        // Use the same ordering logic as OpenZeppelin's commutativeKeccak256
+        // Always put the smaller value first
+        const [first, second] = leftBigInt < rightBigInt ? [leftBigInt, rightBigInt] : [rightBigInt, leftBigInt];
+        
+        const result = poseidon([first, second]);
         return poseidon.F.toString(result);
       };
       
-      console.log('Building Merkle tree with commitments:', commitments);
-      console.log('Zero element:', ethers.ZeroHash);
+      console.log('Building OpenZeppelin-compatible Merkle tree with Poseidon hash');
+      console.log('Commitments for tree building:', commitments.slice(0, 3)); // Show first 3
       
-      const tree = new MerkleTree(20, commitments, { 
+      // Convert commitments to BigInt format for tree building
+      const commitmentsAsBigInt = commitments.map(c => BigInt(c).toString());
+      console.log('Commitments as BigInt strings:', commitmentsAsBigInt.slice(0, 3)); // Show first 3
+      
+      const tree = new MerkleTree(20, commitmentsAsBigInt, { 
         hashFunction, 
-        zeroElement: '0'  // Use string zero instead of ethers.ZeroHash
+        zeroElement: '0'  // Use string zero
       });
 
       // 4. Find the commitment and generate the Merkle proof
-      const leafIndex = commitments.findIndex(c => c === commitment);
+      const commitmentAsBigInt = BigInt(commitment).toString();
+      const leafIndex = commitmentsAsBigInt.findIndex(c => c === commitmentAsBigInt);
       if (leafIndex < 0) {
         throw new Error('Note not found in deposits. It may not have been mined yet, or the note is incorrect.');
       }
+      console.log('Found commitment at index:', leafIndex);
+      console.log('Commitment (BigInt string):', commitmentAsBigInt);
+      console.log('Matching tree element:', commitmentsAsBigInt[leafIndex]);
+      
       const { pathElements, pathIndices } = tree.path(leafIndex);
 
       // 5. Prepare inputs for the ZK circuit
-      // Convert tree root to string format expected by the circuit
-      const rootValue = typeof tree.root === 'string' ? tree.root : tree.root.toString();
+      // 获取合约当前的实际root，而不是使用计算的tree root
+      console.log('Getting current root from contract...');
+      const contractRoot = await publicClient.readContract({
+        address: PRIVACY_POOL_ADDRESS,
+        abi: PrivacyPoolAbi,
+        functionName: 'root'
+      });
+      console.log('Contract root:', contractRoot);
+      console.log('Tree root (calculated):', tree.root);
       
-      console.log('Tree root type:', typeof tree.root);
-      console.log('Tree root value:', tree.root);
-      console.log('Converted root value:', rootValue);
+      const rootBigInt = BigInt(contractRoot.toString());
+      console.log('Using contract root for proof:', rootBigInt.toString());
       console.log('Path elements:', pathElements);
       console.log('Path indices:', pathIndices);
       
       // 根据电路定义准备正确的输入
       // 确保所有值都在正确的字段范围内
       const secretBigInt = BigInt(secret);
-      const nullifierHashBigInt = BigInt(nullifierHash);
+      const nullifierHashBigInt = BigInt(nullifierHash); // 这应该是从secret计算出的nullifierHash
       const amountBigInt = BigInt(ethers.parseEther('0.1'));
-      const rootBigInt = BigInt(rootValue);
+      // 使用合约的实际root而不是计算的root
       
       console.log('Values before circuit input:');
       console.log('Secret BigInt:', secretBigInt.toString());
-      console.log('Nullifier BigInt:', nullifierHashBigInt.toString());
+      console.log('Nullifier Hash BigInt (calculated from secret):', nullifierHashBigInt.toString());
       console.log('Amount BigInt:', amountBigInt.toString());
-      console.log('Root BigInt:', rootBigInt.toString());
+      console.log('Root BigInt (contract):', rootBigInt.toString());
       console.log('Path elements length:', pathElements.length);
       console.log('Path indices length:', pathIndices.length);
       
@@ -240,19 +265,64 @@ export default function WithdrawCard() {
         throw new Error(`Invalid path elements count: expected 20, got ${cleanPathElements.length}`);
       }
       
+      // 修正输入格式以匹配更新后的电路期望
       const input = {
-        secret: secretBigInt,
-        amount: amountBigInt,
-        merklePath: cleanPathElements,
-        merkleRoot: rootBigInt,
-        nullifier: nullifierHashBigInt
+        secret: secretBigInt.toString(),
+        amount: amountBigInt.toString(),
+        pathElements: cleanPathElements.map(e => e.toString()),
+        pathIndices: pathIndices.map(i => i.toString()),
+        merkleRoot: rootBigInt.toString(),
+        nullifier: nullifierHashBigInt.toString()
       };
+      
+      // 在电路中验证commitment计算
+      console.log('Circuit input validation:');
+      console.log('Secret for circuit:', secretBigInt.toString());
+      console.log('Amount for circuit:', amountBigInt.toString());
+      console.log('Expected commitment (hex):', commitment);
+      console.log('Expected commitment (BigInt):', BigInt(commitment).toString());
+      console.log('Leaf found at index:', leafIndex);
+      console.log('Commitment from events[' + leafIndex + ']:', commitments[leafIndex]);
+      
+      // 手动验证Merkle proof
+      console.log('Manual Merkle proof verification:');
+      const poseidonForVerification = await buildPoseidon();
+      let currentHash = BigInt(commitment);
+      console.log('Starting with leaf (commitment):', currentHash.toString());
+      
+      for (let i = 0; i < pathElements.length; i++) {
+        const pathElement = BigInt(pathElements[i].toString());
+        const isRight = pathIndices[i] === 1;
+        
+        console.log(`Level ${i}:`);
+        console.log('  Current hash:', currentHash.toString());
+        console.log('  Path element:', pathElement.toString());
+        console.log('  Is right child:', isRight);
+        
+        let nextHash;
+        if (isRight) {
+          // 当前节点是右子节点，路径元素是左兄弟节点
+          nextHash = poseidonForVerification([pathElement, currentHash]);
+        } else {
+          // 当前节点是左子节点，路径元素是右兄弟节点
+          nextHash = poseidonForVerification([currentHash, pathElement]);
+        }
+        
+        currentHash = BigInt(poseidonForVerification.F.toString(nextHash));
+        console.log('  Next hash:', currentHash.toString());
+      }
+      
+      console.log('Final computed root:', currentHash.toString());
+      console.log('Contract root:', rootBigInt.toString());
+      console.log('Roots match:', currentHash.toString() === rootBigInt.toString());
       
       console.log('Circuit input prepared (BigInt format):', {
         secret: input.secret.toString(),
         amount: input.amount.toString(),
-        merklePath: input.merklePath.slice(0, 3).map(e => e.toString()), // 只显示前3个
-        merklePathLength: input.merklePath.length, // 显示完整长度
+        pathElements: input.pathElements.slice(0, 3), // 只显示前3个
+        pathElementsLength: input.pathElements.length, // 显示完整长度
+        pathIndices: input.pathIndices.slice(0, 3), // 只显示前3个
+        pathIndicesLength: input.pathIndices.length, // 显示完整长度
         merkleRoot: input.merkleRoot.toString(),
         nullifier: input.nullifier.toString(),
       });
@@ -261,17 +331,40 @@ export default function WithdrawCard() {
       console.log('Input validation:');
       console.log('- secret type:', typeof input.secret, 'value:', input.secret.toString());
       console.log('- amount type:', typeof input.amount, 'value:', input.amount.toString());
-      console.log('- merklePath type:', typeof input.merklePath, 'length:', input.merklePath.length);
-      console.log('- merklePath[0] type:', typeof input.merklePath[0], 'value:', input.merklePath[0].toString());
+      console.log('- pathElements type:', typeof input.pathElements, 'length:', input.pathElements.length);
+      console.log('- pathElements[0] type:', typeof input.pathElements[0], 'value:', input.pathElements[0].toString());
+      console.log('- pathIndices type:', typeof input.pathIndices, 'length:', input.pathIndices.length);
+      console.log('- pathIndices[0] type:', typeof input.pathIndices[0], 'value:', input.pathIndices[0].toString());
       console.log('- merkleRoot type:', typeof input.merkleRoot, 'value:', input.merkleRoot.toString());
       console.log('- nullifier type:', typeof input.nullifier, 'value:', input.nullifier.toString());
 
       // 6. Generate the ZK proof
-      const { proof, publicSignals } = await groth16.fullProve(
+      console.log('Starting ZK proof generation...');
+      
+      // 添加超时机制
+      const proofTimeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('ZK proof generation timeout after 30 seconds')), 30000)
+      );
+      
+      const proofGeneration = groth16.fullProve(
         input,
         '/zk/withdraw.wasm',
         '/zk/withdraw.zkey'
       );
+      
+      const { proof, publicSignals } = await Promise.race([
+        proofGeneration,
+        proofTimeout
+      ]);
+
+      console.log('ZK proof generated successfully!');
+      console.log('Proof structure:', {
+        pi_a_length: proof.pi_a ? proof.pi_a.length : 'undefined',
+        pi_b_length: proof.pi_b ? proof.pi_b.length : 'undefined', 
+        pi_c_length: proof.pi_c ? proof.pi_c.length : 'undefined'
+      });
+      console.log('Public signals:', publicSignals);
+      console.log('Public signals length:', publicSignals ? publicSignals.length : 'undefined');
 
       setProof(proof);
       setPublicSignals(publicSignals);
@@ -290,6 +383,36 @@ export default function WithdrawCard() {
       return;
     }
 
+    // Validate proof structure
+    if (!proof.pi_a || !proof.pi_b || !proof.pi_c || 
+        !Array.isArray(proof.pi_a) || proof.pi_a.length < 2 ||
+        !Array.isArray(proof.pi_b) || proof.pi_b.length < 2 ||
+        !Array.isArray(proof.pi_c) || proof.pi_c.length < 2) {
+      alert('Invalid proof structure. Please regenerate the proof.');
+      console.error('Invalid proof structure:', proof);
+      return;
+    }
+
+    // Validate public signals
+    if (!Array.isArray(publicSignals) || publicSignals.length < 2) {
+      alert('Invalid public signals. Please regenerate the proof.');
+      console.error('Invalid public signals:', publicSignals);
+      return;
+    }
+
+    console.log('Public signals validation passed:');
+    console.log('- Root (publicSignals[0]):', publicSignals[0]);
+    console.log('- Nullifier Hash (publicSignals[1]):', publicSignals[1]);
+    console.log('- Recipient (current address):', address);
+
+    // 将BigInt公共信号转换为正确的bytes32格式
+    const rootBytes32 = ethers.toBeHex(BigInt(publicSignals[0]), 32);
+    const nullifierBytes32 = ethers.toBeHex(BigInt(publicSignals[1]), 32);
+    
+    console.log('Converted values for contract:');
+    console.log('- Root (bytes32):', rootBytes32);
+    console.log('- Nullifier Hash (bytes32):', nullifierBytes32);
+
     // Format the proof for the smart contract
     const formattedProof = {
       a: [proof.pi_a[0], proof.pi_a[1]],
@@ -305,9 +428,9 @@ export default function WithdrawCard() {
         formattedProof.a,
         formattedProof.b, 
         formattedProof.c,
-        publicSignals[0], // root
-        publicSignals[1], // nullifierHash
-        publicSignals[2], // recipient
+        rootBytes32, // 转换后的root
+        nullifierBytes32, // 转换后的nullifier
+        address, // recipient (current user's address)
         ethers.parseEther('0.1') // amount
       ],
       chain: chain,
