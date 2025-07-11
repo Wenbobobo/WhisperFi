@@ -37,7 +37,6 @@ async function main() {
   // Deploy PrivacyPool
   const privacyPool = await ethers.deployContract("PrivacyPool", [
     verifierAddress,
-    ethers.ZeroHash, // _zeroValue
     deployer.address
   ]);
   await privacyPool.waitForDeployment();

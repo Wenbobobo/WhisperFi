@@ -1,338 +1,49 @@
-Generated commitment: 0x097e4aa8cfbbe613e4811a47ecd5c41b6a701c6ece02f47e10a2ca671836686a
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:56 Generated commitment (BigInt): 4293953647789117937979294483098317889782348404923555839435689930607973263466
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:57 Secret: 0x1e53e096181a2504861056c4739e1390f9f4b0b3b3c42007569db216fc8695
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:58 Nullifier: 0x41ecee1cca689a62977e8ac629a8e0fa79a3139a739866b6513da4a84bca55
+Deposit - Generated Note: private-defi-891aab32d12f5c046a6d255c6a5c5c423822786f2cdf301640e13e0904f248-8f34633759762467979b3a3cc5581ac60e641a3e9e29516aeee15b6d4c9bc7-v1
+D:\zWenbo\AI\Private Defi\frontend\src\components\DepositCard.tsx:33 Deposit - Secret: 0x891aab32d12f5c046a6d255c6a5c5c423822786f2cdf301640e13e0904f248
+D:\zWenbo\AI\Private Defi\frontend\src\components\DepositCard.tsx:34 Deposit - Nullifier: 0x8f34633759762467979b3a3cc5581ac60e641a3e9e29516aeee15b6d4c9bc7
+D:\zWenbo\AI\Private Defi\frontend\src\components\DepositCard.tsx:35 Deposit - Amount: 100000000000000000
+D:\zWenbo\AI\Private Defi\frontend\src\components\DepositCard.tsx:36 Deposit - Commitment: 0x1212e8f5121436f47ed099cb3496a73f220af52e52bef7be93de001ae8b5ad3b
+localhost/:1  Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:55 Generated commitment: 0x1212e8f5121436f47ed099cb3496a73f220af52e52bef7be93de001ae8b5ad3b
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:56 Generated commitment (BigInt): 8175042333908131853555108599311849679722172756805630201899011284758317870395
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:57 Secret: 0x891aab32d12f5c046a6d255c6a5c5c423822786f2cdf301640e13e0904f248
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:58 Nullifier: 0x8f34633759762467979b3a3cc5581ac60e641a3e9e29516aeee15b6d4c9bc7
 D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:59 Amount: 100000000000000000
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:60 Nullifier Hash: 0x1533999cf961fbbe5c89f0a03e2ab43cfbde714b13af22b27d245a0851ea577f
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:61 Using contract address: 0xc6e7DF5E7b4f2A278906862b61205850344D4e7d
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:62 Contract address lowercase: 0xc6e7df5e7b4f2a278906862b61205850344d4e7d
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:66 Latest block number: 45
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:60 Nullifier Hash: 0x0812f74fa570d620dada5470dfaa34261250a2e9223e731c7182408f56eea800
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:61 Using contract address: 0x4C4a2f8c81640e47606d3fd77B353E87Ba015584
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:62 Contract address lowercase: 0x4c4a2f8c81640e47606d3fd77b353e87ba015584
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:66 Latest block number: 71
 D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:71 Contract exists (has bytecode): true
 D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:79 Computed event signature: 0xa945e51eec50ab98c161376f0db4cf2aeba3ec92755fe2fcd388bdbbb80ff196
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:103 Method 1 - Found logs: 20
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:172 Method 1 - Found deposit events: 20
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:173 Commitments from events: (20) ['0x210b676e5eed34a320caccb4267774011eb0c10ea15fa5a54a760943ca2d50f8', '0x09f53a52d0f8ef6abfe07c7c02b5e2f71e9c4bfcd9eed19888ae674c969575e9', '0x06ce3a6443ba327e7a70bf1becbd504a9c610e0fad75fd697868c5e4a29451d5', '0x11432c53dc11f198545006d20fbc1bb6f24d1eba7a0f274fa7bb32a823ae5fac', '0x2a645e10581a970f1bb6867eba12cd5f0faa73d5bcf1e18c62085db218317448', '0x011674613bb161fba601ce7c24f5378ea12324954634352ec4c17f363bd03e4d', '0x23b12c93ff767bc7c907bdbfb8d2ccbe5d6df785d40e7ef7d6d374aa1ac6cc70', '0x262b2bfdb93c305e4492f68c25b2999b73f08fe0a6b51df8b54d91e57337e19a', '0x07372cdd57d2d63c65c6146817f55c36aa938e062efc3fb262f36fbe3b318808', '0x013f111d0ba711db334a7ca22bde79fcb069f6f691f34d6195a4c2349dca07e3', '0x00f833057051c5d0c83c5cb5b8c1560b4b361efd452e0dd307f4be43c5801825', '0x25682420fa0d5482c93fc448897535b3469032cff30989d98a7bd846267641b3', '0x1877c279c744ef601a7046ac5787b4114950e2a799274c42dc7163157ac84c52', '0x188259c4217d749d528241e9f3abccb7882d60d40fd8807024c81456d09753ef', '0x0f6152be6eea5325aacb7e30015a6d744d50f93582466560501e8a73ff99dcd0', '0x1145add46303f67ba6dab866f5896be9bff134d7d2f93753c069b51c79cb148c', '0x276999177c13df89bb54ba92c2dc3a9b56d33f072fecb85571453ebf2d1482c6', '0x2da721f63bc34530f5b4d647031cffc4bf434b3a47e8287a2779e48b3e764951', '0x03e4c7b1046f19e0ec21a331193109069093f63da2179465a1bcc4a424c6c52c', '0x097e4aa8cfbbe613e4811a47ecd5c41b6a701c6ece02f47e10a2ca671836686a']
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:174 Looking for commitment: 0x097e4aa8cfbbe613e4811a47ecd5c41b6a701c6ece02f47e10a2ca671836686a
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:175 Contract address used: 0xc6e7df5e7b4f2a278906862b61205850344d4e7d
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:103 Method 1 - Found logs: 1
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:172 Method 1 - Found deposit events: 1
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:173 Commitments from events: ['0x1212e8f5121436f47ed099cb3496a73f220af52e52bef7be93de001ae8b5ad3b']
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:174 Looking for commitment: 0x1212e8f5121436f47ed099cb3496a73f220af52e52bef7be93de001ae8b5ad3b
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:175 Contract address used: 0x4c4a2f8c81640e47606d3fd77b353e87ba015584
 D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:176 Event signature used: 0xa945e51eec50ab98c161376f0db4cf2aeba3ec92755fe2fcd388bdbbb80ff196
 D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:194 Building OpenZeppelin-compatible Merkle tree with Poseidon hash
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:195 Commitments for tree building: (3) ['0x210b676e5eed34a320caccb4267774011eb0c10ea15fa5a54a760943ca2d50f8', '0x09f53a52d0f8ef6abfe07c7c02b5e2f71e9c4bfcd9eed19888ae674c969575e9', '0x06ce3a6443ba327e7a70bf1becbd504a9c610e0fad75fd697868c5e4a29451d5']
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:199 Commitments as BigInt strings: (3) ['14946473176425142005201200157013266219088633678670000254772146119208774488312', '4504095702131204893043939050981453287249925904117401794814074742492471064041', '3078250591259246714425784393744375157635757341391961602713932931634461692373']
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:212 Found commitment at index: 19
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:213 Commitment (BigInt string): 4293953647789117937979294483098317889782348404923555839435689930607973263466
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:214 Matching tree element: 4293953647789117937979294483098317889782348404923555839435689930607973263466
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:195 Commitments for tree building: ['0x1212e8f5121436f47ed099cb3496a73f220af52e52bef7be93de001ae8b5ad3b']
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:199 Commitments as BigInt strings: ['8175042333908131853555108599311849679722172756805630201899011284758317870395']
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:212 Found commitment at index: 0
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:213 Commitment (BigInt string): 8175042333908131853555108599311849679722172756805630201899011284758317870395
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:214 Matching tree element: 8175042333908131853555108599311849679722172756805630201899011284758317870395
 D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:220 Getting current root from contract...
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:226 Contract root: 0xa419b542f8c19294229b48ac78b644dc7590eea35ceefb0118f0eee78cb940bb
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:227 Tree root (calculated): 13141280313566719251576889135758886862347108633455304088920855330762980368819
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:230 Using contract root for proof: 74224729365917475896959496805218748487229272092031157259090443654950286868667
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:231 Path elements: (20) ['1761157896419795703573619890713415816216093429118346563208371025344400377132', '20018091251416637002296028128956501904773609296331972097780175182201341268687', '7423237065226347324353380772367382631490014989348495481811164164159255474657', '11286972368698509976183087595462810875513684078608517520839298933882497716792', '21164628789836444579131734400272965787743957943903062177018517582143904183207', '19712377064642672829441595136074946683621277828620209496774504837737984048981', '20775607673010627194014556968476266066927294572720319469184847051418138353016', '3396914609616007258851405644437304192397291162432396347162513310381425243293', '21551820661461729022865262380882070649935529853313286572328683688269863701601', '6573136701248752079028194407151022595060682063033565181951145966236778420039', '12413880268183407374852357075976609371175688755676981206018884971008854919922', '14271763308400718165336499097156975241954733520325982997864342600795471836726', '20066985985293572387227381049700832219069292839614107140851619262827735677018', '9394776414966240069580838672673694685292165040808226440647796406499139370960', '11331146992410411304059858900317123658895005918277453009197229807340014528524', '15819538789928229930262697811477882737253464456578333862691129291651619515538', '19217088683336594659449020493828377907203207941212636669271704950158751593251', '21035245323335827719745544373081896983162834604456827698288649288827293579666', '6939770416153240137322503476966641397417391950902474480970945462551409848591', '10941962436777715901943463195175331263348098796018438960955633645115732864202']
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:232 Path indices: (20) [1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:241 Values before circuit input:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:242 Secret BigInt: 53584311724947378805510677056778932707409061593058976897258734794238101141
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:243 Nullifier Hash BigInt (calculated from secret): 9589739219758099435761103944644475719074045454682944845575372868102308648831
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:244 Amount BigInt: 100000000000000000
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:245 Root BigInt (contract): 74224729365917475896959496805218748487229272092031157259090443654950286868667
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:246 Path elements length: 20
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:247 Path indices length: 20
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:250 Raw pathElements: (20) ['1761157896419795703573619890713415816216093429118346563208371025344400377132', '20018091251416637002296028128956501904773609296331972097780175182201341268687', '7423237065226347324353380772367382631490014989348495481811164164159255474657', '11286972368698509976183087595462810875513684078608517520839298933882497716792', '21164628789836444579131734400272965787743957943903062177018517582143904183207', '19712377064642672829441595136074946683621277828620209496774504837737984048981', '20775607673010627194014556968476266066927294572720319469184847051418138353016', '3396914609616007258851405644437304192397291162432396347162513310381425243293', '21551820661461729022865262380882070649935529853313286572328683688269863701601', '6573136701248752079028194407151022595060682063033565181951145966236778420039', '12413880268183407374852357075976609371175688755676981206018884971008854919922', '14271763308400718165336499097156975241954733520325982997864342600795471836726', '20066985985293572387227381049700832219069292839614107140851619262827735677018', '9394776414966240069580838672673694685292165040808226440647796406499139370960', '11331146992410411304059858900317123658895005918277453009197229807340014528524', '15819538789928229930262697811477882737253464456578333862691129291651619515538', '19217088683336594659449020493828377907203207941212636669271704950158751593251', '21035245323335827719745544373081896983162834604456827698288649288827293579666', '6939770416153240137322503476966641397417391950902474480970945462551409848591', '10941962436777715901943463195175331263348098796018438960955633645115732864202']
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:251 Raw pathElements type: object
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:252 Raw pathElements length: 20
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 1761157896419795703573619890713415816216093429118346563208371025344400377132
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 20018091251416637002296028128956501904773609296331972097780175182201341268687
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 7423237065226347324353380772367382631490014989348495481811164164159255474657
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 11286972368698509976183087595462810875513684078608517520839298933882497716792
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 21164628789836444579131734400272965787743957943903062177018517582143904183207
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 19712377064642672829441595136074946683621277828620209496774504837737984048981
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 20775607673010627194014556968476266066927294572720319469184847051418138353016
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 3396914609616007258851405644437304192397291162432396347162513310381425243293
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 21551820661461729022865262380882070649935529853313286572328683688269863701601
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 6573136701248752079028194407151022595060682063033565181951145966236778420039
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 12413880268183407374852357075976609371175688755676981206018884971008854919922
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 14271763308400718165336499097156975241954733520325982997864342600795471836726
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 20066985985293572387227381049700832219069292839614107140851619262827735677018
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 9394776414966240069580838672673694685292165040808226440647796406499139370960
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 11331146992410411304059858900317123658895005918277453009197229807340014528524
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 15819538789928229930262697811477882737253464456578333862691129291651619515538
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 19217088683336594659449020493828377907203207941212636669271704950158751593251
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 21035245323335827719745544373081896983162834604456827698288649288827293579666
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 6939770416153240137322503476966641397417391950902474480970945462551409848591
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:256 Path element: 10941962436777715901943463195175331263348098796018438960955633645115732864202
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:260 Clean pathElements length: 20
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:279 Circuit input validation:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:280 Secret for circuit: 53584311724947378805510677056778932707409061593058976897258734794238101141
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:281 Amount for circuit: 100000000000000000
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:282 Expected commitment (hex): 0x097e4aa8cfbbe613e4811a47ecd5c41b6a701c6ece02f47e10a2ca671836686a
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:283 Expected commitment (BigInt): 4293953647789117937979294483098317889782348404923555839435689930607973263466
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:284 Leaf found at index: 19
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:285 Commitment from events[19]: 0x097e4aa8cfbbe613e4811a47ecd5c41b6a701c6ece02f47e10a2ca671836686a
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:288 Manual Merkle proof verification:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:291 Starting with leaf (commitment): 4293953647789117937979294483098317889782348404923555839435689930607973263466
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 0:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 4293953647789117937979294483098317889782348404923555839435689930607973263466
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 1761157896419795703573619890713415816216093429118346563208371025344400377132
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: true
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 20186378571919707025419564578035197125691419870918980304917401219368093485648
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 1:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 20186378571919707025419564578035197125691419870918980304917401219368093485648
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 20018091251416637002296028128956501904773609296331972097780175182201341268687
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: true
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 10883973602007994232175287684126022175513864493280553272198681495117805106165
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 2:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 10883973602007994232175287684126022175513864493280553272198681495117805106165
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 7423237065226347324353380772367382631490014989348495481811164164159255474657
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 432739251924303821668132307877376794028884566390507579083635360184139224292
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 3:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 432739251924303821668132307877376794028884566390507579083635360184139224292
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 11286972368698509976183087595462810875513684078608517520839298933882497716792
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 21286704756680467503392102147419674716562604916852608643187732912759359403560
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 4:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 21286704756680467503392102147419674716562604916852608643187732912759359403560
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 21164628789836444579131734400272965787743957943903062177018517582143904183207
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: true
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 8996997407416765500005675760807600171412718814820398871039404493132823369569
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 5:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 8996997407416765500005675760807600171412718814820398871039404493132823369569
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 19712377064642672829441595136074946683621277828620209496774504837737984048981
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 12109764916038386924732246940201323589060660862288458017879924642161031586041
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 6:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 12109764916038386924732246940201323589060660862288458017879924642161031586041
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 20775607673010627194014556968476266066927294572720319469184847051418138353016
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 12723836540136915827014950047654797556289045737859720288513763443932295788387
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 7:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 12723836540136915827014950047654797556289045737859720288513763443932295788387
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 3396914609616007258851405644437304192397291162432396347162513310381425243293
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 15829970718240592419875207041971282754904547175807879945689868992755396856503
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 8:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 15829970718240592419875207041971282754904547175807879945689868992755396856503
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 21551820661461729022865262380882070649935529853313286572328683688269863701601
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 21741906150459656461493804132478956308390630368901880088773600052916425668496
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 9:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 21741906150459656461493804132478956308390630368901880088773600052916425668496
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 6573136701248752079028194407151022595060682063033565181951145966236778420039
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 2118232485121976696624201249719315547441391926250960626630641956742016974584
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 10:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 2118232485121976696624201249719315547441391926250960626630641956742016974584
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 12413880268183407374852357075976609371175688755676981206018884971008854919922
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 488628421710442294522450277782996213662110151609248011301671504985530763577
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 11:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 488628421710442294522450277782996213662110151609248011301671504985530763577
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 14271763308400718165336499097156975241954733520325982997864342600795471836726
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 5904293928383158522691738143900405569113812118917213790817273669998580836998
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 12:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 5904293928383158522691738143900405569113812118917213790817273669998580836998
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 20066985985293572387227381049700832219069292839614107140851619262827735677018
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 12008318992286055686739332238423585760061095643909497830470996252044064664662
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 13:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 12008318992286055686739332238423585760061095643909497830470996252044064664662
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 9394776414966240069580838672673694685292165040808226440647796406499139370960
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 20945538518272005531362050436644674731910958358474698464964034375182461370805
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 14:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 20945538518272005531362050436644674731910958358474698464964034375182461370805
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 11331146992410411304059858900317123658895005918277453009197229807340014528524
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 15897237745945860020065903739828770613884853617277506907200370028592132297692
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 15:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 15897237745945860020065903739828770613884853617277506907200370028592132297692
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 15819538789928229930262697811477882737253464456578333862691129291651619515538
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 6651240082315346019913370433170063274425694408189299025520323682388459038408
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 16:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 6651240082315346019913370433170063274425694408189299025520323682388459038408
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 19217088683336594659449020493828377907203207941212636669271704950158751593251
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 1826723819110787554002395687755587142590412916861934932276861861931553380128
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 17:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 1826723819110787554002395687755587142590412916861934932276861861931553380128
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 21035245323335827719745544373081896983162834604456827698288649288827293579666
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 2719473607571413488615169761439833242103049174288466654981901835479586829980
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 18:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 2719473607571413488615169761439833242103049174288466654981901835479586829980
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 6939770416153240137322503476966641397417391950902474480970945462551409848591
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 971963675019715197274463431294044242866454916440833403449893298523251248843
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:297 Level 19:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:298   Current hash: 971963675019715197274463431294044242866454916440833403449893298523251248843
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:299   Path element: 10941962436777715901943463195175331263348098796018438960955633645115732864202
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:300   Is right child: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:312   Next hash: 20324124888047729836897442406726706552902413246511929758004017077649513578146
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:315 Final computed root: 20324124888047729836897442406726706552902413246511929758004017077649513578146
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:316 Contract root: 74224729365917475896959496805218748487229272092031157259090443654950286868667
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:317 Roots match: false
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:319 Circuit input prepared (BigInt format): {secret: '53584311724947378805510677056778932707409061593058976897258734794238101141', amount: '100000000000000000', pathElements: Array(3), pathElementsLength: 20, pathIndices: Array(3), …}
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:331 Input validation:
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:332 - secret type: string value: 53584311724947378805510677056778932707409061593058976897258734794238101141
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:333 - amount type: string value: 100000000000000000
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:334 - pathElements type: object length: 20
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:335 - pathElements[0] type: string value: 1761157896419795703573619890713415816216093429118346563208371025344400377132
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:336 - pathIndices type: object length: 20
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:337 - pathIndices[0] type: string value: 1
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:338 - merkleRoot type: string value: 74224729365917475896959496805218748487229272092031157259090443654950286868667
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:339 - nullifier type: string value: 9589739219758099435761103944644475719074045454682944845575372868102308648831
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:342 Starting ZK proof generation...
-007ba61e:0x633c  ERROR:  4 Error in template ForceEqualIfEnabled_73 line: 48
-Error in template MerkleTreeChecker_74 line: 36
-Error in template Withdraw_144 line: 100
+D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:373  ContractFunctionExecutionError: The contract function "root" reverted with the following reason:
+Error: Transaction reverted without a reason string
 
-error @ D:\src\client\components\globals\intercept-console-error.ts:40
-exceptionHandler @ D:\zWenbo\AI\Private Defi\frontend\node_modules\snarkjs\build\browser.esm.js:3462
-$setInputSignal @ 007ba61e:0x633c
-eval @ D:\zWenbo\AI\Private Defi\frontend\node_modules\snarkjs\build\browser.esm.js:3828
-_doCalculateWitness @ D:\zWenbo\AI\Private Defi\frontend\node_modules\snarkjs\build\browser.esm.js:3803
-calculateWTNSBin @ D:\zWenbo\AI\Private Defi\frontend\node_modules\snarkjs\build\browser.esm.js:3862
-wtnsCalculate @ D:\zWenbo\AI\Private Defi\frontend\node_modules\snarkjs\build\browser.esm.js:3964
-await in wtnsCalculate
-groth16FullProve @ D:\zWenbo\AI\Private Defi\frontend\node_modules\snarkjs\build\browser.esm.js:3997
-generateProof @ D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:349
-await in generateProof
-executeDispatch @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16501
-runWithFiberInDEV @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:844
-processDispatchQueue @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16551
-eval @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:17149
-batchedUpdates$1 @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:3262
-dispatchEventForPluginEventSystem @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16705
-dispatchEvent @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:20815
-dispatchDiscreteEvent @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:20783
-<button>
-exports.createElement @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react\cjs\react.development.js:1036
-eval @ D:\zWenbo\AI\Private Defi\frontend\node_modules\@emotion\styled\base\dist\emotion-styled-base.browser.development.esm.js:156
-MuiButtonBase-root @ D:\zWenbo\AI\Private Defi\frontend\node_modules\@emotion\react\dist\emotion-element-489459f2.browser.development.esm.js:34
-react-stack-bottom-frame @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:22973
-renderWithHooksAgain @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:6766
-renderWithHooks @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:6678
-updateForwardRef @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:8678
-beginWork @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:10894
-runWithFiberInDEV @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:844
-performUnitOfWork @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15257
-workLoopSync @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15077
-renderRootSync @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15057
-performWorkOnRoot @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:14525
-performSyncWorkOnRoot @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16364
-flushSyncWorkAcrossRoots_impl @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16210
-processRootScheduleInMicrotask @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16249
-eval @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16383
-<MuiButtonBaseRoot>
-exports.jsxs @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react\cjs\react-jsx-runtime.development.js:355
-ButtonBase @ D:\zWenbo\AI\Private Defi\frontend\node_modules\@mui\material\esm\ButtonBase\ButtonBase.js:248
-react-stack-bottom-frame @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:22973
-renderWithHooksAgain @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:6766
-renderWithHooks @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:6678
-updateForwardRef @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:8678
-beginWork @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:10894
-runWithFiberInDEV @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:844
-performUnitOfWork @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15257
-workLoopSync @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15077
-renderRootSync @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15057
-performWorkOnRoot @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:14525
-performSyncWorkOnRoot @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16364
-flushSyncWorkAcrossRoots_impl @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16210
-processRootScheduleInMicrotask @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16249
-eval @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16383
-<ForwardRef(ButtonBase)>
-exports.createElement @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react\cjs\react.development.js:1036
-eval @ D:\zWenbo\AI\Private Defi\frontend\node_modules\@emotion\styled\base\dist\emotion-styled-base.browser.development.esm.js:156
-MuiButton-root @ D:\zWenbo\AI\Private Defi\frontend\node_modules\@emotion\react\dist\emotion-element-489459f2.browser.development.esm.js:34
-react-stack-bottom-frame @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:22973
-renderWithHooksAgain @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:6766
-renderWithHooks @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:6678
-updateForwardRef @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:8678
-beginWork @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:10894
-runWithFiberInDEV @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:844
-performUnitOfWork @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15257
-workLoopSync @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15077
-renderRootSync @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15057
-performWorkOnRoot @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:14525
-performSyncWorkOnRoot @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16364
-flushSyncWorkAcrossRoots_impl @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16210
-processRootScheduleInMicrotask @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16249
-eval @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16383
-<MuiButtonRoot>
-exports.jsxs @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react\cjs\react-jsx-runtime.development.js:355
-Button @ D:\zWenbo\AI\Private Defi\frontend\node_modules\@mui\material\esm\Button\Button.js:555
-react-stack-bottom-frame @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:22973
-renderWithHooksAgain @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:6766
-renderWithHooks @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:6678
-updateForwardRef @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:8678
-beginWork @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:10894
-runWithFiberInDEV @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:844
-performUnitOfWork @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15257
-workLoopSync @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15077
-renderRootSync @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15057
-performWorkOnRoot @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:14525
-performSyncWorkOnRoot @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16364
-flushSyncWorkAcrossRoots_impl @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16210
-processRootScheduleInMicrotask @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16249
-eval @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16383
-<ForwardRef(Button)>
-exports.jsxDEV @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react\cjs\react-jsx-dev-runtime.development.js:346
-WithdrawCard @ D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:469
-react-stack-bottom-frame @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:22973
-renderWithHooksAgain @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:6766
-renderWithHooks @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:6678
-updateFunctionComponent @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:8930
-beginWork @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:10555
-runWithFiberInDEV @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:844
-performUnitOfWork @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15257
-workLoopSync @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15077
-renderRootSync @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15057
-performWorkOnRoot @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:14525
-performSyncWorkOnRoot @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16364
-flushSyncWorkAcrossRoots_impl @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16210
-processRootScheduleInMicrotask @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16249
-eval @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16383
-<WithdrawCard>
-exports.jsxDEV @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react\cjs\react-jsx-dev-runtime.development.js:346
-Home @ D:\zWenbo\AI\Private Defi\frontend\src\app\page.tsx:127
-react-stack-bottom-frame @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:22973
-renderWithHooksAgain @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:6766
-renderWithHooks @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:6678
-updateFunctionComponent @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:8930
-beginWork @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:10555
-runWithFiberInDEV @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:844
-performUnitOfWork @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15257
-workLoopSync @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15077
-renderRootSync @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15057
-performWorkOnRoot @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:14525
-performSyncWorkOnRoot @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16364
-flushSyncWorkAcrossRoots_impl @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16210
-processRootScheduleInMicrotask @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16249
-eval @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16383
-<Home>
-exports.jsx @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react\cjs\react-jsx-runtime.development.js:339
-ClientPageRoot @ D:\zWenbo\src\client\components\client-page.tsx:60
-react-stack-bottom-frame @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:22973
-renderWithHooksAgain @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:6766
-renderWithHooks @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:6678
-updateFunctionComponent @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:8930
-beginWork @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:10504
-runWithFiberInDEV @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:844
-performUnitOfWork @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15257
-workLoopConcurrentByScheduler @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15251
-renderRootConcurrent @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:15226
-performWorkOnRoot @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:14524
-performWorkOnRootViaSchedulerTask @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\react-dom\cjs\react-dom-client.development.js:16349
-performWorkUntilDeadline @ D:\zWenbo\AI\Private Defi\frontend\node_modules\next\dist\compiled\scheduler\cjs\scheduler.development.js:45
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:373  Error: Error: Assert Failed. Error in template ForceEqualIfEnabled_73 line: 48
-Error in template MerkleTreeChecker_74 line: 36
-D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:373  Error: Error: Assert Failed. Error in template ForceEqualIfEnabled_73 line: 48
-Error in template MerkleTreeChecker_74 line: 36
-Error in template Withdraw_144 line: 100
+Contract Call:
+  address:   0x4C4a2f8c81640e47606d3fd77B353E87Ba015584
+  function:  root()
 
-    at eval (D:\zWenbo\AI\Private Defi\frontend\node_modules\snarkjs\build\browser.esm.js:3832:1)
-    at Array.forEach (<anonymous>)
-    at WitnessCalculatorCircom2._doCalculateWitness (D:\zWenbo\AI\Private Defi\frontend\node_modules\snarkjs\build\browser.esm.js:3803:1)
-    at WitnessCalculatorCircom2.calculateWTNSBin (D:\zWenbo\AI\Private Defi\frontend\node_modules\snarkjs\build\browser.esm.js:3862:1)
-    at wtnsCalculate (D:\zWenbo\AI\Private Defi\frontend\node_modules\snarkjs\build\browser.esm.js:3964:1)
-    at async Object.groth16FullProve [as fullProve] (D:\zWenbo\AI\Private Defi\frontend\node_modules\snarkjs\build\browser.esm.js:3997:1)
-    at async generateProof (D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:355:40)
+Docs: https://viem.sh/docs/contract/readContract
+Version: viem@2.31.7
+    at getContractError (D:\zWenbo\AI\Private Defi\frontend\node_modules\viem\_esm\utils\errors\getContractError.js:30:1)
+    at readContract (D:\zWenbo\AI\Private Defi\frontend\node_modules\viem\_esm\actions\public\readContract.js:58:31)
+    at async generateProof (D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:221:28)Caused by: ContractFunctionRevertedError: The contract function "root" reverted with the following reason:
+Error: Transaction reverted without a reason string
+
+Version: viem@2.31.7
+    at eval (D:\zWenbo\AI\Private Defi\frontend\node_modules\viem\_esm\utils\errors\getContractError.js:19:1)
+    at getContractError (D:\zWenbo\AI\Private Defi\frontend\node_modules\viem\_esm\utils\errors\getContractError.js:29:6)
+    at readContract (D:\zWenbo\AI\Private Defi\frontend\node_modules\viem\_esm\actions\public\readContract.js:58:31)
+    at async generateProof (D:\zWenbo\AI\Private Defi\frontend\src\components\WithdrawCard.tsx:221:28)

@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import "./PoseidonT3.sol";
+
+contract PoseidonMerkleTree is PoseidonT3 {
+    uint32 public constant LEVELS = 20;
+    bytes32[LEVELS] public filledSubtrees;
+    uint32 public nextIndex;
+
+    constructor() {
+        for (uint32 i = 0; i < LEVELS; i++) {
+            filledSubtrees[i] = 0;
+        }
+    }
+
+    function _hash(bytes32 _left, bytes32 _right) internal pure returns (bytes32) {
+        return bytes32(poseidon([uint256(_left), uint256(_right)]));
+    }
+
+    function insert(bytes32 _leaf) public returns (uint32) {
+        uint32 index = nextIndex;
+        require(index < 2**LEVELS, "Merkle tree is full");
+
+        bytes32 current = _leaf;
+        for (uint32 i = 0; i < LEVELS; i++) {
+            if (filledSubtrees[i] == 0) {
+                filledSubtrees[i] = current;
+                break;
+            }
+            current = _hash(filledSubtrees[i], current);
+            filledSubtrees[i] = 0;
+        }
+        nextIndex = index + 1;
+        return index;
+    }
+
+    function getRoot() public view returns (bytes32) {
+        bytes32 current = 0;
+        for (uint32 i = 0; i < LEVELS; i++) {
+            if (filledSubtrees[i] != 0) {
+                current = _hash(filledSubtrees[i], current);
+            }
+        }
+        return current;
+    }
+}
