@@ -3,20 +3,23 @@
 
 import { useState } from 'react';
 import { Box, Button, Card, CardContent, TextField, Typography, CircularProgress, Link, Alert, Stepper, Step, StepLabel } from '@mui/material';
-import { useWriteContract, useWaitForTransactionReceipt, useAccount, useReadContract, usePublicClient } from 'wagmi';
+import { useWriteContract, useWaitForTransactionReceipt, useAccount, usePublicClient } from 'wagmi';
 import { ethers } from 'ethers';
 import { MerkleTree } from 'fixed-merkle-tree';
 // @ts-ignore
 import { groth16 } from 'snarkjs';
+import { buildPoseidon } from 'circomlibjs';
 
+import { CONTRACTS } from '../config/contracts';
 import PrivacyPoolArtifact from '../abi/PrivacyPool.json';
+import { parseNote, generateCommitment, generateNullifierHash } from '../utils/crypto';
 
-const PRIVACY_POOL_ADDRESS = '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9';
+const PRIVACY_POOL_ADDRESS = CONTRACTS.PRIVACY_POOL_ADDRESS as `0x${string}`;
 const PrivacyPoolAbi = PrivacyPoolArtifact.abi;
 const steps = ['Generate Proof', 'Submit Transaction'];
 
 export default function WithdrawCard() {
-  const [secret, setSecret] = useState('');
+  const [note, setNote] = useState('');
   const [activeStep, setActiveStep] = useState(0);
   const [isProving, setIsProving] = useState(false);
   const [proof, setProof] = useState<any>(null);
@@ -26,12 +29,6 @@ export default function WithdrawCard() {
   const publicClient = usePublicClient();
   const { data: hash, writeContract, isPending, error } = useWriteContract();
 
-  const { data: currentRoot } = useReadContract({
-    address: PRIVACY_POOL_ADDRESS,
-    abi: PrivacyPoolAbi,
-    functionName: 'root',
-  });
-
   const { isLoading: isConfirming, isSuccess: isConfirmed } = 
     useWaitForTransactionReceipt({ hash });
 
@@ -40,53 +37,65 @@ export default function WithdrawCard() {
       alert('Please connect your wallet first.');
       return;
     }
+    if (!note) {
+      alert('Please enter your note.');
+      return;
+    }
 
     setIsProving(true);
     setActiveStep(0);
 
     try {
-      // 1. Fetch all deposit events to build the tree
+      // 1. Parse the note to get secret and nullifier
+      const { secret, nullifier } = parseNote(note);
+      const commitment = await generateCommitment(secret, nullifier);
+      const nullifierHash = await generateNullifierHash(nullifier);
+
+      // 2. Fetch all deposit events to build the tree
       const depositEvents = await publicClient.getLogs({
         address: PRIVACY_POOL_ADDRESS,
         event: {
-          type: 'event',
-          name: 'Deposit',
+          anonymous: false,
           inputs: [
-            { name: 'commitment', type: 'bytes32', indexed: true },
-            { name: 'leafIndex', type: 'uint256', indexed: false },
-            { name: 'timestamp', type: 'uint256', indexed: false }
-          ]
+            { indexed: true, name: 'commitment', type: 'bytes32' },
+            { indexed: false, name: 'leafIndex', type: 'uint32' },
+            { indexed: false, name: 'timestamp', type: 'uint256' }
+          ],
+          name: 'Deposit',
+          type: 'event'
         },
-        fromBlock: 0n,
+        fromBlock: BigInt(0),
         toBlock: 'latest',
       });
       const commitments = depositEvents.map(event => event.args.commitment);
       
-      // 2. Build the Merkle tree
-      const tree = new MerkleTree(20, commitments, { 
-        hashFunction: (left, right) => ethers.keccak256(ethers.concat([left, right])),
-        zeroElement: ethers.ZeroHash 
-      });
+      // 3. Initialize Poseidon and build the Merkle tree
+      const poseidon = await buildPoseidon();
+      const hashFunction = (left: any, right: any) => {
+        const result = poseidon([left, right]);
+        return poseidon.F.toString(result);
+      };
+      const tree = new MerkleTree(20, commitments, { hashFunction, zeroElement: ethers.ZeroHash });
 
-      // 3. Find the commitment and generate the Merkle proof
-      const commitment = ethers.keccak256(ethers.toUtf8Bytes(secret));
+      // 4. Find the commitment and generate the Merkle proof
       const leafIndex = commitments.findIndex(c => c === commitment);
       if (leafIndex < 0) {
-        throw new Error('Secret note not found in deposits.');
+        throw new Error('Note not found in deposits. It may not have been mined yet, or the note is incorrect.');
       }
       const { pathElements, pathIndices } = tree.path(leafIndex);
 
-      // 4. Prepare inputs for the ZK circuit
+      // 5. Prepare inputs for the ZK circuit
       const input = {
-        root: currentRoot,
-        nullifier: ethers.keccak256(ethers.toUtf8Bytes(`nullifier-${secret}`)),
+        root: tree.root,
+        nullifierHash: nullifierHash,
         recipient: address,
-        amount: ethers.parseEther('0.1'),
+        secret: secret,
+        nullifier: nullifier,
         pathElements: pathElements,
         pathIndices: pathIndices,
       };
 
-      // 5. Generate the ZK proof
+      // 6. Generate the ZK proof
       const { proof, publicSignals } = await groth16.fullProve(
         input,
         '/zk/withdraw.wasm',
@@ -110,9 +119,6 @@ export default function WithdrawCard() {
       return;
     }
 
-    // Calculate nullifier for the withdrawal
-    const nullifier = ethers.keccak256(ethers.toUtf8Bytes(`nullifier-${secret}`));
-    
     // Format the proof for the smart contract
     const formattedProof = {
       a: [proof.pi_a[0], proof.pi_a[1]],
@@ -120,15 +126,6 @@ export default function WithdrawCard() {
       c: [proof.pi_c[0], proof.pi_c[1]]
     };
 
-    console.log('Calling withdraw with:', {
-      proof: formattedProof,
-      root: currentRoot,
-      nullifier,
-      recipient: address,
-      amount: ethers.parseEther('0.1')
-    });
-
-    // Call the smart contract's withdraw function
     writeContract({
       address: PRIVACY_POOL_ADDRESS,
       abi: PrivacyPoolAbi,
@@ -137,11 +134,13 @@ export default function WithdrawCard() {
         formattedProof.a,
         formattedProof.b, 
         formattedProof.c,
-        currentRoot, // _proofRoot
-        nullifier,   // _nullifier  
-        address,     // _recipient
-        ethers.parseEther('0.1') // _amount
+        publicSignals[0], // root
+        publicSignals[1], // nullifierHash
+        publicSignals[2], // recipient
+        ethers.parseEther('0.1') // amount
       ],
+      chain: chain,
+      account: address,
     });
   };
 
@@ -160,17 +159,17 @@ export default function WithdrawCard() {
         </Stepper>
         <TextField
           fullWidth
-          label="Your Secret Note"
+          label="Your Private Note"
           variant="outlined"
-          value={secret}
-          onChange={(e) => setSecret(e.target.value)}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
           disabled={isProving || isPending || isConfirming}
           sx={{ mb: 2 }}
-          helperText="Enter the secret note you saved during your deposit."
+          helperText="Paste the full note you saved during your deposit."
         />
         <Box sx={{ position: 'relative' }}>
           {activeStep === 0 && (
-            <Button variant="contained" onClick={generateProof} disabled={!secret || isProving} fullWidth size="large">
+            <Button variant="contained" onClick={generateProof} disabled={!note || isProving} fullWidth size="large">
               {isProving ? 'Generating Proof...' : 'Generate Proof'}
             </Button>
           )}
@@ -190,14 +189,9 @@ export default function WithdrawCard() {
           </Alert>
         )}
         {error && (
-          <Alert severity="warning" sx={{ mt: 2 }}>
-            <Typography variant="body2" gutterBottom>
-              <strong>Transaction Failed:</strong> {error.message}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              This is expected in the demo as we're using mock proofs. In production, this would work with real zk-SNARK proofs.
-            </Typography>
-          </Alert>
+            <Alert severity="error" sx={{ mt: 2 }}>
+                Error: {(error as any).shortMessage || error.message}
+            </Alert>
         )}
       </CardContent>
     </Card>

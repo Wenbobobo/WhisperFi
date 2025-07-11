@@ -1,44 +1,44 @@
 // src/components/DepositCard.tsx
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Button, Card, CardContent, TextField, Typography, CircularProgress, Link, Alert } from '@mui/material';
 import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
 import { ethers } from 'ethers';
 
 // We will get the ABI and address from a centralized config file later
+import { CONTRACTS } from '../config/contracts';
+const PRIVACY_POOL_ADDRESS = CONTRACTS.PRIVACY_POOL_ADDRESS as `0x${string}`;
+import { generateNote, parseNote, generateCommitment } from '../utils/crypto';
 import PrivacyPoolArtifact from '../abi/PrivacyPool.json';
-const PRIVACY_POOL_ADDRESS = '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9'; // Replace with your deployed address
+
 const PrivacyPoolAbi = PrivacyPoolArtifact.abi;
 
 export default function DepositCard() {
-  const [secret, setSecret] = useState('');
-  const { chain } = useAccount();
+  const [note, setNote] = useState('');
+  const [commitment, setCommitment] = useState('');
+  const { chain, address } = useAccount();
   const { data: hash, writeContract, isPending, error } = useWriteContract();
 
-  // Automatically generate the commitment from the secret
-  const commitment = useMemo(() => {
-    if (!secret) return '0x';
-    return ethers.keccak256(ethers.toUtf8Bytes(secret));
-  }, [secret]);
-
   const { isLoading: isConfirming, isSuccess: isConfirmed } = 
-    useWaitForTransactionReceipt({ 
-      hash, 
-    });
+    useWaitForTransactionReceipt({ hash });
 
   const handleDeposit = async () => {
-    if (!secret) {
-      alert('Please enter a secret note to generate a commitment.');
-      return;
-    }
+    const newNote = generateNote();
+    const { secret, nullifier } = parseNote(newNote);
+    const newCommitment = await generateCommitment(secret, nullifier);
+
+    setNote(newNote);
+    setCommitment(newCommitment);
 
     writeContract({
       address: PRIVACY_POOL_ADDRESS,
       abi: PrivacyPoolAbi,
       functionName: 'deposit',
-      args: [commitment],
-      value: ethers.parseEther('0.1'), // Matching the DEPOSIT_AMOUNT in the contract
+      args: [newCommitment],
+      value: ethers.parseEther('0.1'),
+      chain: chain,
+      account: address,
     });
   };
 
@@ -48,57 +48,50 @@ export default function DepositCard() {
         <Typography variant="h5" component="h2" gutterBottom>
           Make a Deposit
         </Typography>
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          <strong>Important:</strong> Save your secret note! You will need it to withdraw your funds. Losing it means losing your funds.
-        </Alert>
-        <TextField
-          fullWidth
-          label="Your Secret Note"
-          variant="outlined"
-          value={secret}
-          onChange={(e) => setSecret(e.target.value)}
-          disabled={isPending || isConfirming}
-          sx={{ mb: 2 }}
-          helperText="Enter any text. We will generate a secure commitment for you."
-        />
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, wordWrap: 'break-word' }}>
-          <strong>Generated Commitment:</strong> {commitment}
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Click the button to generate a new private note and deposit 0.1 ETH. The note is your key to your funds.
         </Typography>
-        <Box sx={{ position: 'relative' }}>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleDeposit}
-            disabled={!secret || isPending || isConfirming}
-            fullWidth
-            size="large"
-          >
-            {isPending ? 'Confirm in wallet...' : isConfirming ? 'Depositing...' : 'Deposit 0.1 ETH'}
-          </Button>
-          {(isPending || isConfirming) && (
-            <CircularProgress
-              size={24}
-              sx={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                marginTop: '-12px',
-                marginLeft: '-12px',
-              }}
-            />
-          )}
-        </Box>
-        {isConfirmed && (
+        
+        {isConfirmed ? (
           <Alert severity="success" sx={{ mt: 2 }}>
-            Deposit successful! 
-            <Link href={`${chain?.blockExplorers?.default.url}/tx/${hash}`} target="_blank" rel="noopener">
-              View on Explorer
-            </Link>
+            <Typography variant="h6">Deposit Successful!</Typography>
+            <Typography sx={{ mt: 1, mb: 1 }}>Your transaction hash is: 
+              <Link href={`${chain?.blockExplorers?.default.url}/tx/${hash}`} target="_blank"> {hash.slice(0, 10)}...</Link>
+            </Typography>
+            <Alert severity="error" sx={{ mt: 2 }}>
+              <strong>ACTION REQUIRED: Copy and save this note!</strong>
+              <TextField
+                fullWidth
+                variant="outlined"
+                value={note}
+                multiline
+                InputProps={{ readOnly: true }}
+                sx={{ mt: 1, mb: 1, fontFamily: 'monospace' }}
+              />
+              If you lose this note, you will lose your funds. There is no recovery.
+            </Alert>
           </Alert>
+        ) : (
+          <Box sx={{ position: 'relative' }}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleDeposit}
+              disabled={isPending || isConfirming}
+              fullWidth
+              size="large"
+            >
+              {isPending ? 'Confirm in wallet...' : isConfirming ? 'Depositing...' : 'Generate Note & Deposit 0.1 ETH'}
+            </Button>
+            {(isPending || isConfirming) && (
+              <CircularProgress size={24} sx={{ position: 'absolute', top: '50%', left: '50%', marginTop: '-12px', marginLeft: '-12px' }} />
+            )}
+          </Box>
         )}
+
         {error && (
             <Alert severity="error" sx={{ mt: 2 }}>
-                Error: {error.shortMessage || error.message}
+                Error: {(error as any).shortMessage || error.message}
             </Alert>
         )}
       </CardContent>
