@@ -1,6 +1,9 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 
+// 加载任务
+require("./tasks/test-hash.js");
+
 const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.28",

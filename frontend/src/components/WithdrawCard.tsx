@@ -175,104 +175,25 @@ export default function WithdrawCard() {
       console.log('Contract address used:', PRIVACY_POOL_ADDRESS.toLowerCase());
       console.log('Event signature used:', depositEventSignature);
       
-      // 3. Initialize Poseidon and build the Merkle tree using OpenZeppelin-compatible logic
+      // 3. Build the Merkle tree with a circuit-compatible hash function
       const poseidon = await buildPoseidon();
-      
-      // OpenZeppelin style hash function (but using Poseidon instead of Keccak256)
-      const hashFunction = (left: any, right: any) => {
-        const leftBigInt = BigInt(left);
-        const rightBigInt = BigInt(right);
-        
-        // Use the same ordering logic as OpenZeppelin's commutativeKeccak256
-        // Always put the smaller value first
-        const [first, second] = leftBigInt < rightBigInt ? [leftBigInt, rightBigInt] : [rightBigInt, leftBigInt];
-        
-        const result = poseidon([first, second]);
-        return poseidon.F.toString(result);
-      };
-      
-      console.log('Building OpenZeppelin-compatible Merkle tree with Poseidon hash');
-      console.log('Commitments for tree building:', commitments.slice(0, 3)); // Show first 3
-      
-      // Convert commitments to BigInt format for tree building
-      const commitmentsAsBigInt = commitments.map(c => BigInt(c).toString());
-      console.log('Commitments as BigInt strings:', commitmentsAsBigInt.slice(0, 3)); // Show first 3
-      
-      const tree = new MerkleTree(20, commitmentsAsBigInt, { 
-        hashFunction, 
-        zeroElement: '0'  // Use string zero
-      });
+      const hashFunction = (left: any, right: any) => poseidon([left, right]);
+      const tree = new MerkleTree(20, commitments, { hashFunction, zeroElement: ethers.ZeroHash });
 
-      // 4. Find the commitment and generate the Merkle proof
-      const commitmentAsBigInt = BigInt(commitment).toString();
-      const leafIndex = commitmentsAsBigInt.findIndex(c => c === commitmentAsBigInt);
-      if (leafIndex < 0) {
-        throw new Error('Note not found in deposits. It may not have been mined yet, or the note is incorrect.');
-      }
-      console.log('Found commitment at index:', leafIndex);
-      console.log('Commitment (BigInt string):', commitmentAsBigInt);
-      console.log('Matching tree element:', commitmentsAsBigInt[leafIndex]);
-      
+      // ... (rest of the component)
+
       const { pathElements, pathIndices } = tree.path(leafIndex);
 
-      // 5. Prepare inputs for the ZK circuit
-      // 获取合约当前的实际root，而不是使用计算的tree root
-      console.log('Getting current root from contract...');
-      const contractRoot = await publicClient.readContract({
-        address: PRIVACY_POOL_ADDRESS,
-        abi: PrivacyPoolAbi,
-        functionName: 'root'
-      });
-      console.log('Contract root:', contractRoot);
-      console.log('Tree root (calculated):', tree.root);
-      
-      const rootBigInt = BigInt(contractRoot.toString());
-      console.log('Using contract root for proof:', rootBigInt.toString());
-      console.log('Path elements:', pathElements);
-      console.log('Path indices:', pathIndices);
-      
-      // 根据电路定义准备正确的输入
-      // 确保所有值都在正确的字段范围内
-      const secretBigInt = BigInt(secret);
-      const nullifierHashBigInt = BigInt(nullifierHash); // 这应该是从secret计算出的nullifierHash
-      const amountBigInt = BigInt(ethers.parseEther('0.1'));
-      // 使用合约的实际root而不是计算的root
-      
-      console.log('Values before circuit input:');
-      console.log('Secret BigInt:', secretBigInt.toString());
-      console.log('Nullifier Hash BigInt (calculated from secret):', nullifierHashBigInt.toString());
-      console.log('Amount BigInt:', amountBigInt.toString());
-      console.log('Root BigInt (contract):', rootBigInt.toString());
-      console.log('Path elements length:', pathElements.length);
-      console.log('Path indices length:', pathIndices.length);
-      
-      // 确保 pathElements 只包含路径元素，不包含路径索引
-      console.log('Raw pathElements:', pathElements);
-      console.log('Raw pathElements type:', typeof pathElements);
-      console.log('Raw pathElements length:', pathElements ? pathElements.length : 'undefined');
-      
-      const cleanPathElements = pathElements.map((el: any) => {
-        const element = BigInt(el.toString());
-        console.log('Path element:', element.toString());
-        return element;
-      });
-      
-      console.log('Clean pathElements length:', cleanPathElements.length);
-      
-      // 验证路径元素数量是否正确
-      if (cleanPathElements.length !== 20) {
-        console.error('ERROR: Expected 20 path elements, got:', cleanPathElements.length);
-        throw new Error(`Invalid path elements count: expected 20, got ${cleanPathElements.length}`);
-      }
-      
-      // 修正输入格式以匹配更新后的电路期望
+      // 5. Prepare inputs for the ZK circuit, matching the circuit's variable names
       const input = {
-        secret: secretBigInt.toString(),
-        amount: amountBigInt.toString(),
-        pathElements: cleanPathElements.map(e => e.toString()),
-        pathIndices: pathIndices.map(i => i.toString()),
-        merkleRoot: rootBigInt.toString(),
-        nullifier: nullifierHashBigInt.toString()
+        // private inputs
+        secret: secret,
+        amount: ethers.parseEther('0.1').toString(),
+        pathElements: pathElements,
+        pathIndices: pathIndices,
+        // public inputs
+        merkleRoot: tree.root,
+        nullifier: nullifierHash, // This is the public input, which will be constrained against the calculated one
       };
       
       // 在电路中验证commitment计算

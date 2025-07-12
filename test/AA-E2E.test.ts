@@ -48,14 +48,13 @@ describe("Account Abstraction E2E", function () {
     const PrivacyPool = await ethers.getContractFactory("PrivacyPool");
     privacyPool = await PrivacyPool.deploy(
       await verifier.getAddress(),
-      ethers.ZeroHash,
-      await owner.getAddress()
+      await owner.getAddress() // _initialOwner
     );
     await privacyPool.waitForDeployment();
 
     // Deploy SmartAccount
-    const SmartAccount = await ethers.getContractFactory("SmartAccount");  // 合约工厂保持大写
-    smartAccount = await SmartAccount.deploy(  // 合约实例使用小写
+    const SmartAccount = await ethers.getContractFactory("SmartAccount");
+    smartAccount = await SmartAccount.deploy(
       await entryPoint.getAddress(),
       await user.getAddress()
     );
@@ -141,7 +140,7 @@ describe("Account Abstraction E2E", function () {
     userOp.signature = signature;
 
     // 8. Get initial state
-    const initialRoot = await privacyPool.root();
+    const initialRoot = await privacyPool.getRoot();
     const initialPaymasterBalance = await entryPoint.balanceOf(paymasterAddress);
     const initialAccountBalance = await ethers.provider.getBalance(smartAccountAddress);  // 修复：改为小写
 
@@ -175,7 +174,7 @@ describe("Account Abstraction E2E", function () {
     }
 
     // 11. Verify the results
-    const finalRoot = await privacyPool.root();
+    const finalRoot = await privacyPool.getRoot();
     const finalPaymasterBalance = await entryPoint.balanceOf(paymasterAddress);
     const finalAccountBalance = await ethers.provider.getBalance(smartAccountAddress);  // 修复：改为小写
 

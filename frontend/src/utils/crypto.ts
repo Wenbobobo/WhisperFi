@@ -42,30 +42,26 @@ export function parseNote(note: string): { secret: string; nullifier: string } {
 }
 
 /**
- * Generates a commitment for a deposit.
- * The commitment is the Poseidon hash of the secret and amount (to match circuit).
+ * Generates a commitment for a deposit, matching the circuit's logic.
+ * The commitment is the Poseidon hash of the secret and the amount.
  * @param secret The secret from the note.
- * @param amount The deposit amount in wei (BigInt or string).
+ * @param amount The deposit amount.
  * @returns The commitment hash as a hex string.
  */
-export async function generateCommitment(secret: string, amount: bigint | string): Promise<string> {
+export async function generateCommitment(secret: string, amount: string): Promise<string> {
   const poseidon = await initializePoseidon();
   const hash = poseidon([secret, amount]);
-  // Convert the field element to a BigInt, then to hex
-  const hashBigInt = BigInt(poseidon.F.toString(hash));
-  return '0x' + hashBigInt.toString(16).padStart(64, '0');
+  return ethers.toBeHex(poseidon.F.toObject(hash));
 }
 
 /**
- * Generates the nullifier hash for a withdrawal.
- * According to the circuit, the nullifier is Poseidon(secret).
+ * Generates the nullifier hash for a withdrawal, matching the circuit's logic.
+ * The nullifier hash is the Poseidon hash of the secret.
  * @param secret The secret from the note.
  * @returns The nullifier hash as a hex string.
  */
 export async function generateNullifierHash(secret: string): Promise<string> {
   const poseidon = await initializePoseidon();
   const hash = poseidon([secret]);
-  // Convert the field element to a BigInt, then to hex
-  const hashBigInt = BigInt(poseidon.F.toString(hash));
-  return '0x' + hashBigInt.toString(16).padStart(64, '0');
+  return ethers.toBeHex(poseidon.F.toObject(hash));
 }

@@ -26,14 +26,7 @@ export default function DepositCard() {
   const handleDeposit = async () => {
     const newNote = generateNote();
     const { secret, nullifier } = parseNote(newNote);
-    const depositAmount = ethers.parseEther('0.1');
-    const newCommitment = await generateCommitment(secret, depositAmount);
-
-    console.log('Deposit - Generated Note:', newNote);
-    console.log('Deposit - Secret:', secret);
-    console.log('Deposit - Nullifier:', nullifier);
-    console.log('Deposit - Amount:', depositAmount.toString());
-    console.log('Deposit - Commitment:', newCommitment);
+    const newCommitment = await generateCommitment(secret, ethers.parseEther('0.1').toString());
 
     setNote(newNote);
     setCommitment(newCommitment);
@@ -43,9 +36,7 @@ export default function DepositCard() {
       abi: PrivacyPoolAbi,
       functionName: 'deposit',
       args: [newCommitment],
-      value: depositAmount,
-      chain: chain,
-      account: address,
+      value: ethers.parseEther('0.1'),
     });
   };
 
