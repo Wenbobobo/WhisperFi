@@ -36,12 +36,16 @@ contract PoseidonMerkleTree {
     }
 
     function getRoot() public view returns (bytes32) {
-        bytes32 current = 0;
+        bytes32 currentRoot = 0;
         for (uint32 i = 0; i < LEVELS; i++) {
             if (filledSubtrees[i] != 0) {
-                current = _hash(filledSubtrees[i], current);
+                if (currentRoot == 0) {
+                    currentRoot = filledSubtrees[i];
+                } else {
+                    currentRoot = _hash(filledSubtrees[i], currentRoot);
+                }
             }
         }
-        return current;
+        return currentRoot;
     }
 }

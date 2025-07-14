@@ -44,8 +44,8 @@ describe("ZK Proof Generation", function () {
     try {
       const { proof, publicSignals } = await groth16.fullProve(
         input,
-        "circuits/withdraw_js/withdraw.wasm",
-        "circuits/deposit_0001.zkey"
+        "circuits/build/withdraw/withdraw_js/withdraw.wasm",
+        "circuits/build/withdraw/withdraw_0001.zkey"
       );
       // If we reach here, the proof generation was successful
       expect(proof).to.not.be.null;

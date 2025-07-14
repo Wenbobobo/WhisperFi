@@ -48,9 +48,9 @@ export function parseNote(note: string): { secret: string; nullifier: string } {
  * @param amount The deposit amount.
  * @returns The commitment hash as a hex string.
  */
-export async function generateCommitment(secret: string, amount: string): Promise<string> {
+export async function generateCommitment(secret: string, nullifier: string, amount: string): Promise<string> {
   const poseidon = await initializePoseidon();
-  const hash = poseidon([secret, amount]);
+  const hash = poseidon([secret, nullifier, amount]);
   return ethers.toBeHex(poseidon.F.toObject(hash));
 }
 

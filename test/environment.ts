@@ -6,26 +6,30 @@ import path from "path";
 export async function setupEnvironment() {
   const [owner, user, bundler] = await ethers.getSigners();
 
-  // Deploy all contracts
-  const EntryPoint = await ethers.getContractFactory("EntryPoint");
-  const entryPoint = await EntryPoint.deploy();
+  // Deploy all contracts, ensuring all constructor arguments are address strings
+  const entryPointFactory = await ethers.getContractFactory("EntryPoint");
+  const entryPoint = await entryPointFactory.deploy();
   await entryPoint.waitForDeployment();
+  const entryPointAddress = await entryPoint.getAddress();
 
-  const Verifier = await ethers.getContractFactory("Verifier");
-  const verifier = await Verifier.deploy();
+  const verifierFactory = await ethers.getContractFactory("Verifier");
+  const verifier = await verifierFactory.deploy();
   await verifier.waitForDeployment();
+  const verifierAddress = await verifier.getAddress();
 
-  const PrivacyPool = await ethers.getContractFactory("PrivacyPool");
-  const privacyPool = await PrivacyPool.deploy(await verifier.getAddress(), ethers.ZeroHash);
+  const privacyPoolFactory = await ethers.getContractFactory("PrivacyPool");
+  const privacyPool = await privacyPoolFactory.deploy(verifierAddress, await owner.getAddress());
   await privacyPool.waitForDeployment();
 
-  const SmartAccountFactory = await ethers.getContractFactory("SmartAccountFactory");
-  const factory = await SmartAccountFactory.deploy(await entryPoint.getAddress());
+  const factoryFactory = await ethers.getContractFactory("SmartAccountFactory");
+  const factory = await factoryFactory.deploy(entryPointAddress);
   await factory.waitForDeployment();
 
-  const Paymaster = await ethers.getContractFactory("Paymaster");
-  const paymaster = await Paymaster.deploy(await entryPoint.getAddress(), await owner.getAddress());
+  const paymasterFactory = await ethers.getContractFactory("Paymaster");
+  const paymaster = await paymasterFactory.deploy(entryPointAddress, await owner.getAddress());
   await paymaster.waitForDeployment();
+
+  // ... (rest of the function remains the same)
 
   // Write addresses to a test-specific config file
   const config = {

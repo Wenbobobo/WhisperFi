@@ -26,7 +26,7 @@ export default function DepositCard() {
   const handleDeposit = async () => {
     const newNote = generateNote();
     const { secret, nullifier } = parseNote(newNote);
-    const newCommitment = await generateCommitment(secret, ethers.parseEther('0.1').toString());
+    const newCommitment = await generateCommitment(secret, nullifier, ethers.parseEther('0.1').toString());
 
     setNote(newNote);
     setCommitment(newCommitment);

@@ -2,12 +2,14 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { Contract } from "ethers";
-import { poseidon } from "circomlibjs";
+import { buildPoseidon } from "circomlibjs";
 
 describe("PoseidonMerkleTree", function () {
   let merkleTree: Contract;
+  let poseidon: any;
 
   beforeEach(async function () {
+    poseidon = await buildPoseidon();
     const PoseidonMerkleTree = await ethers.getContractFactory("PoseidonMerkleTree");
     merkleTree = await PoseidonMerkleTree.deploy();
     await merkleTree.waitForDeployment();
@@ -23,8 +25,11 @@ describe("PoseidonMerkleTree", function () {
     const root = await merkleTree.getRoot();
 
     // Calculate the root manually in JS to verify
-    const jsRoot = poseidon([poseidon([leaf1, leaf2]), 0]); // Simplified for 2 leaves
+    let jsRoot = poseidon([leaf1, leaf2]);
+    for (let i = 1; i < 20; i++) {
+      jsRoot = poseidon([jsRoot, 0]);
+    }
 
-    expect(root).to.equal(ethers.hexlify(jsRoot));
+    expect(root).to.equal(ethers.toBeHex(poseidon.F.toObject(jsRoot)));
   });
 });

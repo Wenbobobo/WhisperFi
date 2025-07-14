@@ -49,7 +49,7 @@ export default function WithdrawCard() {
       // 1. Parse the note to get secret and nullifier
       const { secret, nullifier } = parseNote(note);
       const depositAmount = ethers.parseEther('0.1');
-      const commitment = await generateCommitment(secret, depositAmount);
+      const commitment = await generateCommitment(secret, nullifier, depositAmount.toString());
       const nullifierHash = await generateNullifierHash(secret); // 根据电路，使用 secret 计算 nullifier
 
       console.log('Generated commitment:', commitment);
