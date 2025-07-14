@@ -89,6 +89,8 @@ const createMockUserOpWithPaymaster = async (sender: string, paymaster: any, tar
   };
 };
 
+import { setupEnvironment } from "./environment";
+
 describe("Paymaster", function () {
   let owner: Signer, notOwner: Signer;
   let entryPoint: any;
@@ -96,30 +98,12 @@ describe("Paymaster", function () {
   let privacyPool: any;
 
   beforeEach(async function () {
-    [owner, notOwner] = await ethers.getSigners();
-
-    // Deploy the EntryPoint contract
-    const EntryPoint = await ethers.getContractFactory("EntryPoint");
-    entryPoint = await EntryPoint.deploy();
-    await entryPoint.waitForDeployment();
-
-    // Deploy a mock PrivacyPool to use as a target
-    const PrivacyPool = await ethers.getContractFactory("PrivacyPool");
-    const verifier = await (await ethers.getContractFactory("Verifier")).deploy();
-    privacyPool = await PrivacyPool.deploy(
-      await verifier.getAddress(), 
-      ethers.encodeBytes32String("zero"), 
-      await owner.getAddress()
-    );
-    await privacyPool.waitForDeployment();
-
-    // Deploy the Paymaster
-    const Paymaster = await ethers.getContractFactory("Paymaster");
-    paymaster = await Paymaster.deploy(
-      await entryPoint.getAddress(), 
-      await owner.getAddress()
-    );
-    await paymaster.waitForDeployment();
+    const env = await setupEnvironment();
+    owner = env.owner;
+    notOwner = env.user; // Use the second signer as notOwner
+    entryPoint = env.entryPoint;
+    paymaster = env.paymaster;
+    privacyPool = env.privacyPool;
   });
 
   describe("Deployment", function () {

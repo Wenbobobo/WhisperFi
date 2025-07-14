@@ -3,6 +3,8 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { Signer, Contract } from "ethers";
 
+import { setupEnvironment } from "./environment";
+
 describe("SmartAccountFactory", function () {
   let owner: Signer, user: Signer;
   let entryPoint: Contract;
@@ -10,19 +12,12 @@ describe("SmartAccountFactory", function () {
   let userAddress: string;
 
   beforeEach(async function () {
-    [owner, user] = await ethers.getSigners();
+    const env = await setupEnvironment();
+    owner = env.owner;
+    user = env.user;
+    entryPoint = env.entryPoint;
+    factory = env.factory;
     userAddress = await user.getAddress();
-
-    // Deploy the EntryPoint contract
-    const EntryPoint = await ethers.getContractFactory("EntryPoint");
-    entryPoint = await EntryPoint.deploy();
-    await entryPoint.waitForDeployment();
-    const entryPointAddress = await entryPoint.getAddress();
-    
-    // Deploy the SmartAccountFactory
-    const SmartAccountFactory = await ethers.getContractFactory("SmartAccountFactory");
-    factory = await SmartAccountFactory.deploy(entryPointAddress);
-    await factory.waitForDeployment();
   });
 
   it("should deploy the factory with the correct entrypoint", async function () {

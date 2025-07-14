@@ -23,36 +23,25 @@ const packUints = (high: bigint, low: bigint): string => {
   return '0x' + highHex + lowHex;
 };
 
+import { setupEnvironment } from "./environment";
+
 describe("Account Abstraction E2E", function () {
   let owner: Signer, user: Signer, bundler: Signer;
   let entryPoint: any;
   let paymaster: any;
   let privacyPool: any;
-  let smartAccount: any;  // 改为小写，这是合约实例
-  let verifier: any;
+  let smartAccount: any;
 
   beforeEach(async function () {
-    [owner, user, bundler] = await ethers.getSigners();
+    const env = await setupEnvironment();
+    owner = env.owner;
+    user = env.user;
+    bundler = env.bundler;
+    entryPoint = env.entryPoint;
+    paymaster = env.paymaster;
+    privacyPool = env.privacyPool;
 
-    // Deploy EntryPoint
-    const EntryPoint = await ethers.getContractFactory("EntryPoint");
-    entryPoint = await EntryPoint.deploy();
-    await entryPoint.waitForDeployment();
-
-    // Deploy Verifier
-    const Verifier = await ethers.getContractFactory("Verifier");
-    verifier = await Verifier.deploy();
-    await verifier.waitForDeployment();
-
-    // Deploy PrivacyPool
-    const PrivacyPool = await ethers.getContractFactory("PrivacyPool");
-    privacyPool = await PrivacyPool.deploy(
-      await verifier.getAddress(),
-      await owner.getAddress() // _initialOwner
-    );
-    await privacyPool.waitForDeployment();
-
-    // Deploy SmartAccount
+    // Deploy a new SmartAccount for each test
     const SmartAccount = await ethers.getContractFactory("SmartAccount");
     smartAccount = await SmartAccount.deploy(
       await entryPoint.getAddress(),
@@ -62,19 +51,11 @@ describe("Account Abstraction E2E", function () {
 
     // Fund the test account
     await owner.sendTransaction({
-      to: await smartAccount.getAddress(),  // 使用小写的实例
+      to: await smartAccount.getAddress(),
       value: ethers.parseEther("1")
     });
 
-    // Deploy Paymaster
-    const Paymaster = await ethers.getContractFactory("Paymaster");
-    paymaster = await Paymaster.deploy(
-      await entryPoint.getAddress(),
-      await owner.getAddress()
-    );
-    await paymaster.waitForDeployment();
-
-    // Configure and fund the Paymaster
+    // Configure and fund the Paymaster for this test
     await paymaster.connect(owner).setSupportedTarget(await privacyPool.getAddress(), true);
     await paymaster.connect(owner).depositToEntryPoint({ value: ethers.parseEther("1") });
   });
