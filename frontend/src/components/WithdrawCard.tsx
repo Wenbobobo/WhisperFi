@@ -178,6 +178,9 @@ export default function WithdrawCard() {
       // 3. Build the Merkle tree with a circuit-compatible hash function
       const poseidon = await buildPoseidon();
       const hashFunction = (left: any, right: any) => poseidon([left, right]);
+      // 3. Build the Merkle tree with a circuit-compatible hash function
+      const poseidon = await buildPoseidon();
+      const hashFunction = (left: any, right: any) => poseidon([left, right]);
       const tree = new MerkleTree(20, commitments, { hashFunction, zeroElement: ethers.ZeroHash });
 
       // ... (rest of the component)

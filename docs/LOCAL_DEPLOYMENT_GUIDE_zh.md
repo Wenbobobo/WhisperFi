@@ -41,8 +41,7 @@ npx hardhat run scripts/deploy.js --network localhost
 在**第三个终端窗口**中，进入 `frontend` 目录并启动开发服务器。
 
 ```bash
-cd frontend
-npm run dev
+cd frontend && npm run dev
 ```
 
 ### **第四步：配置 MetaMask**
