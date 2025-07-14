@@ -21,8 +21,8 @@ contract PrivacyPool is Ownable, Commitments {
 
     function deposit(bytes32 _commitment) external payable {
         require(msg.value == DEPOSIT_AMOUNT, "Invalid deposit amount");
-        uint32 index = _insertCommitment(_commitment);
-        emit Deposit(_commitment, index, block.timestamp);
+        _insertLeaves([_commitment]);
+        emit Deposit(_commitment, uint32(nextLeafIndex - 1), block.timestamp);
     }
 
     function withdraw(
@@ -35,14 +35,14 @@ contract PrivacyPool is Ownable, Commitments {
         uint256 _amount
     ) external {
         require(merkleRoot() == _proofRoot, "Invalid Merkle root");
-        require(!nullifiers[_nullifier], "Nullifier has been used");
+        require(!nullifiers[0][_nullifier], "Nullifier has been used");
         
         bytes32 leaf = keccak256(abi.encodePacked(_recipient, _amount, _nullifier));
         uint[1] memory pubSignals = [uint(leaf)];
 
         require(IVerifier(verifier).verifyProof(_pA, _pB, _pC, pubSignals), "Invalid proof");
 
-        _setNullifier(_nullifier, true);
+        nullifiers[0][_nullifier] = true;
         payable(_recipient).transfer(_amount);
         emit Withdrawal(_recipient, _nullifier);
     }
