@@ -3,26 +3,6 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { Signer } from "ethers";
 
-// Define PackedUserOperation interface matching the Solidity struct
-interface PackedUserOperation {
-  sender: string;
-  nonce: bigint;
-  initCode: string;
-  callData: string;
-  accountGasLimits: string; // bytes32 packed value
-  preVerificationGas: bigint;
-  gasFees: string; // bytes32 packed value
-  paymasterAndData: string;
-  signature: string;
-}
-
-// Helper function to pack two uint128 values into bytes32
-const packUints = (high: bigint, low: bigint): string => {
-  const highHex = high.toString(16).padStart(32, '0');
-  const lowHex = low.toString(16).padStart(32, '0');
-  return '0x' + highHex + lowHex;
-};
-
 import { setupEnvironment } from "./environment";
 
 describe("Account Abstraction E2E", function () {

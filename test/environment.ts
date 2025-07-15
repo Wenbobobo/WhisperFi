@@ -12,14 +12,25 @@ export async function setupEnvironment() {
   await entryPoint.waitForDeployment();
   const entryPointAddress = await entryPoint.getAddress();
 
-  const verifierFactory = await ethers.getContractFactory("Verifier");
+  const verifierFactory = await ethers.getContractFactory("Groth16Verifier");
   const verifier = await verifierFactory.deploy();
   await verifier.waitForDeployment();
   const verifierAddress = await verifier.getAddress();
 
-  const privacyPoolFactory = await ethers.getContractFactory("PrivacyPool");
-  const privacyPool = await privacyPoolFactory.deploy(verifierAddress, await owner.getAddress());
+  // Deploy the PoseidonT3 library first
+  const PoseidonT3 = await ethers.getContractFactory("contracts/lib/Poseidon.sol:PoseidonT3");
+  const poseidonT3 = await PoseidonT3.deploy();
+  await poseidonT3.waitForDeployment();
+
+  // Link the library to the PrivacyPool contract
+  const privacyPoolFactory = await ethers.getContractFactory("PrivacyPool", {
+    libraries: {
+      PoseidonT3: await poseidonT3.getAddress(),
+    },
+  });
+  const privacyPool = await privacyPoolFactory.deploy();
   await privacyPool.waitForDeployment();
+  await privacyPool.initialize(verifierAddress, await owner.getAddress());
 
   const factoryFactory = await ethers.getContractFactory("SmartAccountFactory");
   const factory = await factoryFactory.deploy(entryPointAddress);

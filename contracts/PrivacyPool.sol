@@ -2,11 +2,11 @@
 pragma solidity ^0.8.28;
 
 import "./lib/Commitments.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./IExecutor.sol";
 import "./IVerifier.sol";
 
-contract PrivacyPool is Ownable, Commitments {
+contract PrivacyPool is OwnableUpgradeable, Commitments {
     uint256 public constant DEPOSIT_AMOUNT = 0.1 ether;
     address public verifier;
 
@@ -14,14 +14,21 @@ contract PrivacyPool is Ownable, Commitments {
     event Withdrawal(address to, bytes32 nullifier);
     event Trade(bytes32 nullifier, bytes32 newCommitment, bytes32 tradeDataHash);
 
-    constructor(address _verifier, address _initialOwner) Ownable(_initialOwner) {
-        verifier = _verifier;
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address _verifier, address _initialOwner) public initializer {
         initializeCommitments();
+        __Ownable_init(_initialOwner);
+        verifier = _verifier;
     }
 
     function deposit(bytes32 _commitment) external payable {
         require(msg.value == DEPOSIT_AMOUNT, "Invalid deposit amount");
-        _insertLeaves([_commitment]);
+        bytes32[] memory commitments = new bytes32[](1);
+        commitments[0] = _commitment;
+        insertLeaves(commitments);
         emit Deposit(_commitment, uint32(nextLeafIndex - 1), block.timestamp);
     }
 
@@ -34,7 +41,7 @@ contract PrivacyPool is Ownable, Commitments {
         address _recipient, 
         uint256 _amount
     ) external {
-        require(merkleRoot() == _proofRoot, "Invalid Merkle root");
+        require(merkleRoot == _proofRoot, "Invalid Merkle root");
         require(!nullifiers[0][_nullifier], "Nullifier has been used");
         
         bytes32 leaf = keccak256(abi.encodePacked(_recipient, _amount, _nullifier));

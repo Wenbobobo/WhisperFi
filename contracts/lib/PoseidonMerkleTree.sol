@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "./PoseidonT3.sol";
+import "./Poseidon.sol";
 
 contract PoseidonMerkleTree {
     uint32 public constant LEVELS = 20;
@@ -15,7 +15,7 @@ contract PoseidonMerkleTree {
     }
 
     function _hash(bytes32 _left, bytes32 _right) internal pure returns (bytes32) {
-        return bytes32(PoseidonT3.poseidon([uint256(_left), uint256(_right)]));
+        return PoseidonT3.poseidon([_left, _right]);
     }
 
     function insert(bytes32 _leaf) public returns (uint32) {
