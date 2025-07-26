@@ -1,18 +1,26 @@
 // test/SmartAccountFactory.test.ts
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { Signer, Contract } from "ethers";
-
-import { setupEnvironment } from "./environment";
+import { Signer } from "ethers";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import {
+  deployTestEnvironment,
+  TestEnvironment,
+} from "./environment";
+import {
+  EntryPoint,
+  SmartAccountFactory,
+} from "../typechain-types";
 
 describe("SmartAccountFactory", function () {
+  let env: TestEnvironment;
   let owner: Signer, user: Signer;
-  let entryPoint: Contract;
-  let factory: Contract;
+  let entryPoint: EntryPoint;
+  let factory: SmartAccountFactory;
   let userAddress: string;
 
   beforeEach(async function () {
-    const env = await setupEnvironment();
+    env = await loadFixture(deployTestEnvironment);
     owner = env.owner;
     user = env.user;
     entryPoint = env.entryPoint;
@@ -24,60 +32,37 @@ describe("SmartAccountFactory", function () {
     expect(await factory.entryPoint()).to.equal(await entryPoint.getAddress());
   });
 
-  // This test is the core of the problem. It directly compares the view function and the static call.
   it("should correctly predict the account address", async function () {
     const salt = 1;
     const predictedAddress = await factory.getAccountAddress(userAddress, salt);
-
-    const actualAddress = await factory.createAccount.staticCall(
-      userAddress,
-      salt
-    );
-
-    // Improved manual calculation for debugging
-    const SmartAccount = await ethers.getContractFactory("SmartAccount");
-    const entryPointAddress = await entryPoint.getAddress();
-    const deployTx = await SmartAccount.getDeployTransaction(entryPointAddress, userAddress);
-    const initCode = deployTx.data;
-    const initCodeHash = ethers.keccak256(initCode);
-    const factoryAddress = await factory.getAddress();
-    const saltHex = ethers.toBeHex(salt, 32);
-    const predictedAddressManual = ethers.getCreate2Address(factoryAddress, saltHex, initCodeHash);
-
-    console.log("Contract Prediction:", predictedAddress);
-    console.log("Manual Prediction:  ", predictedAddressManual);
-    console.log("Actual Address:     ", actualAddress);
+    const actualAddress = await factory.createAccount.staticCall(userAddress, salt);
 
     expect(actualAddress).to.equal(predictedAddress);
   });
 
-  // This test verifies the properties of the *actually created* account.
-  // It does not rely on getAddress or staticCall for its assertions.
   it("should create an account with the correct owner and entrypoint", async function () {
     const salt = 2;
     const tx = await factory.createAccount(userAddress, salt);
     const receipt = await tx.wait();
 
-    // To get the created address robustly, we parse the event from the receipt.
-    const event = receipt.logs.find(log => {
+    const eventLog = receipt?.logs.find(log => {
         try {
-            const parsedLog = factory.interface.parseLog(log);
+            const parsedLog = factory.interface.parseLog(log as any);
             return parsedLog?.name === "AccountCreated";
         } catch (e) { return false; }
     });
-    expect(event, "AccountCreated event not found").to.not.be.undefined;
-    const actualAddress = event.args.account;
+
+    expect(eventLog, "AccountCreated event not found").to.not.be.undefined;
+    const parsedEvent = factory.interface.parseLog(eventLog as any);
+    const actualAddress = parsedEvent!.args.account;
 
     const accountContract = await ethers.getContractAt("SmartAccount", actualAddress);
     expect(await accountContract.owner()).to.equal(userAddress);
     expect(await accountContract.entryPoint()).to.equal(await entryPoint.getAddress());
   });
 
-  // This test verifies the event emission using hardhat-chai-matchers for clarity.
   it("should emit an AccountCreated event with the correct arguments", async function () {
     const salt = 3;
-    // We must first determine the correct address that *will* be created.
-    // The most reliable way is to use staticCall.
     const expectedAddress = await factory.createAccount.staticCall(userAddress, salt);
 
     await expect(factory.createAccount(userAddress, salt))
@@ -89,7 +74,6 @@ describe("SmartAccountFactory", function () {
     const salt = 4;
     await factory.createAccount(userAddress, salt);
 
-    // Attempting to create again with the same salt should fail due to CREATE2 collision.
     await expect(factory.createAccount(userAddress, salt)).to.be.reverted;
   });
 });

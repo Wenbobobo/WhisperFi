@@ -48,9 +48,10 @@ export function parseNote(note: string): { secret: string; nullifier: string } {
  * @param amount The deposit amount.
  * @returns The commitment hash as a hex string.
  */
-export async function generateCommitment(secret: string, nullifier: string, amount: string): Promise<string> {
+export async function generateCommitment(secret: string, amount: string): Promise<string> {
   const poseidon = await initializePoseidon();
-  const hash = poseidon([secret, nullifier, amount]);
+  // 关键修复：将输入字符串转换为BigInt，以匹配Solidity的uint256类型
+  const hash = poseidon([BigInt(secret), BigInt(amount)]);
   return ethers.toBeHex(poseidon.F.toObject(hash));
 }
 
@@ -62,6 +63,7 @@ export async function generateCommitment(secret: string, nullifier: string, amou
  */
 export async function generateNullifierHash(secret: string): Promise<string> {
   const poseidon = await initializePoseidon();
-  const hash = poseidon([secret]);
+  // 关键修复：将输入字符串转换为BigInt
+  const hash = poseidon([BigInt(secret)]);
   return ethers.toBeHex(poseidon.F.toObject(hash));
 }

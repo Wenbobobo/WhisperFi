@@ -3,7 +3,7 @@ const path = require("path");
 
 const circuits = ["deposit", "withdraw", "trade"];
 
-const circomPath = path.join(__dirname, "..", "node_modules", ".bin", "circom");
+const circomPath = path.resolve(__dirname, "..", "temp_circom", "circom-windows-amd64.exe");
 
 circuits.forEach(circuit => {
     const command = `"${circomPath}" circuits/${circuit}.circom --r1cs --wasm --output circuits/build/${circuit}`;

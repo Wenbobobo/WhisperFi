@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import "./lib/Commitments.sol";
+import "./lib/Poseidon.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./IExecutor.sol";
 import "./IVerifier.sol";
@@ -15,10 +16,12 @@ contract PrivacyPool is OwnableUpgradeable, Commitments {
     event Trade(bytes32 nullifier, bytes32 newCommitment, bytes32 tradeDataHash);
 
     constructor() {
-        _disableInitializers();
+        // DEBUG: Remove _disableInitializers() to test initialization
+        // _disableInitializers();
     }
 
     function initialize(address _verifier, address _initialOwner) public initializer {
+        // DEBUG: Add console logs to track initialization flow
         initializeCommitments();
         __Ownable_init(_initialOwner);
         verifier = _verifier;
@@ -53,6 +56,20 @@ contract PrivacyPool is OwnableUpgradeable, Commitments {
         payable(_recipient).transfer(_amount);
         emit Withdrawal(_recipient, _nullifier);
     }
+/**
+ * @notice Calculate commitment hash using real Poseidon hash (2 inputs)
+ * @dev This function uses the PoseidonT3 library for ZK-friendly hashing
+ * @param _nullifier The nullifier value
+ * @param _secret The secret value
+ * @return The commitment hash using Poseidon(nullifier, secret)
+ */
+function calculateCommitment(
+    uint256 _nullifier,
+    uint256 _secret
+) public pure returns (bytes32) {
+    bytes32[2] memory inputs = [bytes32(_nullifier), bytes32(_secret)];
+    return PoseidonT3.poseidon(inputs);
+}
 
     // ... (trade function remains the same for now)
 }

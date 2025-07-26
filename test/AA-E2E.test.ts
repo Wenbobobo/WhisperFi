@@ -1,199 +1,102 @@
 // test/AA-E2E.test.ts
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { Signer } from "ethers";
-
-import { setupEnvironment } from "./environment";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import {
+  deployTestEnvironment,
+  TestEnvironment,
+  generateUserOp,
+  getSmartAccountClient,
+} from "./environment";
+import { SmartAccount } from "../typechain-types";
+import { ZeroAddress, ZeroHash, getBytes } from "ethers";
 
 describe("Account Abstraction E2E", function () {
-  let owner: Signer, user: Signer, bundler: Signer;
-  let entryPoint: any;
-  let paymaster: any;
-  let privacyPool: any;
-  let smartAccount: any;
+  let env: TestEnvironment;
+  let smartAccount: SmartAccount;
+  let smartAccountAddress: string;
 
+  // Before each test, we load a fresh environment using a fixture.
+  // This approach is faster and ensures test isolation.
   beforeEach(async function () {
-    const env = await setupEnvironment();
-    owner = env.owner;
-    user = env.user;
-    bundler = env.bundler;
-    entryPoint = env.entryPoint;
-    paymaster = env.paymaster;
-    privacyPool = env.privacyPool;
+    env = await loadFixture(deployTestEnvironment);
 
-    // Deploy a new SmartAccount for each test
-    const SmartAccount = await ethers.getContractFactory("SmartAccount");
-    smartAccount = await SmartAccount.deploy(
-      await entryPoint.getAddress(),
-      await user.getAddress()
-    );
-    await smartAccount.waitForDeployment();
+    // For each test, create a new smart account owned by the 'user'
+    const { factory, user, owner } = env;
+    const userAddress = await user.getAddress();
+    
+    await factory.createAccount(userAddress, 0);
+    smartAccountAddress = await factory.getAccountAddress(userAddress, 0);
 
-    // Fund the test account
+    // Fund the new smart account with some ETH for the tests
     await owner.sendTransaction({
-      to: await smartAccount.getAddress(),
-      value: ethers.parseEther("1")
+      to: smartAccountAddress,
+      value: ethers.parseEther("2"),
     });
 
-    // Configure and fund the Paymaster for this test
-    await paymaster.connect(owner).setSupportedTarget(await privacyPool.getAddress(), true);
-    await paymaster.connect(owner).depositToEntryPoint({ value: ethers.parseEther("1") });
+    smartAccount = await getSmartAccountClient(smartAccountAddress, user);
   });
 
   it("should sponsor a deposit transaction into the PrivacyPool", async function () {
-    const smartAccountAddress = await smartAccount.getAddress();  // 修复：改为小写
+    const { entryPoint, privacyPool, paymaster, bundler, user } = env;
     const paymasterAddress = await paymaster.getAddress();
     const privacyPoolAddress = await privacyPool.getAddress();
-
     const depositAmount = await privacyPool.DEPOSIT_AMOUNT();
 
-    // 1. Create the deposit call data
+    // 1. Create the calldata for the deposit action
     const commitment = ethers.randomBytes(32);
     const depositCallData = privacyPool.interface.encodeFunctionData("deposit", [commitment]);
 
-    // 2. Create the execution call data for the SmartAccount's `execute` function
+    // 2. Create the calldata for the SmartAccount's `execute` function
     const executionCallData = smartAccount.interface.encodeFunctionData("execute", [
       privacyPoolAddress,
-      depositAmount, // value
+      depositAmount,
       depositCallData,
     ]);
 
-    // 3. Create time parameters using block timestamp for better accuracy
-    const currentBlock = await ethers.provider.getBlock('latest');
-    const currentTimestamp = currentBlock!.timestamp;
-    const validAfter = 0; // Use 0 to indicate no restriction on start time
-    const validUntil = currentTimestamp + 3600; // Valid for 1 hour from now
+    // 3. Generate the signed UserOperation using the helper function
+    const userOp = await generateUserOp(env, smartAccountAddress, executionCallData);
 
-    // 4. Create paymasterAndData
-    const paymasterAndData = await paymaster.createPaymasterAndData(
-      100000,  // verificationGasLimit
-      50000,   // postOpGasLimit
-      validUntil,
-      validAfter
-    );
-
-    // 5. 确保 SmartAccount 有足够的 ETH
-    const requiredBalance = depositAmount + ethers.parseEther("0.1");
-    const currentBalance = await ethers.provider.getBalance(smartAccountAddress);  // 修复：改为小写
-    if (currentBalance < requiredBalance) {
-      await owner.sendTransaction({
-        to: smartAccountAddress,  // 修复：改为小写
-        value: requiredBalance - currentBalance
-      });
-    }
-
-    // 6. Create the UserOperation
-    const userOp: PackedUserOperation = {
-      sender: smartAccountAddress,  // 修复：改为小写
-      nonce: 0n,
-      initCode: "0x",
-      callData: executionCallData,
-      accountGasLimits: packUints(500000n, 1000000n), // 增加 gas limits
-      preVerificationGas: 21000n,
-      gasFees: packUints(1000000000n, 2000000000n), // maxPriorityFeePerGas, maxFeePerGas
-      paymasterAndData: paymasterAndData,
-      signature: "0x"
-    };
-
-    // 7. Sign the UserOperation
-    const userOpHash = await entryPoint.getUserOpHash(userOp);
-    const signature = await user.signMessage(ethers.getBytes(userOpHash));
-    userOp.signature = signature;
-
-    // 8. Get initial state
-    const initialRoot = await privacyPool.getRoot();
+    // 4. Get initial state for verification
+    const initialRoot = await privacyPool.merkleRoot();
     const initialPaymasterBalance = await entryPoint.balanceOf(paymasterAddress);
-    const initialAccountBalance = await ethers.provider.getBalance(smartAccountAddress);  // 修复：改为小写
+    const initialAccountBalance = await ethers.provider.getBalance(smartAccountAddress);
 
-    console.log("Initial privacy pool root:", initialRoot);
-    console.log("Initial paymaster balance:", ethers.formatEther(initialPaymasterBalance));
-    console.log("Initial account balance:", ethers.formatEther(initialAccountBalance));
-    console.log("Deposit amount:", ethers.formatEther(depositAmount));
-
-    // 9. Submit the UserOperation
+    // 5. Submit the UserOperation via the bundler
     const tx = await entryPoint.connect(bundler).handleOps([userOp], await bundler.getAddress());
     const receipt = await tx.wait();
-
-    console.log("Transaction hash:", receipt.hash);
-    console.log("Gas used:", receipt.gasUsed.toString());
-
-    // 10. 检查交易日志
-    const logs = receipt.logs;
-    console.log("Transaction logs:", logs.length);
-    let depositEventFound = false;
     
-    for (let i = 0; i < logs.length; i++) {
-      try {
-        const parsedLog = privacyPool.interface.parseLog(logs[i]);
-        console.log(`Privacy pool event ${i}:`, parsedLog.name, parsedLog.args);
-        if (parsedLog.name === "Deposit") {
-          depositEventFound = true;
-        }
-      } catch (e) {
-        // 不是 PrivacyPool 的事件，忽略
-      }
-    }
+    // Find the Deposit event to confirm success
+    const depositEvent = receipt?.logs.map(log => {
+        try { return privacyPool.interface.parseLog(log as any); } catch (e) { return null; }
+    }).find(event => event?.name === "Deposit");
 
-    // 11. Verify the results
-    const finalRoot = await privacyPool.getRoot();
+    // 6. Verify the results
+    const finalRoot = await privacyPool.merkleRoot();
     const finalPaymasterBalance = await entryPoint.balanceOf(paymasterAddress);
-    const finalAccountBalance = await ethers.provider.getBalance(smartAccountAddress);  // 修复：改为小写
-
-    console.log("Final privacy pool root:", finalRoot);
-    console.log("Final paymaster balance:", ethers.formatEther(finalPaymasterBalance));
-    console.log("Final account balance:", ethers.formatEther(finalAccountBalance));
-    console.log("Deposit event found:", depositEventFound);
+    const finalAccountBalance = await ethers.provider.getBalance(smartAccountAddress);
 
     // Assertions
-    expect(depositEventFound).to.be.true;
+    expect(depositEvent).to.not.be.undefined;
     expect(finalRoot).to.not.equal(initialRoot, "Privacy pool root should change after deposit");
     expect(finalPaymasterBalance).to.be.lessThan(initialPaymasterBalance, "Paymaster should pay for gas");
-    expect(finalAccountBalance).to.be.lessThan(initialAccountBalance, "Account should pay deposit amount");
-
-    console.log(`✅ Test passed! Paymaster sponsored the transaction.`);
-    console.log(`   Gas cost: ${ethers.formatEther(initialPaymasterBalance - finalPaymasterBalance)} ETH`);
+    expect(finalAccountBalance).to.be.lessThan(initialAccountBalance, "Account should pay the deposit amount");
   });
 
   it("should reject unsupported targets", async function () {
-    const smartAccountAddress = await smartAccount.getAddress();  // 修复：改为小写和使用实例
-    
-    // Create a call to an unsupported target (the test account itself) using the `execute` function
+    const { entryPoint, paymaster, bundler } = env;
+
+    // Create calldata to call an unsupported target (the account itself)
     const callData = smartAccount.interface.encodeFunctionData("execute", [
-      smartAccountAddress, // The target is an unsupported contract  // 修复：改为小写
+      smartAccountAddress, // Target is the account itself, which is not supported by the paymaster
       0,
       "0x",
     ]);
 
-    // Use block timestamp for time validation
-    const currentBlock = await ethers.provider.getBlock('latest');
-    const currentTimestamp = currentBlock!.timestamp;
-    const validAfter = 0;  // Use 0 to indicate no restriction on start time
-    const validUntil = currentTimestamp + 3600;  // Valid until 1 hour from now
+    // Generate the UserOperation
+    const userOp = await generateUserOp(env, smartAccountAddress, callData);
 
-    const paymasterAndData = await paymaster.createPaymasterAndData(
-      100000,
-      50000,
-      validUntil,
-      validAfter
-    );
-
-    const userOp: PackedUserOperation = {
-      sender: smartAccountAddress,  // 修复：改为小写
-      nonce: 0n,
-      initCode: "0x",
-      callData: callData,
-      accountGasLimits: packUints(100000n, 200000n),
-      preVerificationGas: 21000n,
-      gasFees: packUints(1000000000n, 2000000000n),
-      paymasterAndData: paymasterAndData,
-      signature: "0x"
-    };
-
-    const userOpHash = await entryPoint.getUserOpHash(userOp);
-    const signature = await user.signMessage(ethers.getBytes(userOpHash));
-    userOp.signature = signature;
-
-    // This should fail because the target is not supported
+    // This should fail because the target is not in the paymaster's supported list
     await expect(
       entryPoint.connect(bundler).handleOps([userOp], await bundler.getAddress())
     ).to.be.revertedWithCustomError(entryPoint, "FailedOpWithRevert")
@@ -205,48 +108,37 @@ describe("Account Abstraction E2E", function () {
   });
 
   it("should reject expired UserOperations", async function () {
-    const smartAccountAddress = await smartAccount.getAddress();  // 修复：改为小写和使用实例
+    const { entryPoint, privacyPool, paymaster, bundler } = env;
     const privacyPoolAddress = await privacyPool.getAddress();
     const depositAmount = await privacyPool.DEPOSIT_AMOUNT();
 
+    // Create calldata for a valid deposit action
     const commitment = ethers.randomBytes(32);
     const depositCallData = privacyPool.interface.encodeFunctionData("deposit", [commitment]);
-    const executionCallData = smartAccount.interface.encodeFunctionData("execute", [  // 修复：使用实例
+    const executionCallData = smartAccount.interface.encodeFunctionData("execute", [
       privacyPoolAddress,
       depositAmount,
       depositCallData,
     ]);
 
-    // Create expired time parameters using block timestamp
+    // Create expired time parameters
     const currentBlock = await ethers.provider.getBlock('latest');
-    const currentTimestamp = currentBlock!.timestamp;
-    const validAfter = currentTimestamp - 7200; // 2 hours ago
-    const validUntil = currentTimestamp - 3600; // 1 hour ago (expired)
+    const expiredTimestamp = currentBlock!.timestamp - 3600; // 1 hour ago
 
+    // Manually create expired paymasterAndData
     const paymasterAndData = await paymaster.createPaymasterAndData(
       100000,
       50000,
-      validUntil,
-      validAfter
+      expiredTimestamp, // validUntil is in the past
+      0
     );
+    
+    // Generate UserOp, overriding with the expired paymasterAndData
+    const userOp = await generateUserOp(env, smartAccountAddress, executionCallData, {
+        paymasterAndData: paymasterAndData
+    });
 
-    const userOp: PackedUserOperation = {
-      sender: smartAccountAddress,  // 修复：改为小写
-      nonce: 0n,
-      initCode: "0x",
-      callData: executionCallData,
-      accountGasLimits: packUints(100000n, 200000n),
-      preVerificationGas: 21000n,
-      gasFees: packUints(1000000000n, 2000000000n),
-      paymasterAndData: paymasterAndData,
-      signature: "0x"
-    };
-
-    const userOpHash = await entryPoint.getUserOpHash(userOp);
-    const signature = await user.signMessage(ethers.getBytes(userOpHash));
-    userOp.signature = signature;
-
-    // This should fail because the UserOperation is expired
+    // This should fail because the UserOperation's timestamp is invalid
     await expect(
       entryPoint.connect(bundler).handleOps([userOp], await bundler.getAddress())
     ).to.be.revertedWithCustomError(entryPoint, "FailedOpWithRevert")
