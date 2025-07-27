@@ -71,7 +71,7 @@
 
   3.  **合约交互 (`frontend/src/components/DepositCard.tsx`)**: `DepositCard` 组件负责编排整个存款流程。它调用 `generateNote()` 和 `generateCommitment()`，然后使用 `wagmi` 的 `useWriteContract` hook，调用 `PrivacyPool` 合约的 `deposit` 函数。它将计算出的 `commitment` 作为参数，并将固定的 `DEPOSIT_AMOUNT` (0.1 ETH) 作为 `msg.value` 发送。
 
-  4.  **链上状态变更 (`contracts/PrivacyPool.sol`)**: `PrivacyPool` 合约的 `deposit` 函数接收到 `commitment` 后，会调用其继承的 `Commitments.sol` 库（借鉴自 Railgun）的 `_insertLeaves` 函数，将这个 `commitment` 插入到链上的 Merkle 树中。同时，它会触发一个 `Deposit` 事件，将 `commitment` 和它在树中的索引记录下来，以便前端之后可以获取并构建本地的 Merkle 树。
+  4.  **链上状态变更 (`contracts/PrivacyPool.sol`)**: `PrivacyPool` 合约的 `deposit` 函数接收到 `commitment` 后，会调用其内部的 `_insertLeaf` 函数，将这个 `commitment` 插入到链上的 Merkle 树中。同时，它会触发一个 `Deposit` 事件，将 `commitment` 和它在树中的索引记录下来，以便前端之后可以获取并构建本地的 Merkle 树。
 
   5.  **用户体验 (`frontend/src/components/DepositCard.tsx`)**: 在交易成功后，前端会以一个非常醒目的、包含警告信息的 Alert 组件，向用户展示完整的凭证字符串，并强制要求他们复制和备份。我们深知，这是“安全凭证”模式最大的用户体验挑战，因此我们在这里投入了额外的精力，以确保用户能够清晰地理解备份的重要性。
 

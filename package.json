@@ -16,6 +16,7 @@
   "description": "",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^6.0.0",
+    "@playwright/test": "^1.54.1",
     "circomlibjs": "^0.1.7",
     "hardhat": "^2.25.0",
     "hardhat-preprocessor": "^0.1.5"

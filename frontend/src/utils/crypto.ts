@@ -2,17 +2,6 @@
 import { ethers } from 'ethers';
 import { buildPoseidon } from 'circomlibjs';
 
-// 全局 poseidon 实例
-let poseidonInstance: any = null;
-
-// 初始化 Poseidon 哈希函数
-async function initializePoseidon() {
-  if (!poseidonInstance) {
-    poseidonInstance = await buildPoseidon();
-  }
-  return poseidonInstance;
-}
-
 /**
  * Generates a new random note.
  * A note consists of a secret and a nullifier, both 31-byte random hex strings.
@@ -42,28 +31,31 @@ export function parseNote(note: string): { secret: string; nullifier: string } {
 }
 
 /**
- * Generates a commitment for a deposit, matching the circuit's logic.
- * The commitment is the Poseidon hash of the secret and the amount.
+ * Generates a commitment for a deposit, matching the circuit's and contract's logic.
+ * The commitment is the Poseidon hash of the secret and amount.
+ * This matches the ZK circuit design: poseidon([secret, amount])
  * @param secret The secret from the note.
- * @param amount The deposit amount.
+ * @param amount The deposit amount (typically 0.1 ETH = 100000000000000000 wei).
  * @returns The commitment hash as a hex string.
  */
 export async function generateCommitment(secret: string, amount: string): Promise<string> {
-  const poseidon = await initializePoseidon();
-  // 关键修复：将输入字符串转换为BigInt，以匹配Solidity的uint256类型
+  const poseidon = await buildPoseidon();
+  // Ensure inputs are converted to BigInt, which is expected by circomlibjs
   const hash = poseidon([BigInt(secret), BigInt(amount)]);
-  return ethers.toBeHex(poseidon.F.toObject(hash));
+  // The output is a BigInt, convert it to a hex string (bytes32)
+  return ethers.toBeHex(hash, 32);
 }
 
 /**
  * Generates the nullifier hash for a withdrawal, matching the circuit's logic.
- * The nullifier hash is the Poseidon hash of the secret.
+ * The nullifier hash is the Poseidon hash of the secret only.
+ * This matches the ZK circuit design: poseidon([secret])
  * @param secret The secret from the note.
  * @returns The nullifier hash as a hex string.
  */
 export async function generateNullifierHash(secret: string): Promise<string> {
-  const poseidon = await initializePoseidon();
-  // 关键修复：将输入字符串转换为BigInt
+  const poseidon = await buildPoseidon();
+  // Hash only the secret to generate the nullifier hash, matching circuit logic
   const hash = poseidon([BigInt(secret)]);
-  return ethers.toBeHex(poseidon.F.toObject(hash));
+  return ethers.toBeHex(hash, 32);
 }

@@ -2,21 +2,29 @@
 "use client";
 
 import { useState } from 'react';
-import { Box, Button, Card, CardContent, TextField, Typography, CircularProgress, Link, Alert, Stepper, Step, StepLabel } from '@mui/material';
 import { useWriteContract, useWaitForTransactionReceipt, useAccount, usePublicClient } from 'wagmi';
 import { ethers } from 'ethers';
 import { MerkleTree } from 'fixed-merkle-tree';
 // @ts-ignore
 import { groth16 } from 'snarkjs';
-import { buildPoseidon } from 'circomlibjs';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import { CONTRACTS } from '../config/contracts';
 import PrivacyPoolArtifact from '../abi/PrivacyPool.json';
 import { parseNote, generateCommitment, generateNullifierHash } from '../utils/crypto';
+import { buildPoseidon } from 'circomlibjs';
 
 const PRIVACY_POOL_ADDRESS = CONTRACTS.PRIVACY_POOL_ADDRESS as `0x${string}`;
 const PrivacyPoolAbi = PrivacyPoolArtifact.abi;
 const steps = ['Generate Proof', 'Submit Transaction'];
+
+// A simple spinner component
+const Spinner = () => (
+    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+  );
 
 export default function WithdrawCard() {
   const [note, setNote] = useState('');
@@ -24,320 +32,106 @@ export default function WithdrawCard() {
   const [isProving, setIsProving] = useState(false);
   const [proof, setProof] = useState<any>(null);
   const [publicSignals, setPublicSignals] = useState<any>(null);
+  const [feedback, setFeedback] = useState({ type: '', message: '' });
+
 
   const { chain, address } = useAccount();
   const publicClient = usePublicClient();
-  const { data: hash, writeContract, isPending, error } = useWriteContract();
+  const { data: hash, writeContract, isPending, error: writeError } = useWriteContract();
 
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = 
+  const { isLoading: isConfirming, isSuccess: isConfirmed, error: receiptError } = 
     useWaitForTransactionReceipt({ hash });
 
-  const generateProof = async () => {
-    if (!address || !publicClient) {
-      alert('Please connect your wallet first.');
-      return;
-    }
-    if (!note) {
-      alert('Please enter your note.');
-      return;
-    }
-
-    setIsProving(true);
-    setActiveStep(0);
-
-    try {
-      // 1. Parse the note to get secret and nullifier
-      const { secret, nullifier } = parseNote(note);
-      const depositAmount = ethers.parseEther('0.1');
-      const commitment = await generateCommitment(secret, nullifier, depositAmount.toString());
-      const nullifierHash = await generateNullifierHash(secret); // 根据电路，使用 secret 计算 nullifier
-
-      console.log('Generated commitment:', commitment);
-      console.log('Generated commitment (BigInt):', BigInt(commitment).toString());
-      console.log('Secret:', secret);
-      console.log('Nullifier:', nullifier);
-      console.log('Amount:', depositAmount.toString());
-      console.log('Nullifier Hash:', nullifierHash);
-      console.log('Using contract address:', PRIVACY_POOL_ADDRESS);
-      console.log('Contract address lowercase:', PRIVACY_POOL_ADDRESS.toLowerCase());
-      
-      // 额外调试：检查最新区块和合约是否有任何交易
-      const latestBlock = await publicClient.getBlockNumber();
-      console.log('Latest block number:', Number(latestBlock));
-      
-      // 检查是否有任何发送到合约地址的交易
-      try {
-        const contractCode = await publicClient.getBytecode({ address: PRIVACY_POOL_ADDRESS });
-        console.log('Contract exists (has bytecode):', contractCode !== undefined && contractCode !== '0x');
-      } catch (e) {
-        console.log('Error checking contract bytecode:', e);
-      }
-
-      // 2. Fetch all deposit events to build the tree
-      // 使用更直接的方法获取事件日志
-      const depositEventSignature = ethers.id("Deposit(bytes32,uint32,uint256)");
-      console.log('Computed event signature:', depositEventSignature);
-      
-      // 正确的事件签名
-      const correctSignature = "0xa945e51eec50ab98c161376f0db4cf2aeba3ec92755fe2fcd388bdbbb80ff196";
-      if (depositEventSignature !== correctSignature) {
-        console.warn('Event signature mismatch! Expected:', correctSignature, 'Got:', depositEventSignature);
-      }
-      
-      let logs: any[] = [];
-      let methodUsed = "";
-      
-      try {
-        // 先尝试使用 viem 的原生方法
-        const result = await publicClient.request({
-          method: 'eth_getLogs',
-          params: [{
-            address: PRIVACY_POOL_ADDRESS.toLowerCase(),
-            topics: [depositEventSignature],
-            fromBlock: '0x0',
-            toBlock: 'latest'
-          }]
-        });
-        logs = result as any[];
-        methodUsed = "Method 1";
-        console.log('Method 1 - Found logs:', logs.length);
-        
-        // 如果方法1没有找到日志，尝试备用方法
-        if (logs.length === 0) {
-          throw new Error("No logs found with Method 1, trying alternatives");
+    const generateProof = async () => {
+        if (!address || !publicClient) {
+          setFeedback({ type: 'error', message: 'Please connect your wallet first.' });
+          return;
         }
-      } catch (error) {
-        console.error('Method 1 failed or found no logs, trying alternative:', error);
+        if (!note) {
+          setFeedback({ type: 'error', message: 'Please enter your note.' });
+          return;
+        }
+    
+        setIsProving(true);
+        setActiveStep(0);
+        setFeedback({ type: 'info', message: 'Starting proof generation... this may take a moment.' });
+    
         try {
-          // 备用方法：不使用 topics 过滤，获取所有日志然后手动过滤
-          const result = await publicClient.request({
-            method: 'eth_getLogs',
-            params: [{
-              address: PRIVACY_POOL_ADDRESS.toLowerCase(),
-              fromBlock: '0x0',
-              toBlock: 'latest'
-            }]
+          // 1. Parse note and generate hashes
+          const { secret } = parseNote(note);
+          const depositAmount = ethers.parseEther('0.1');
+          const commitment = await generateCommitment(secret, depositAmount.toString());
+          const nullifierHash = await generateNullifierHash(secret);
+    
+          // 2. Fetch deposit events to build the Merkle tree
+          setFeedback({ type: 'info', message: 'Fetching deposit events to build Merkle tree...' });
+          const depositEvents = await publicClient.getLogs({
+            address: PRIVACY_POOL_ADDRESS,
+            event: {
+                type: 'event',
+                name: 'Deposit',
+                inputs: [{ type: 'bytes32', name: 'commitment', indexed: true }, { type: 'uint32', name: 'leafIndex', indexed: false }, { type: 'uint256', name: 'timestamp', indexed: false }]
+            },
+            fromBlock: 'earliest'
           });
-          const allLogs = result as any[];
-          // 手动过滤 Deposit 事件
-          logs = allLogs.filter((log: any) => 
-            log.topics && log.topics[0] === depositEventSignature
+    
+          const commitments = depositEvents.map(event => event.args.commitment!);
+          if (commitments.length === 0) {
+            throw new Error("No deposit events found. The pool is empty.");
+          }
+    
+          // 3. Find the leaf index and build the tree
+          const leafIndex = commitments.findIndex(c => c === commitment);
+          if (leafIndex < 0) {
+            throw new Error("Your deposit commitment was not found in the Merkle tree. Please check your note or wait for your deposit to be confirmed.");
+          }
+    
+          const poseidon = await buildPoseidon();
+          const hashFunction = (left: any, right: any) => poseidon([left, right]);
+          const tree = new MerkleTree(20, commitments, { hashFunction, zeroElement: "21663839004416932945382355908790599225266501822907911457504978515578255421292" });
+    
+          const { pathElements, pathIndices } = tree.path(leafIndex);
+    
+          // 4. Prepare circuit inputs
+          const input = {
+            secret: BigInt(secret),
+            amount: depositAmount,
+            pathElements: pathElements,
+            pathIndices: pathIndices,
+            merkleRoot: tree.root,
+            nullifier: BigInt(nullifierHash),
+          };
+    
+          // 5. Generate ZK proof
+          setFeedback({ type: 'info', message: 'Generating ZK proof... this is computationally intensive.' });
+          const { proof, publicSignals } = await groth16.fullProve(
+            input,
+            '/zk/withdraw.wasm',
+            '/zk/withdraw.zkey'
           );
-          methodUsed = "Method 2";
-          console.log('Method 2 - Found logs:', logs.length, 'from total:', allLogs.length);
-          
-          // 如果方法2也没有找到日志，尝试最后的方法
-          if (logs.length === 0) {
-            throw new Error("No logs found with Method 2, trying Method 3");
-          }
-        } catch (error2) {
-          console.error('Method 2 also failed or found no logs:', error2);
-          // 最后的备用方法：逐区块查找
-          const latestBlock = await publicClient.getBlockNumber();
-          logs = [];
-          methodUsed = "Method 3";
-          console.log('Method 3 - Scanning blocks 0 to', Number(latestBlock));
-          for (let i = 0; i <= Number(latestBlock); i++) {
-            try {
-              const blockResult = await publicClient.request({
-                method: 'eth_getLogs',
-                params: [{
-                  address: PRIVACY_POOL_ADDRESS.toLowerCase(),
-                  fromBlock: `0x${i.toString(16)}`,
-                  toBlock: `0x${i.toString(16)}`
-                }]
-              });
-              const blockLogs = blockResult as any[];
-              const depositLogs = blockLogs.filter((log: any) => 
-                log.topics && log.topics[0] === depositEventSignature
-              );
-              logs.push(...depositLogs);
-              if (depositLogs.length > 0) {
-                console.log(`Found ${depositLogs.length} deposit events in block ${i}`);
-              }
-            } catch (e) {
-              // 忽略单个区块的错误
-            }
-          }
-          console.log('Method 3 - Total found logs:', logs.length);
+    
+          setProof(proof);
+          setPublicSignals(publicSignals);
+          setActiveStep(1);
+          setFeedback({ type: 'success', message: 'Proof generated successfully! You can now submit the withdrawal.' });
+    
+        } catch (err: any) {
+          console.error(err);
+          setFeedback({ type: 'error', message: `Proof generation failed: ${err.message}` });
+        } finally {
+          setIsProving(false);
         }
-      }
-      
-      // 手动解析事件日志
-      const commitments = logs.map((log: any) => {
-        // 第一个 topic 是事件签名，第二个 topic 是 indexed commitment
-        return log.topics[1];
-      });
-      
-      console.log(`${methodUsed} - Found deposit events:`, logs.length);
-      console.log('Commitments from events:', commitments);
-      console.log('Looking for commitment:', commitment);
-      console.log('Contract address used:', PRIVACY_POOL_ADDRESS.toLowerCase());
-      console.log('Event signature used:', depositEventSignature);
-      
-      // 3. Build the Merkle tree with a circuit-compatible hash function
-      const poseidon = await buildPoseidon();
-      const hashFunction = (left: any, right: any) => poseidon([left, right]);
-      // 3. Build the Merkle tree with a circuit-compatible hash function
-      const poseidon = await buildPoseidon();
-      const hashFunction = (left: any, right: any) => poseidon([left, right]);
-      const tree = new MerkleTree(20, commitments, { hashFunction, zeroElement: ethers.ZeroHash });
-
-      // ... (rest of the component)
-
-      const { pathElements, pathIndices } = tree.path(leafIndex);
-
-      // 5. Prepare inputs for the ZK circuit, matching the circuit's variable names
-      const input = {
-        // private inputs
-        secret: secret,
-        amount: ethers.parseEther('0.1').toString(),
-        pathElements: pathElements,
-        pathIndices: pathIndices,
-        // public inputs
-        merkleRoot: tree.root,
-        nullifier: nullifierHash, // This is the public input, which will be constrained against the calculated one
       };
-      
-      // 在电路中验证commitment计算
-      console.log('Circuit input validation:');
-      console.log('Secret for circuit:', secretBigInt.toString());
-      console.log('Amount for circuit:', amountBigInt.toString());
-      console.log('Expected commitment (hex):', commitment);
-      console.log('Expected commitment (BigInt):', BigInt(commitment).toString());
-      console.log('Leaf found at index:', leafIndex);
-      console.log('Commitment from events[' + leafIndex + ']:', commitments[leafIndex]);
-      
-      // 手动验证Merkle proof
-      console.log('Manual Merkle proof verification:');
-      const poseidonForVerification = await buildPoseidon();
-      let currentHash = BigInt(commitment);
-      console.log('Starting with leaf (commitment):', currentHash.toString());
-      
-      for (let i = 0; i < pathElements.length; i++) {
-        const pathElement = BigInt(pathElements[i].toString());
-        const isRight = pathIndices[i] === 1;
-        
-        console.log(`Level ${i}:`);
-        console.log('  Current hash:', currentHash.toString());
-        console.log('  Path element:', pathElement.toString());
-        console.log('  Is right child:', isRight);
-        
-        let nextHash;
-        if (isRight) {
-          // 当前节点是右子节点，路径元素是左兄弟节点
-          nextHash = poseidonForVerification([pathElement, currentHash]);
-        } else {
-          // 当前节点是左子节点，路径元素是右兄弟节点
-          nextHash = poseidonForVerification([currentHash, pathElement]);
-        }
-        
-        currentHash = BigInt(poseidonForVerification.F.toString(nextHash));
-        console.log('  Next hash:', currentHash.toString());
-      }
-      
-      console.log('Final computed root:', currentHash.toString());
-      console.log('Contract root:', rootBigInt.toString());
-      console.log('Roots match:', currentHash.toString() === rootBigInt.toString());
-      
-      console.log('Circuit input prepared (BigInt format):', {
-        secret: input.secret.toString(),
-        amount: input.amount.toString(),
-        pathElements: input.pathElements.slice(0, 3), // 只显示前3个
-        pathElementsLength: input.pathElements.length, // 显示完整长度
-        pathIndices: input.pathIndices.slice(0, 3), // 只显示前3个
-        pathIndicesLength: input.pathIndices.length, // 显示完整长度
-        merkleRoot: input.merkleRoot.toString(),
-        nullifier: input.nullifier.toString(),
-      });
-
-      // 额外验证输入格式
-      console.log('Input validation:');
-      console.log('- secret type:', typeof input.secret, 'value:', input.secret.toString());
-      console.log('- amount type:', typeof input.amount, 'value:', input.amount.toString());
-      console.log('- pathElements type:', typeof input.pathElements, 'length:', input.pathElements.length);
-      console.log('- pathElements[0] type:', typeof input.pathElements[0], 'value:', input.pathElements[0].toString());
-      console.log('- pathIndices type:', typeof input.pathIndices, 'length:', input.pathIndices.length);
-      console.log('- pathIndices[0] type:', typeof input.pathIndices[0], 'value:', input.pathIndices[0].toString());
-      console.log('- merkleRoot type:', typeof input.merkleRoot, 'value:', input.merkleRoot.toString());
-      console.log('- nullifier type:', typeof input.nullifier, 'value:', input.nullifier.toString());
-
-      // 6. Generate the ZK proof
-      console.log('Starting ZK proof generation...');
-      
-      // 添加超时机制
-      const proofTimeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('ZK proof generation timeout after 30 seconds')), 30000)
-      );
-      
-      const proofGeneration = groth16.fullProve(
-        input,
-        '/zk/withdraw.wasm',
-        '/zk/withdraw.zkey'
-      );
-      
-      const { proof, publicSignals } = await Promise.race([
-        proofGeneration,
-        proofTimeout
-      ]);
-
-      console.log('ZK proof generated successfully!');
-      console.log('Proof structure:', {
-        pi_a_length: proof.pi_a ? proof.pi_a.length : 'undefined',
-        pi_b_length: proof.pi_b ? proof.pi_b.length : 'undefined', 
-        pi_c_length: proof.pi_c ? proof.pi_c.length : 'undefined'
-      });
-      console.log('Public signals:', publicSignals);
-      console.log('Public signals length:', publicSignals ? publicSignals.length : 'undefined');
-
-      setProof(proof);
-      setPublicSignals(publicSignals);
-      setActiveStep(1);
-    } catch (err) {
-      console.error(err);
-      alert(`Error generating proof: ${err.message}`);
-    } finally {
-      setIsProving(false);
-    }
-  };
 
   const handleWithdraw = () => {
-    if (!proof || !publicSignals) {
-      alert('Please generate a proof first.');
-      return;
+    if (!proof || !publicSignals || !address || !chain) {
+        setFeedback({ type: 'error', message: 'Proof, public signals, or wallet connection is missing.' });
+        return;
     }
 
-    // Validate proof structure
-    if (!proof.pi_a || !proof.pi_b || !proof.pi_c || 
-        !Array.isArray(proof.pi_a) || proof.pi_a.length < 2 ||
-        !Array.isArray(proof.pi_b) || proof.pi_b.length < 2 ||
-        !Array.isArray(proof.pi_c) || proof.pi_c.length < 2) {
-      alert('Invalid proof structure. Please regenerate the proof.');
-      console.error('Invalid proof structure:', proof);
-      return;
-    }
-
-    // Validate public signals
-    if (!Array.isArray(publicSignals) || publicSignals.length < 2) {
-      alert('Invalid public signals. Please regenerate the proof.');
-      console.error('Invalid public signals:', publicSignals);
-      return;
-    }
-
-    console.log('Public signals validation passed:');
-    console.log('- Root (publicSignals[0]):', publicSignals[0]);
-    console.log('- Nullifier Hash (publicSignals[1]):', publicSignals[1]);
-    console.log('- Recipient (current address):', address);
-
-    // 将BigInt公共信号转换为正确的bytes32格式
     const rootBytes32 = ethers.toBeHex(BigInt(publicSignals[0]), 32);
     const nullifierBytes32 = ethers.toBeHex(BigInt(publicSignals[1]), 32);
     
-    console.log('Converted values for contract:');
-    console.log('- Root (bytes32):', rootBytes32);
-    console.log('- Nullifier Hash (bytes32):', nullifierBytes32);
-
-    // Format the proof for the smart contract
     const formattedProof = {
       a: [proof.pi_a[0], proof.pi_a[1]],
       b: [[proof.pi_b[0][1], proof.pi_b[0][0]], [proof.pi_b[1][1], proof.pi_b[1][0]]],
@@ -352,69 +146,153 @@ export default function WithdrawCard() {
         formattedProof.a,
         formattedProof.b, 
         formattedProof.c,
-        rootBytes32, // 转换后的root
-        nullifierBytes32, // 转换后的nullifier
-        address, // recipient (current user's address)
-        ethers.parseEther('0.1') // amount
+        rootBytes32,
+        nullifierBytes32,
+        address,
+        ethers.parseEther('0.1')
       ],
       chain: chain,
       account: address,
     });
   };
 
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+  };
+
+  const getButtonText = () => {
+    if (activeStep === 0) {
+        return isProving ? 'Generating Proof...' : 'Verify Note & Generate Proof';
+    }
+    if (activeStep === 1) {
+        if (isPending) return 'Confirm in wallet...';
+        if (isConfirming) return 'Submitting Transaction...';
+        return 'Withdraw 0.1 ETH';
+    }
+  }
+
+  const finalError = writeError || receiptError;
+
   return (
-    <Card sx={{ mt: 4, maxWidth: 600, mx: 'auto' }}>
-      <CardContent>
-        <Typography variant="h5" component="h2" gutterBottom>
-          Withdraw Funds
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Enter your private note to withdraw your deposited funds. The system will verify your ownership and generate a zero-knowledge proof.
-        </Typography>
-        <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
-          {steps.map((label) => (
-            <Step key={label}>
-              <StepLabel>{label}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
-        <TextField
-          fullWidth
-          label="Your Private Note"
-          variant="outlined"
+    <motion.div 
+      className="bg-gray-800 border border-gray-700 rounded-lg p-6 sm:p-8 max-w-md mx-auto mt-10 shadow-lg"
+      variants={cardVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <div className="text-center">
+        <h2 className="text-2xl sm:text-3xl font-bold text-white">Withdraw Funds</h2>
+        <p className="text-gray-400 mt-2">Enter your private note to withdraw your deposited funds.</p>
+      </div>
+
+      <div className="mt-6">
+        {/* Stepper */}
+        <div className="flex justify-between mb-4">
+            {steps.map((label, index) => (
+                <div key={label} className={`flex-1 text-center ${index <= activeStep ? 'text-blue-400' : 'text-gray-500'}`}>
+                    <div className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center border-2 ${index <= activeStep ? 'bg-blue-600 border-blue-400' : 'border-gray-500'}`}>
+                        {index < activeStep ? '✔' : index + 1}
+                    </div>
+                    <p className="text-xs mt-1">{label}</p>
+                </div>
+            ))}
+        </div>
+
+        <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          disabled={isProving || isPending || isConfirming}
-          sx={{ mb: 2 }}
-          helperText="Paste the complete note you saved during deposit (starts with 'private-defi-')"
+          disabled={isProving || isPending || isConfirming || activeStep === 1}
+          placeholder="Paste the complete note you saved during deposit..."
+          className="w-full bg-gray-900 text-gray-200 border border-gray-600 rounded-md p-3 font-mono text-sm resize-none h-28 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
-        <Box sx={{ position: 'relative' }}>
-          {activeStep === 0 && (
-            <Button variant="contained" onClick={generateProof} disabled={!note || isProving} fullWidth size="large">
-              {isProving ? 'Verifying Note & Generating Proof...' : 'Verify Note & Generate Proof'}
-            </Button>
-          )}
-          {activeStep === 1 && (
-            <Button variant="contained" onClick={handleWithdraw} disabled={isPending || isConfirming} fullWidth size="large">
-              {isPending ? 'Confirm in wallet...' : isConfirming ? 'Submitting Transaction...' : 'Withdraw 0.1 ETH'}
-            </Button>
-          )}
-          {(isProving || isPending || isConfirming) && <CircularProgress size={24} sx={{ position: 'absolute', top: '50%', left: '50%', marginTop: '-12px', marginLeft: '-12px' }} />}
-        </Box>
-        {isConfirmed && (
-          <Alert severity="success" sx={{ mt: 2 }}>
-            Withdrawal successful! 
-            <Link href={`${chain?.blockExplorers?.default.url}/tx/${hash}`} target="_blank" rel="noopener">
-              View on Explorer
-            </Link>
-          </Alert>
+        
+        <div className="mt-4 space-y-3">
+            <button
+              onClick={activeStep === 0 ? generateProof : handleWithdraw}
+              disabled={!note || isProving || isPending || isConfirming}
+              className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 disabled:scale-100"
+            >
+              {(isProving || isPending || isConfirming) && <Spinner />}
+              {getButtonText()}
+            </button>
+            
+            <button
+              onClick={handleComplianceReport}
+              disabled={!note || isProving || isPending || isConfirming}
+              className="w-full flex items-center justify-center bg-gray-600 hover:bg-gray-700 disabled:bg-gray-500 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 disabled:scale-100"
+            >
+              Generate Compliance Report
+            </button>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {(feedback.message || finalError || isConfirmed) && (
+            <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className={`mt-4 p-3 rounded-lg text-sm ${
+                    (feedback.type === 'error' || finalError) ? 'bg-red-900/50 border border-red-700 text-red-300' :
+                    feedback.type === 'success' ? 'bg-green-900/50 border border-green-700 text-green-300' :
+                    isConfirmed ? 'bg-green-900/50 border border-green-700 text-green-300' :
+                    'bg-blue-900/50 border border-blue-700 text-blue-300'
+                }`}
+            >
+                {finalError ? `Error: ${finalError.message}` : 
+                 isConfirmed ? (
+                    <>
+                        Withdrawal successful! 
+                        <a href={`${chain?.blockExplorers?.default.url}/tx/${hash}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline ml-1">
+                            View on Explorer
+                        </a>
+                    </>
+                 ) :
+                 feedback.message
+                }
+            </motion.div>
         )}
-        {error && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-                Error: {(error as any).shortMessage || error.message}
-            </Alert>
+      </AnimatePresence>
+
+      {/* Compliance Report Modal */}
+      <AnimatePresence>
+        {isComplianceModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            onClick={closeComplianceModal}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-md mx-4 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-white mb-4">Compliance Report Generation</h3>
+                <div className="text-gray-300 text-sm space-y-3 mb-6">
+                  <p>
+                    This feature allows you to generate a cryptographic report to prove the origin of your funds.
+                  </p>
+                  <p>
+                    It is currently under development and will be available soon.
+                  </p>
+                </div>
+                <button
+                  onClick={closeComplianceModal}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
-      </CardContent>
-    </Card>
+      </AnimatePresence>
+    </motion.div>
   );
 }

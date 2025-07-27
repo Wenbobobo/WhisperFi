@@ -38,7 +38,7 @@ describe("Deposit-Withdraw Integration Test", function () {
     await privacyPool.waitForDeployment();
   });
 
-  // Helper functions matching our frontend implementation
+  // Helper functions matching ZK circuit design
   function hexToBigInt(hex: string): bigint {
     return BigInt(hex);
   }
@@ -48,12 +48,13 @@ describe("Deposit-Withdraw Integration Test", function () {
     return '0x' + poseidon.F.toObject(hash).toString(16).padStart(64, '0');
   }
 
-  function generateCommitment(secret: string, nullifier: string): string {
+  // Updated to match ZK circuit: commitment = poseidon([secret, amount])
+  function generateCommitment(secret: string, amount: bigint): string {
     const secretBigInt = hexToBigInt(secret);
-    const nullifierBigInt = hexToBigInt(nullifier);
-    return poseidonHash([secretBigInt, nullifierBigInt]);
+    return poseidonHash([secretBigInt, amount]);
   }
 
+  // Updated to match ZK circuit: nullifierHash = poseidon([secret])
   function generateNullifierHash(secret: string): string {
     const secretBigInt = hexToBigInt(secret);
     return poseidonHash([secretBigInt]);
@@ -61,19 +62,20 @@ describe("Deposit-Withdraw Integration Test", function () {
 
   describe("Complete Deposit-Withdraw Flow", function () {
     it("should allow deposit and then find the commitment for withdrawal", async function () {
-      // Step 1: Simulate frontend commitment generation
+      // Step 1: Simulate frontend commitment generation with correct ZK circuit logic
       const secretNote = "my-secret-note-123";
       const secretHash = ethers.keccak256(ethers.toUtf8Bytes(secretNote));
-      const nullifier = ethers.keccak256(ethers.toUtf8Bytes(`nullifier-${secretNote}`));
-      const commitment = generateCommitment(secretHash, nullifier);
+      const depositAmount = await privacyPool.DEPOSIT_AMOUNT();
+      
+      // Use ZK circuit compatible commitment calculation: poseidon([secret, amount])
+      const commitment = generateCommitment(secretHash, depositAmount);
 
       console.log("Secret note:", secretNote);
       console.log("Secret hash:", secretHash);
-      console.log("Nullifier:", nullifier);
+      console.log("Deposit amount:", depositAmount.toString());
       console.log("Generated commitment:", commitment);
 
       // Step 2: Make deposit
-      const depositAmount = await privacyPool.DEPOSIT_AMOUNT();
       const tx = await privacyPool.deposit(commitment, { value: depositAmount });
       await tx.wait();
 
@@ -98,29 +100,42 @@ describe("Deposit-Withdraw Integration Test", function () {
       
       expect(foundIndex).to.be.greaterThan(-1);
       
-      // Step 5: Verify nullifier hash generation
+      // Step 5: Verify nullifier hash generation (ZK circuit compatible)
       const nullifierHash = generateNullifierHash(secretHash);
       console.log("Generated nullifier hash:", nullifierHash);
       
-      expect(nullifierHash).to.not.equal(nullifier);
       expect(nullifierHash).to.match(/^0x[0-9a-fA-F]{64}$/);
     });
 
-    it("should generate different commitments for different secrets", async function () {
+    it("should generate different commitments for different secrets with same amount", async function () {
       const secret1 = "secret-1";
       const secret2 = "secret-2";
+      const depositAmount = await privacyPool.DEPOSIT_AMOUNT();
       
       const secretHash1 = ethers.keccak256(ethers.toUtf8Bytes(secret1));
-      const nullifier1 = ethers.keccak256(ethers.toUtf8Bytes(`nullifier-${secret1}`));
-      const commitment1 = generateCommitment(secretHash1, nullifier1);
+      const commitment1 = generateCommitment(secretHash1, depositAmount);
       
       const secretHash2 = ethers.keccak256(ethers.toUtf8Bytes(secret2));
-      const nullifier2 = ethers.keccak256(ethers.toUtf8Bytes(`nullifier-${secret2}`));
-      const commitment2 = generateCommitment(secretHash2, nullifier2);
+      const commitment2 = generateCommitment(secretHash2, depositAmount);
       
       expect(commitment1).to.not.equal(commitment2);
       console.log("Commitment 1:", commitment1);
       console.log("Commitment 2:", commitment2);
+    });
+
+    it("should generate different commitments for same secret with different amounts", async function () {
+      const secret = "same-secret";
+      const secretHash = ethers.keccak256(ethers.toUtf8Bytes(secret));
+      
+      const amount1 = ethers.parseEther("0.1");
+      const amount2 = ethers.parseEther("0.2");
+      
+      const commitment1 = generateCommitment(secretHash, amount1);
+      const commitment2 = generateCommitment(secretHash, amount2);
+      
+      expect(commitment1).to.not.equal(commitment2);
+      console.log("Commitment with amount1:", commitment1);
+      console.log("Commitment with amount2:", commitment2);
     });
   });
 });

@@ -15,6 +15,7 @@ import {
   SmartAccount,
   SmartAccountFactory,
   Groth16Verifier,
+  MockERC20,
 } from "../typechain-types";
 import { PackedUserOperation } from "./utils/UserOperation";
 
@@ -28,7 +29,6 @@ import { PackedUserOperation } from "./utils/UserOperation";
 export function packUints(high: bigint, low: bigint): string {
   return solidityPacked(["uint128", "uint128"], [high, low]);
 }
-
 /**
  * @dev Represents the complete testing environment with all deployed contracts and signers.
  */
@@ -41,6 +41,9 @@ export interface TestEnvironment {
   privacyPool: PrivacyPool;
   factory: SmartAccountFactory;
   paymaster: Paymaster;
+  weth: MockERC20;
+  usdc: MockERC20;
+}
 }
 
 /**
@@ -67,39 +70,58 @@ export async function deployTestEnvironment(): Promise<TestEnvironment> {
   await verifier.waitForDeployment();
   const verifierAddress = await verifier.getAddress();
 
-  // 3. Deploy Poseidon library and link to PrivacyPool
-  const PoseidonT3 = await ethers.getContractFactory(
-    "contracts/lib/Poseidon.sol:PoseidonT3"
+  // 3. Deploy PoseidonHasher (Mock version for testing)
+  const poseidonHasherFactory = await ethers.getContractFactory("PoseidonHasherMock");
+  const poseidonHasher = await poseidonHasherFactory.deploy();
+  await poseidonHasher.waitForDeployment();
+  const poseidonHasherAddress = await poseidonHasher.getAddress();
+
+  // 4. Deploy PrivacyPool
+  const privacyPoolFactory = await ethers.getContractFactory("PrivacyPool");
+  const privacyPool = await privacyPoolFactory.deploy(
+    verifierAddress,
+    poseidonHasherAddress,
+    await owner.getAddress()
   );
-  const poseidonT3 = await PoseidonT3.deploy();
-  await poseidonT3.waitForDeployment();
-
-  const privacyPoolFactory = await ethers.getContractFactory("PrivacyPool", {
-    libraries: {
-      PoseidonT3: await poseidonT3.getAddress(),
-    },
-  });
-  const privacyPool = await privacyPoolFactory.deploy();
   await privacyPool.waitForDeployment();
-  await privacyPool.initialize(verifierAddress, await owner.getAddress());
 
-  // 4. Deploy SmartAccountFactory
+  // 5. Deploy SmartAccountFactory
   const factoryFactory = await ethers.getContractFactory("SmartAccountFactory");
   const factory = await factoryFactory.deploy(entryPointAddress);
   await factory.waitForDeployment();
 
-  // 5. Deploy Paymaster
+  // 6. Deploy Paymaster
   const paymasterFactory = await ethers.getContractFactory("Paymaster");
-  const paymaster = await paymasterFactory.deploy(
+  const paymaster = (await paymasterFactory.deploy(
     entryPointAddress,
     await owner.getAddress()
-  );
+  )) as Paymaster;
   await paymaster.waitForDeployment();
 
-  // 6. Fund Paymaster
+  // 7. Deploy MockERC20 tokens
+  const mockERC20Factory = await ethers.getContractFactory("MockERC20");
+  
+  // Deploy WETH with 18 decimals and initial supply of 1 million tokens
+  const weth = await mockERC20Factory.deploy(
+    "Wrapped Ethereum",
+    "WETH",
+    18,
+    ethers.parseEther("1000000")
+  ) as MockERC20;
+  await weth.waitForDeployment();
+  
+  // Deploy USDC with 6 decimals and initial supply of 1 million tokens
+  const usdc = await mockERC20Factory.deploy(
+    "USD Coin",
+    "USDC",
+    6,
+    ethers.parseUnits("1000000", 6)
+  ) as MockERC20;
+  await usdc.waitForDeployment();
+
+  // 8. Fund Paymaster
   await paymaster.connect(owner).depositToEntryPoint({ value: ethers.parseEther("1") });
   await paymaster.connect(owner).setSupportedTarget(await privacyPool.getAddress(), true);
-
 
   return {
     owner,
@@ -110,6 +132,8 @@ export async function deployTestEnvironment(): Promise<TestEnvironment> {
     privacyPool,
     factory,
     paymaster,
+    weth,
+    usdc,
   };
 }
 

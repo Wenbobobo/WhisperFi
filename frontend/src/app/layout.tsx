@@ -1,4 +1,5 @@
 // src/app/layout.tsx
+import './globals.css';
 import type { Metadata } from 'next';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
 import { Providers } from './providers';

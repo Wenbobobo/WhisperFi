@@ -13,6 +13,12 @@ async function main() {
   const verifierAddress = await verifier.getAddress();
   console.log("Verifier deployed to:", verifierAddress);
 
+  // Deploy PoseidonHasher
+  const poseidonHasher = await ethers.deployContract("PoseidonHasher");
+  await poseidonHasher.waitForDeployment();
+  const poseidonHasherAddress = await poseidonHasher.getAddress();
+  console.log("PoseidonHasher deployed to:", poseidonHasherAddress);
+
   // Deploy Executor
   const executor = await ethers.deployContract("Executor", [deployer.address]);
   await executor.waitForDeployment();
@@ -37,11 +43,13 @@ async function main() {
   // Deploy PrivacyPool
   const privacyPool = await ethers.deployContract("PrivacyPool", [
     verifierAddress,
-    deployer.address
+    poseidonHasherAddress,
+    deployer.address,
   ]);
   await privacyPool.waitForDeployment();
   const privacyPoolAddress = await privacyPool.getAddress();
   console.log("PrivacyPool deployed to:", privacyPoolAddress);
+
 
   // --- Automatic Frontend Configuration ---
   console.log("\nUpdating frontend configuration...");
@@ -60,6 +68,7 @@ export const CONTRACTS = {
   EXECUTOR_ADDRESS: "${executorAddress}",
   VERIFIER_ADDRESS: "${verifierAddress}",
   ENTRYPOINT_ADDRESS: "${entryPointAddress}",
+  POSEIDON_HASHER_ADDRESS: "${poseidonHasherAddress}",
 } as const;
 `;
 

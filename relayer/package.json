@@ -12,6 +12,8 @@
   "dependencies": {
     "dotenv": "^17.1.0",
     "ethers": "^6.15.0",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "knex": "^3.1.0",
+    "sqlite3": "^5.1.7"
   }
 }

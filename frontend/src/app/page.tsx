@@ -8,6 +8,7 @@ import { injected } from 'wagmi/connectors';
 import { useEffect, useState } from 'react';
 import DepositCard from '../components/DepositCard';
 import WithdrawCard from '../components/WithdrawCard';
+import TradeCard from '../components/TradeCard';
 
 // Wallet Connection Component
 function ConnectWalletButton() {
@@ -118,6 +119,7 @@ export default function Home() {
               <Tabs value={tabValue} onChange={handleTabChange} centered>
                 <Tab label="Deposit" />
                 <Tab label="Withdraw" />
+                <Tab label="Trade" />
               </Tabs>
             </Box>
             <TabPanel value={tabValue} index={0}>
@@ -125,6 +127,9 @@ export default function Home() {
             </TabPanel>
             <TabPanel value={tabValue} index={1}>
               <WithdrawCard />
+            </TabPanel>
+            <TabPanel value={tabValue} index={2}>
+              <TradeCard />
             </TabPanel>
           </Box>
         ) : (
