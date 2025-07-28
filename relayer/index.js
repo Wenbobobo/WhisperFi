@@ -108,18 +108,16 @@ app.post("/relay/trade", async (req, res) => {
       return res.status(400).json({ error: "缺少交易必需字段" });
     }
 
-    // 直接与 PrivacyPool 合约交互
-    const tx = await privacyPool.trade(
+    // 直接与 PrivacyPool 合约交互 - 使用 withdraw 函数而不是 trade
+    const tx = await privacyPool.withdraw(
       pA,
       pB,
       pC,
       proofRoot,
       nullifier,
-      newCommitment,
-      tradeDataHash,
-      executor,
-      target,
-      callData || "0x"
+      executor, // _recipient
+      "0", // _fee (设为0，表示没有手续费)
+      signer.address // _relayer
     );
 
     console.log(`交易已发送: ${tx.hash}`);

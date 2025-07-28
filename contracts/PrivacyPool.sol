@@ -30,6 +30,7 @@ contract PrivacyPool is Ownable {
 
     event Deposit(bytes32 indexed commitment, uint32 leafIndex, uint256 timestamp);
     event Withdrawal(address to, bytes32 nullifier);
+    event Trade(bytes32 indexed nullifier, bytes32 indexed newCommitment, address target, uint256 tradeAmount);
 
     constructor(address _verifier, address _poseidonHasher, address _initialOwner) Ownable(_initialOwner) {
         verifier = IVerifier(_verifier);
@@ -82,6 +83,110 @@ contract PrivacyPool is Ownable {
         }
 
         emit Withdrawal(_recipient, _nullifier);
+    }
+/**
+     * @notice Execute a private trade using ZK-SNARK proof
+     * @param _pA ZK proof parameter A
+     * @param _pB ZK proof parameter B
+     * @param _pC ZK proof parameter C
+     * @param _merkleRoot Merkle root for proof verification
+     * @param _nullifier Nullifier to prevent double-spending
+     * @param _newCommitment New commitment to be added to the tree
+     * @param _tradeAmount Amount to be traded
+     * @param _recipient Recipient address for the trade
+     * @param _tradeDataHash Hash of trade data (recipient + tradeAmount)
+     * @param _target Target contract for the trade execution
+     * @param _callData Call data for the trade execution
+     */
+    function trade(
+        uint[2] calldata _pA,
+        uint[2][2] calldata _pB,
+        uint[2] calldata _pC,
+        bytes32 _merkleRoot,
+        bytes32 _nullifier,
+        bytes32 _newCommitment,
+        uint256 _tradeAmount,
+        address _recipient,
+        bytes32 _tradeDataHash,
+        address _target,
+        bytes calldata _callData
+    ) external {
+        // --- Checks ---
+        _validateTradeInputs(_merkleRoot, _nullifier, _recipient, _tradeAmount, _tradeDataHash);
+        
+        // --- ZK Proof Verification ---
+        _verifyTradeProof(_pA, _pB, _pC, _merkleRoot, _nullifier, _newCommitment, _tradeAmount, _recipient, _tradeDataHash);
+
+        // --- Effects ---
+        nullifiers[_nullifier] = true;
+        _insertLeaf(_newCommitment);
+
+        // --- Interactions ---
+        _executeTradeCall(_target, _callData);
+
+        emit Trade(_nullifier, _newCommitment, _target, _tradeAmount);
+    }
+
+    function _validateTradeInputs(
+        bytes32 _merkleRoot,
+        bytes32 _nullifier,
+        address _recipient,
+        uint256 _tradeAmount,
+        bytes32 _tradeDataHash
+    ) internal view {
+        require(rootHistory[_merkleRoot], "Invalid Merkle root");
+        require(!nullifiers[_nullifier], "Nullifier has been used");
+        
+        bytes32 expectedHash = _calculateTradeDataHash(_recipient, _tradeAmount);
+        require(_tradeDataHash == expectedHash, "Invalid trade data hash");
+    }
+
+    function _verifyTradeProof(
+        uint[2] calldata _pA,
+        uint[2][2] calldata _pB,
+        uint[2] calldata _pC,
+        bytes32 _merkleRoot,
+        bytes32 _nullifier,
+        bytes32 _newCommitment,
+        uint256 _tradeAmount,
+        address _recipient,
+        bytes32 _tradeDataHash
+    ) internal view {
+        uint256 publicInputsHash = _buildTradePublicInputsHash(
+            _merkleRoot, _nullifier, _newCommitment, _tradeAmount, _recipient, _tradeDataHash
+        );
+        uint256[1] memory pubSignals = [publicInputsHash];
+        require(verifier.verifyProof(_pA, _pB, _pC, pubSignals), "Invalid ZK proof");
+    }
+
+    function _buildTradePublicInputsHash(
+        bytes32 _merkleRoot,
+        bytes32 _nullifier,
+        bytes32 _newCommitment,
+        uint256 _tradeAmount,
+        address _recipient,
+        bytes32 _tradeDataHash
+    ) internal view returns (uint256) {
+        uint256[] memory publicSignals = new uint256[](6);
+        publicSignals[0] = uint256(_merkleRoot);
+        publicSignals[1] = uint256(_nullifier);
+        publicSignals[2] = uint256(_newCommitment);
+        publicSignals[3] = _tradeAmount;
+        publicSignals[4] = uint256(uint160(_recipient));
+        publicSignals[5] = uint256(_tradeDataHash);
+        return poseidonHasher.poseidon(publicSignals);
+    }
+
+    function _executeTradeCall(address _target, bytes calldata _callData) internal {
+        (bool success, ) = _target.call(_callData);
+        require(success, "Trade execution failed");
+    }
+
+    function _calculateTradeDataHash(address _recipient, uint256 _tradeAmount) internal view returns (bytes32) {
+        uint256[] memory inputs = new uint256[](2);
+        inputs[0] = uint256(uint160(_recipient));
+        inputs[1] = _tradeAmount;
+        return bytes32(poseidonHasher.poseidon(inputs));
     }
 
     function _insertLeaf(bytes32 _leaf) internal {

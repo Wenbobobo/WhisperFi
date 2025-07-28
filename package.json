@@ -7,7 +7,8 @@
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npx hardhat test",
+    "compile": "npx hardhat compile",
     "compile-circuits": "cross-env NODE_PATH=node_modules/ circom circuits/deposit.circom --r1cs --wasm --output circuits/build/deposit && cross-env NODE_PATH=node_modules/ circom circuits/withdraw.circom --r1cs --wasm --output circuits/build/withdraw && cross-env NODE_PATH=node_modules/ circom circuits/trade.circom --r1cs --wasm --output circuits/build/trade"
   },
   "keywords": [],

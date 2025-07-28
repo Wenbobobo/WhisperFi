@@ -334,24 +334,26 @@ class FlashbotsProvider {
 function createFlashbotsProvider(provider, authSigner, options = {}) {
     // 根据网络自动调整配置
     const networkName = provider.network?.name || 'unknown';
-    
+    let baseOptions = {};
+
     if (networkName === 'localhost' || networkName === 'hardhat') {
         // 本地测试网络配置
-        options = {
+        baseOptions = {
             enabled: false,
             simulationMode: true,
             fallbackToRegular: true,
-            ...options
         };
     } else if (networkName === 'goerli' || networkName === 'sepolia') {
         // 测试网络配置
-        options = {
+        baseOptions = {
             relayUrl: 'https://relay-goerli.flashbots.net',
-            ...options
         };
     }
+
+    // 将基础配置与用户传入的配置合并，用户配置可以覆盖网络默认值
+    const finalOptions = { ...baseOptions, ...options };
     
-    return new FlashbotsProvider(provider, authSigner, options);
+    return new FlashbotsProvider(provider, authSigner, finalOptions);
 }
 
 module.exports = {

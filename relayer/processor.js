@@ -34,10 +34,16 @@ class IntentProcessor {
         
         // 初始化 Flashbots 提供商
         this.flashbotsProvider = createFlashbotsProvider(
-            provider, 
+            provider,
             this.flashbotsSigner,
             options.flashbots || {}
         );
+        
+        // 在 Hardhat 测试环境中强制禁用 Flashbots
+        if (provider.constructor.name === 'HardhatEthersProvider') {
+            console.log('🧪 检测到 Hardhat 环境，强制禁用 Flashbots');
+            this.flashbotsProvider.updateOptions({ enabled: false });
+        }
         
         console.log('🔧 增强版意图处理器已初始化');
         console.log('  - Uniswap 编码器:', this.uniswapEncoder.getSupportedTokens());
@@ -170,8 +176,9 @@ class IntentProcessor {
         }
 
         try {
+            const parsedIntentData = JSON.parse(intent_data);
             // 解析意图数据，决定处理方式
-            const processedResult = await this.processIntentData(intent_data);
+            const processedResult = await this.processIntentData(parsedIntentData);
             
             if (processedResult.success) {
                 // 更新状态为已提交并记录交易哈希
@@ -179,7 +186,15 @@ class IntentProcessor {
                 console.log(`✅ 意图 ${id} 交易已提交: ${processedResult.txHash}`);
                 
                 // 监听交易确认
-                this.monitorTransaction(id, processedResult.txHash);
+                const isHardhatNetwork = this.provider.constructor.name === 'HardhatEthersProvider';
+                
+                if (isHardhatNetwork) {
+                    // 在测试环境中同步等待交易确认
+                    await this.monitorTransaction(id, processedResult.txHash);
+                } else {
+                    // 在生产环境中异步监听
+                    this.monitorTransaction(id, processedResult.txHash);
+                }
                 
                 return { success: true, txHash: processedResult.txHash };
             } else {
@@ -282,7 +297,10 @@ class IntentProcessor {
                 proofRoot: intentData.proofRoot,
                 nullifier: intentData.nullifier,
                 newCommitment: intentData.newCommitment,
-                tradeDataHash: intentData.tradeDataHash
+                tradeDataHash: intentData.tradeDataHash,
+                // 添加交易执行所需的字段
+                tradeAmount: completeTradeData.amountIn,
+                recipient: completeTradeData.recipient
             };
             
             // 4. 执行编码后的交易
@@ -318,22 +336,37 @@ class IntentProcessor {
                 return { success: false, error: '缺少必要的交易参数' };
             }
 
-            // 1. 构建 PrivacyPool 交易
+            // 1. 构建 PrivacyPool 交易 - 使用新的 trade 函数
+            // 提取交易相关参数
+            const { tradeAmount, recipient } = intentData;
+            
+            if (!tradeAmount || !recipient) {
+                return { success: false, error: '缺少交易金额或接收者地址' };
+            }
+
+            // 调试信息：打印传递给合约的关键参数
+            console.log('🔍 调试信息 - 传递给合约的参数:');
+            console.log('  - tradeAmount:', tradeAmount, '(type:', typeof tradeAmount, ')');
+            console.log('  - recipient:', recipient, '(type:', typeof recipient, ')');
+            console.log('  - tradeDataHash:', intentData.tradeDataHash);
+            console.log('  - target:', target);
+
             const privacyPoolTx = {
                 to: this.privacyPool.target,
                 data: this.privacyPool.interface.encodeFunctionData('trade', [
-                    pA,
-                    pB,
-                    pC,
-                    proofRoot,
-                    nullifier,
-                    newCommitment,
-                    tradeDataHash,
-                    executor || this.flashbotsSigner.address,
-                    target,
-                    callData || "0x"
+                    pA,                    // _pA
+                    pB,                    // _pB
+                    pC,                    // _pC
+                    proofRoot,             // _merkleRoot
+                    nullifier,             // _nullifier
+                    newCommitment,         // _newCommitment
+                    tradeAmount,           // _tradeAmount
+                    recipient,             // _recipient
+                    intentData.tradeDataHash, // 确保使用 intentData 中的哈希
+                    target,                // _target
+                    callData               // _callData
                 ]),
-                value: intentData.value || "0",
+                value: "0", // trade 函数不是 payable 的
                 gasLimit: ethers.parseUnits("500000", "wei"), // 设置较高的 gas limit
             };
 
@@ -371,17 +404,39 @@ class IntentProcessor {
         try {
             console.log(`👀 开始监听交易: ${txHash}`);
             
-            // 等待交易确认
-            const receipt = await this.provider.waitForTransaction(txHash);
+            // 检测是否在 Hardhat 测试环境中
+            const isHardhatNetwork = this.provider.constructor.name === 'HardhatEthersProvider';
             
-            if (receipt && receipt.status === 1) {
-                // 交易成功确认
-                await updateIntentStatus(intentId, 'confirmed');
-                console.log(`🎉 意图 ${intentId} 交易确认成功`);
+            if (isHardhatNetwork) {
+                // 在 Hardhat 环境中，直接检查交易收据而不等待
+                console.log('🧪 检测到 Hardhat 环境，使用同步方式检查交易状态');
+                
+                try {
+                    const receipt = await this.provider.getTransactionReceipt(txHash);
+                    if (receipt && receipt.status === 1) {
+                        await updateIntentStatus(intentId, 'confirmed');
+                        console.log(`🎉 意图 ${intentId} 交易确认成功`);
+                    } else if (receipt && receipt.status === 0) {
+                        await updateIntentStatus(intentId, 'failed');
+                        console.log(`💥 意图 ${intentId} 交易确认失败`);
+                    } else {
+                        console.log(`⏳ 意图 ${intentId} 交易仍在处理中`);
+                        // 保持 submitted 状态
+                    }
+                } catch (receiptError) {
+                    console.log(`⏳ 意图 ${intentId} 交易收据暂未可用，保持 submitted 状态`);
+                }
             } else {
-                // 交易失败
-                await updateIntentStatus(intentId, 'failed');
-                console.log(`💥 意图 ${intentId} 交易确认失败`);
+                // 在真实网络中，使用 waitForTransaction
+                const receipt = await this.provider.waitForTransaction(txHash);
+                
+                if (receipt && receipt.status === 1) {
+                    await updateIntentStatus(intentId, 'confirmed');
+                    console.log(`🎉 意图 ${intentId} 交易确认成功`);
+                } else {
+                    await updateIntentStatus(intentId, 'failed');
+                    console.log(`💥 意图 ${intentId} 交易确认失败`);
+                }
             }
             
         } catch (error) {

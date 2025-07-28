@@ -198,6 +198,20 @@ async function incrementRetryCount(intentId) {
 }
 
 /**
+ * 清理所有意图数据（仅用于测试）
+ * @returns {Promise<void>}
+ */
+async function clearAllIntents() {
+    try {
+        await db('intents').del();
+        console.log('🧹 测试数据库已清理');
+    } catch (error) {
+        console.error('❌ 清理数据库失败:', error);
+        throw error;
+    }
+}
+
+/**
  * 生成唯一的意图 ID (简单的 UUID 实现)
  * @returns {string} 唯一标识符
  */
@@ -213,5 +227,6 @@ module.exports = {
     updateIntentStatus,
     updateIntentWithTxHash,
     incrementRetryCount,
-    generateIntentId
+    generateIntentId,
+    clearAllIntents
 };

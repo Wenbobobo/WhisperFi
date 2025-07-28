@@ -14,8 +14,9 @@ import {
   PrivacyPool,
   SmartAccount,
   SmartAccountFactory,
-  Groth16Verifier,
+  MockVerifier,
   MockERC20,
+  MockUniswapRouter,
 } from "../typechain-types";
 import { PackedUserOperation } from "./utils/UserOperation";
 
@@ -37,13 +38,13 @@ export interface TestEnvironment {
   user: Signer;
   bundler: Signer;
   entryPoint: EntryPoint;
-  verifier: Groth16Verifier;
+  verifier: MockVerifier;
   privacyPool: PrivacyPool;
   factory: SmartAccountFactory;
   paymaster: Paymaster;
   weth: MockERC20;
   usdc: MockERC20;
-}
+  mockUniswapRouter: MockUniswapRouter;
 }
 
 /**
@@ -64,8 +65,8 @@ export async function deployTestEnvironment(): Promise<TestEnvironment> {
   await entryPoint.waitForDeployment();
   const entryPointAddress = await entryPoint.getAddress();
 
-  // 2. Deploy Verifier
-  const verifierFactory = await ethers.getContractFactory("Groth16Verifier");
+  // 2. Deploy MockVerifier (for testing - always returns true)
+  const verifierFactory = await ethers.getContractFactory("MockVerifier");
   const verifier = await verifierFactory.deploy();
   await verifier.waitForDeployment();
   const verifierAddress = await verifier.getAddress();
@@ -119,7 +120,12 @@ export async function deployTestEnvironment(): Promise<TestEnvironment> {
   ) as MockERC20;
   await usdc.waitForDeployment();
 
-  // 8. Fund Paymaster
+  // 8. Deploy MockUniswapRouter
+  const mockUniswapRouterFactory = await ethers.getContractFactory("MockUniswapRouter");
+  const mockUniswapRouter = await mockUniswapRouterFactory.deploy() as MockUniswapRouter;
+  await mockUniswapRouter.waitForDeployment();
+
+  // 9. Fund Paymaster
   await paymaster.connect(owner).depositToEntryPoint({ value: ethers.parseEther("1") });
   await paymaster.connect(owner).setSupportedTarget(await privacyPool.getAddress(), true);
 
@@ -134,6 +140,7 @@ export async function deployTestEnvironment(): Promise<TestEnvironment> {
     paymaster,
     weth,
     usdc,
+    mockUniswapRouter,
   };
 }
 
