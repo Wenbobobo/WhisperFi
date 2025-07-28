@@ -10,12 +10,12 @@ This is the simplest circuit in our protocol. Its purpose is to take a user's pr
 
 **Inputs:**
 
--   `secret` (private): A random, secret number known only to the user.
--   `amount` (private): The amount of the deposit.
+- `secret` (private): A random, secret number known only to the user.
+- `amount` (private): The amount of the deposit.
 
 **Output:**
 
--   `commitment` (public): The hash of the `secret` and `amount`.
+- `commitment` (public): The hash of the `secret` and `amount`.
 
 **Logic:**
 
@@ -29,11 +29,11 @@ This circuit is used to prove that a user has the right to withdraw a specific a
 
 **Inputs:**
 
--   `secret` (private): The secret of the note.
--   `amount` (private): The amount of the note.
--   `merklePath` (private): The path to prove the note's inclusion in the Merkle tree.
--   `merkleRoot` (public): The root of the Merkle tree.
--   `nullifier` (public): The nullifier of the note, to prevent double-spending.
+- `secret` (private): The secret of the note.
+- `amount` (private): The amount of the note.
+- `merklePath` (private): The path to prove the note's inclusion in the Merkle tree.
+- `merkleRoot` (public): The root of the Merkle tree.
+- `nullifier` (public): The nullifier of the note, to prevent double-spending.
 
 **Logic:**
 
@@ -46,22 +46,22 @@ This circuit is used to prove that a user has the right to withdraw a specific a
 
 This is the most complex circuit in our protocol. It is used to prove that a user has the right to spend a note from the privacy pool to execute a trade. It is similar to the `withdraw` circuit, but with a few key differences:
 
--   **It consumes one old note and creates a new change note.**
--   **It authorizes a specific trade.**
+- **It consumes one old note and creates a new change note.**
+- **It authorizes a specific trade.**
 
 **Inputs:**
 
--   `oldSecret` (private): The secret of the note being spent.
--   `oldAmount` (private): The amount of the note being spent.
--   `merklePath` (private): The path to prove the old note's inclusion in the Merkle tree.
--   `newSecret` (private): The secret of the new change note.
--   `newAmount` (private): The amount of the new change note.
--   `merkleRoot` (public): The root of the Merkle tree.
--   `nullifier` (public): The nullifier of the old note.
--   `newCommitment` (public): The commitment of the new change note.
--   `tradeAmount` (public): The amount being sent out for the trade.
--   `recipient` (public): The public address receiving the trade amount.
--   `tradeDataHash` (public): A hash of the trade details.
+- `oldSecret` (private): The secret of the note being spent.
+- `oldAmount` (private): The amount of the note being spent.
+- `merklePath` (private): The path to prove the old note's inclusion in the Merkle tree.
+- `newSecret` (private): The secret of the new change note.
+- `newAmount` (private): The amount of the new change note.
+- `merkleRoot` (public): The root of the Merkle tree.
+- `nullifier` (public): The nullifier of the old note.
+- `newCommitment` (public): The commitment of the new change note.
+- `tradeAmount` (public): The amount being sent out for the trade.
+- `recipient` (public): The public address receiving the trade amount.
+- `tradeDataHash` (public): A hash of the trade details.
 
 **Logic:**
 

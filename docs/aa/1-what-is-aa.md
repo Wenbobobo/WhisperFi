@@ -10,9 +10,9 @@
 
 - **单一故障点**: EOA 的所有权完全由一个私钥控制。一旦私钥丢失或被盗，所有资产将永久丢失，无法恢复。
 - **僵化的验证逻辑**: EOA 交易的有效性验证被硬编码在协议层：一个有效的 ECDSA 签名。这排除了多重签名、社交恢复或更高级的签名算法（如抗量子签名）的可能性。
-- **糟糕的用户体验 (UX)**: 用户必须持有 ETH 来支付 Gas 费，并且每次操作都需要手动签名。这对于习惯了 Web2 应用的普通用户来说��是一个巨大的认知和使用门槛。
+- **糟糕的用户体验 (UX)**: 用户必须持有 ETH 来支付 Gas 费，并且每次操作都需要手动签名。这对于习惯了 Web2 应用的普通用户来说 �� 是一个巨大的认知和使用门槛。
 
---- 
+---
 
 ## 2. 设计哲学：在应用层实现协议级功能
 
@@ -22,7 +22,7 @@ ERC-4337 的天才之处在于，它在**应用层**构建了一个独立的、�
 
 - **核心思想**: 将交易的**验证**（“这个操作是否有效？”）与**执行**（“这个操作具体做什么？”）分离开来。用户的智能合约账户（Smart Account）可以自定义验证逻辑，而无需修改核心协议。
 
---- 
+---
 
 ## 3. 核心组件深度解析
 
@@ -51,12 +51,12 @@ struct PackedUserOperation {
 其内部执行流程大致如下：
 
 1.  **验证阶段 (Validation Loop)**:
-    *   对每个 `UserOp`，调用其 `sender`（智能合约账户）的 `validateUserOp` 函数。
-    *   `validateUserOp` 会验证 `userOp.signature` 是否有效，并检查账户是否有足够的资金支付 Gas。
-    *   如果 `paymasterAndData` 存在，`EntryPoint` 会调用 `Paymaster` 的 `validatePaymasterUserOp` 函数，来确认是否赞助这笔交易。
+    - 对每个 `UserOp`，调用其 `sender`（智能合约账户）的 `validateUserOp` 函数。
+    - `validateUserOp` 会验证 `userOp.signature` 是否有效，并检查账户是否有足够的资金支付 Gas。
+    - 如果 `paymasterAndData` 存在，`EntryPoint` 会调用 `Paymaster` 的 `validatePaymasterUserOp` 函数，来确认是否赞助这笔交易。
 2.  **执行阶段 (Execution Loop)**:
-    *   对每个已通过验证的 `UserOp`，调用其 `sender` 的 `execute` 函数（或其他自定义函数），并传入 `userOp.callData`。
-    *   ���是实际执行用户意图的地方（例如，一次 DEX 交换或一次 `deposit`）。
+    - 对每个已通过验证的 `UserOp`，调用其 `sender` 的 `execute` 函数（或其他自定义函数），并传入 `userOp.callData`。
+    - ��� 是实际执行用户意图的地方（例如，一次 DEX 交换或一次 `deposit`）。
 3.  **Gas 补偿**: 在执行结束后，`EntryPoint` 会精确计算每个操作消耗的 Gas，并从智能合约账户或 `Paymaster` 的质押中扣除费用，以补偿 `Bundler`。
 
 ### Bundler：无需许可的执行者
@@ -76,7 +76,7 @@ Bundler 是一个链下的、无需许可的节点。任何人都可以运行一
 - **会话密钥 (Session Keys)**: 可以授权一个临时的密钥，在一定时间内（如 24 小时）执行特定类型的操作（如玩游戏），而无需每次都主密钥签名。
 - **插件化**: 账户可以设计成可升级的，允许用户添加新的验证模块或功能。
 
---- 
+---
 
 ## 4. Gas 抽象：超越 ETH
 

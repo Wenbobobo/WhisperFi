@@ -178,14 +178,25 @@ contract PrivacyPool is Ownable {
     }
 
     function _executeTradeCall(address _target, bytes calldata _callData) internal {
-        (bool success, ) = _target.call(_callData);
-        require(success, "Trade execution failed");
+        (bool success, bytes memory returnData) = _target.call(_callData);
+        if (!success) {
+            if (returnData.length > 0) {
+                // Decode and propagate the specific error message
+                assembly {
+                    let returndata_size := mload(returnData)
+                    revert(add(32, returnData), returndata_size)
+                }
+            } else {
+                revert("Trade execution failed");
+            }
+        }
     }
 
     function _calculateTradeDataHash(address _recipient, uint256 _tradeAmount) internal view returns (bytes32) {
         uint256[] memory inputs = new uint256[](2);
         inputs[0] = uint256(uint160(_recipient));
         inputs[1] = _tradeAmount;
+        
         return bytes32(poseidonHasher.poseidon(inputs));
     }
 

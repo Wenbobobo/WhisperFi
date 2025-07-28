@@ -5,10 +5,13 @@ const path = require("path");
 
 async function main() {
   console.log("🚀 Starting complete deployment and test...");
-  
+
   const [deployer] = await ethers.getSigners();
   console.log("Deploying contracts with account:", deployer.address);
-  console.log("Account balance:", ethers.formatEther(await deployer.provider.getBalance(deployer.address)));
+  console.log(
+    "Account balance:",
+    ethers.formatEther(await deployer.provider.getBalance(deployer.address))
+  );
 
   // 1. Deploy Verifier
   console.log("\n📝 Deploying Verifier...");
@@ -30,7 +33,11 @@ async function main() {
   console.log("\n📝 Deploying PrivacyPool...");
   const zeroValue = ethers.encodeBytes32String("zero");
   const PrivacyPool = await ethers.getContractFactory("PrivacyPool");
-  const privacyPool = await PrivacyPool.deploy(verifierAddress, zeroValue, deployer.address);
+  const privacyPool = await PrivacyPool.deploy(
+    verifierAddress,
+    zeroValue,
+    deployer.address
+  );
   await privacyPool.waitForDeployment();
   const privacyPoolAddress = await privacyPool.getAddress();
   console.log("✅ PrivacyPool deployed to:", privacyPoolAddress);
@@ -51,33 +58,40 @@ export const DEPLOYMENT_INFO = {
 };
 `;
 
-  const frontendConfigPath = path.join(__dirname, "..", "frontend", "src", "config", "contracts.ts");
+  const frontendConfigPath = path.join(
+    __dirname,
+    "..",
+    "frontend",
+    "src",
+    "config",
+    "contracts.ts"
+  );
   const configDir = path.dirname(frontendConfigPath);
-  
+
   // Create config directory if it doesn't exist
   if (!fs.existsSync(configDir)) {
     fs.mkdirSync(configDir, { recursive: true });
   }
-  
+
   fs.writeFileSync(frontendConfigPath, configContent);
   console.log("✅ Frontend configuration updated:", frontendConfigPath);
 
   // 5. Test deposit with the same logic as frontend
   console.log("\n🔄 Testing deposit with frontend logic...");
-  
+
   // Import Poseidon for testing
   const { buildPoseidon } = require("circomlibjs");
   const poseidon = await buildPoseidon();
-  
+
   function hexToBigInt(hex) {
     return BigInt(hex);
   }
-  
+
   function poseidonHash(inputs) {
     const hash = poseidon(inputs);
-    return '0x' + poseidon.F.toObject(hash).toString(16).padStart(64, '0');
+    return "0x" + poseidon.F.toObject(hash).toString(16).padStart(64, "0");
   }
-  
+
   function generateCommitment(secret, nullifier) {
     const secretBigInt = hexToBigInt(secret);
     const nullifierBigInt = hexToBigInt(nullifier);
@@ -87,9 +101,11 @@ export const DEPLOYMENT_INFO = {
   // Use the same secret as frontend test
   const secretNote = "test-deposit-123";
   const secretHash = ethers.keccak256(ethers.toUtf8Bytes(secretNote));
-  const nullifier = ethers.keccak256(ethers.toUtf8Bytes(`nullifier-${secretNote}`));
+  const nullifier = ethers.keccak256(
+    ethers.toUtf8Bytes(`nullifier-${secretNote}`)
+  );
   const commitment = generateCommitment(secretHash, nullifier);
-  
+
   console.log("Test deposit details:");
   console.log("  Secret note:", secretNote);
   console.log("  Secret hash:", secretHash);
@@ -99,26 +115,28 @@ export const DEPLOYMENT_INFO = {
   // Make deposit
   const depositAmount = await privacyPool.DEPOSIT_AMOUNT();
   console.log("  Deposit amount:", ethers.formatEther(depositAmount), "ETH");
-  
+
   const tx = await privacyPool.deposit(commitment, { value: depositAmount });
   const receipt = await tx.wait();
-  
+
   console.log("✅ Deposit successful!");
   console.log("  Transaction hash:", receipt.hash);
   console.log("  Block number:", receipt.blockNumber);
 
   // 6. Verify the deposit can be found
   console.log("\n🔍 Verifying deposit can be found...");
-  const depositEvents = await privacyPool.queryFilter(privacyPool.filters.Deposit());
+  const depositEvents = await privacyPool.queryFilter(
+    privacyPool.filters.Deposit()
+  );
   console.log("Found", depositEvents.length, "deposit events:");
-  
+
   depositEvents.forEach((event, index) => {
     console.log(`  Event ${index}:`, event.args.commitment);
   });
-  
-  const commitments = depositEvents.map(event => event.args.commitment);
-  const foundIndex = commitments.findIndex(c => c === commitment);
-  
+
+  const commitments = depositEvents.map((event) => event.args.commitment);
+  const foundIndex = commitments.findIndex((c) => c === commitment);
+
   if (foundIndex >= 0) {
     console.log("✅ Commitment found at index:", foundIndex);
   } else {
@@ -128,14 +146,16 @@ export const DEPLOYMENT_INFO = {
   // 7. Output frontend test instructions
   console.log("\n📋 Frontend Test Instructions:");
   console.log("1. Start Hardhat network: npx hardhat node");
-  console.log("2. In another terminal, start frontend: cd frontend && npm run dev");
+  console.log(
+    "2. In another terminal, start frontend: cd frontend && npm run dev"
+  );
   console.log("3. Connect MetaMask to localhost:8545");
   console.log("4. Import this account to MetaMask:");
   console.log("   Address:", deployer.address);
   console.log("   Private key: (check Hardhat node output)");
   console.log("5. Test deposit with secret:", secretNote);
   console.log("6. Test withdrawal with the same secret");
-  
+
   console.log("\n🎉 Deployment and setup complete!");
 }
 

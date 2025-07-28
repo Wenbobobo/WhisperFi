@@ -49,14 +49,15 @@ cd frontend && npm run dev
 如果您是首次设置，或 MetaMask 中的网络信息已丢失，请按照以下步骤操作：
 
 1.  **添加 Hardhat 网络**:
-    *   **Network Name**: `Hardhat Local`
-    *   **RPC URL**: `http://127.0.0.1:8545`
-    *   **Chain ID**: `31337`
-    *   **Currency Symbol**: `ETH`
+
+    - **Network Name**: `Hardhat Local`
+    - **RPC URL**: `http://127.0.0.1:8545`
+    - **Chain ID**: `31337`
+    - **Currency Symbol**: `ETH`
 
 2.  **导入测试账户**:
-    *   切换到 `Hardhat Local` 网络。
-    *   使用 `Account #0` 的私钥 (`0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`) 导入一个新账户。
+    - 切换到 `Hardhat Local` 网络。
+    - 使用 `Account #0` 的私钥 (`0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`) 导入一个新账户。
 
 ---
 

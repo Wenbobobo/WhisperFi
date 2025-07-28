@@ -1,16 +1,16 @@
-const fs = require('fs');
-const path = require('path');
-const { poseidonContract } = require('circomlibjs');
+const fs = require("fs");
+const path = require("path");
+const { poseidonContract } = require("circomlibjs");
 
 async function generatePoseidonContract() {
-    try {
-        console.log('生成真正的Poseidon合约...');
-        
-        // 生成Poseidon合约的ABI和字节码
-        const poseidon = await poseidonContract.createCode(2);
-        
-        // 创建一个包装合约，使用内联汇编来部署和调用Poseidon
-        const contractCode = `// SPDX-License-Identifier: MIT
+  try {
+    console.log("生成真正的Poseidon合约...");
+
+    // 生成Poseidon合约的ABI和字节码
+    const poseidon = await poseidonContract.createCode(2);
+
+    // 创建一个包装合约，使用内联汇编来部署和调用Poseidon
+    const contractCode = `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
 /**
@@ -70,97 +70,106 @@ contract PoseidonHasher {
     }
 }`;
 
-        // 保存合约文件
-        const contractPath = path.join(__dirname, 'contracts', 'PoseidonHasher.sol');
-        fs.writeFileSync(contractPath, contractCode);
-        console.log('✅ Poseidon合约已生成:', contractPath);
+    // 保存合约文件
+    const contractPath = path.join(
+      __dirname,
+      "contracts",
+      "PoseidonHasher.sol"
+    );
+    fs.writeFileSync(contractPath, contractCode);
+    console.log("✅ Poseidon合约已生成:", contractPath);
 
-        // 生成ABI文件
-        const abi = [
-            {
-                "inputs": [],
-                "stateMutability": "nonpayable",
-                "type": "constructor"
-            },
-            {
-                "inputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "nullifier",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "secret",
-                        "type": "uint256"
-                    }
-                ],
-                "name": "calculateCommitment",
-                "outputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {
-                        "internalType": "uint256[]",
-                        "name": "input",
-                        "type": "uint256[]"
-                    }
-                ],
-                "name": "poseidon",
-                "outputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "a",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "b",
-                        "type": "uint256"
-                    }
-                ],
-                "name": "poseidon",
-                "outputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            }
-        ];
+    // 生成ABI文件
+    const abi = [
+      {
+        inputs: [],
+        stateMutability: "nonpayable",
+        type: "constructor",
+      },
+      {
+        inputs: [
+          {
+            internalType: "uint256",
+            name: "nullifier",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "secret",
+            type: "uint256",
+          },
+        ],
+        name: "calculateCommitment",
+        outputs: [
+          {
+            internalType: "uint256",
+            name: "",
+            type: "uint256",
+          },
+        ],
+        stateMutability: "view",
+        type: "function",
+      },
+      {
+        inputs: [
+          {
+            internalType: "uint256[]",
+            name: "input",
+            type: "uint256[]",
+          },
+        ],
+        name: "poseidon",
+        outputs: [
+          {
+            internalType: "uint256",
+            name: "",
+            type: "uint256",
+          },
+        ],
+        stateMutability: "view",
+        type: "function",
+      },
+      {
+        inputs: [
+          {
+            internalType: "uint256",
+            name: "a",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "b",
+            type: "uint256",
+          },
+        ],
+        name: "poseidon",
+        outputs: [
+          {
+            internalType: "uint256",
+            name: "",
+            type: "uint256",
+          },
+        ],
+        stateMutability: "view",
+        type: "function",
+      },
+    ];
 
-        const abiPath = path.join(__dirname, 'frontend', 'src', 'abi', 'PoseidonHasher.json');
-        fs.writeFileSync(abiPath, JSON.stringify(abi, null, 2));
-        console.log('✅ ABI文件已生成:', abiPath);
+    const abiPath = path.join(
+      __dirname,
+      "frontend",
+      "src",
+      "abi",
+      "PoseidonHasher.json"
+    );
+    fs.writeFileSync(abiPath, JSON.stringify(abi, null, 2));
+    console.log("✅ ABI文件已生成:", abiPath);
 
-        console.log('🎉 Poseidon合约生成完成！');
-        
-    } catch (error) {
-        console.error('❌ 生成Poseidon合约失败:', error);
-        process.exit(1);
-    }
+    console.log("🎉 Poseidon合约生成完成！");
+  } catch (error) {
+    console.error("❌ 生成Poseidon合约失败:", error);
+    process.exit(1);
+  }
 }
 
 generatePoseidonContract();

@@ -15,7 +15,7 @@ describe("Executor", function () {
     env = await loadFixture(deployTestEnvironment);
     owner = env.owner;
     notOwner = env.user; // Use 'user' as the non-owner for tests
-    
+
     // The Executor contract is not part of the standard TestEnvironment.
     // We need to deploy it separately for this test suite.
     const executorFactory = await ethers.getContractFactory("Executor");
@@ -30,14 +30,15 @@ describe("Executor", function () {
   it("should not allow non-owner to execute", async function () {
     const target = await owner.getAddress();
     const callData = "0x";
-    await expect(
-      executor.connect(notOwner).execute(target, callData)
-    ).to.be.revertedWithCustomError(executor, "OwnableUnauthorizedAccount").withArgs(await notOwner.getAddress());
+    await expect(executor.connect(notOwner).execute(target, callData))
+      .to.be.revertedWithCustomError(executor, "OwnableUnauthorizedAccount")
+      .withArgs(await notOwner.getAddress());
   });
 
   it("should allow owner to execute", async function () {
     const target = await owner.getAddress();
     const callData = "0x";
-    await expect(executor.connect(owner).execute(target, callData)).to.not.be.reverted;
+    await expect(executor.connect(owner).execute(target, callData)).to.not.be
+      .reverted;
   });
 });

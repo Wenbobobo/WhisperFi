@@ -5,31 +5,31 @@
 ### 1.1. `PrivacyPool.sol`
 
 - **`deposit()`**
-    - It should correctly add a new commitment to the Merkle tree.
-    - It should correctly update the Merkle root.
-    - It should emit a `Deposit` event with the correct parameters.
-    - It should revert if the Merkle tree is full.
+  - It should correctly add a new commitment to the Merkle tree.
+  - It should correctly update the Merkle root.
+  - It should emit a `Deposit` event with the correct parameters.
+  - It should revert if the Merkle tree is full.
 - **`withdraw()`**
-    - It should correctly verify a valid proof.
-    - It should correctly transfer the funds to the recipient.
-    - It should correctly mark the nullifier as used.
-    - It should emit a `Withdrawal` event with the correct parameters.
-    - It should revert if the nullifier has already been used.
-    - It should revert if the proof is invalid.
+  - It should correctly verify a valid proof.
+  - It should correctly transfer the funds to the recipient.
+  - It should correctly mark the nullifier as used.
+  - It should emit a `Withdrawal` event with the correct parameters.
+  - It should revert if the nullifier has already been used.
+  - It should revert if the proof is invalid.
 - **`trade()`**
-    - It should correctly verify a valid proof.
-    - It should correctly mark the nullifier as used.
-    - It should correctly add the new commitment to the Merkle tree.
-    - It should emit a `Trade` event with the correct parameters.
-    - It should revert if the nullifier has already been used.
-    - It should revert if the proof is invalid.
+  - It should correctly verify a valid proof.
+  - It should correctly mark the nullifier as used.
+  - It should correctly add the new commitment to the Merkle tree.
+  - It should emit a `Trade` event with the correct parameters.
+  - It should revert if the nullifier has already been used.
+  - It should revert if the proof is invalid.
 
 ### 1.2. `Executor.sol`
 
 - **`execute()`**
-    - It should correctly execute a call to an external contract.
-    - It should only be callable by the owner.
-    - It should revert if the external call fails.
+  - It should correctly execute a call to an external contract.
+  - It should only be callable by the owner.
+  - It should revert if the external call fails.
 
 ## 2. Integration Tests
 

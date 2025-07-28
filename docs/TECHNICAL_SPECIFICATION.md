@@ -17,6 +17,7 @@
 ### 2.1 功能模块：匿名资金池 (Privacy Pool)
 
 #### 2.1.1 子功能：存款 (Deposit)
+
 - **用户故事**: 作为用户，我希望在点击存款时，系统能为我生成一个安全的、唯一的凭证，并用它来存入固定数额的资金，以便我之后可以使用这个凭证来取回或使用我的资金。
 - **预期功能**:
   1. 前端不设输入框，点击“存款”按钮即开始流程。
@@ -28,11 +29,12 @@
 - **对应接口**:
   - `Crypto.ts`: `generateNote(): string`, `parseNote(string): {secret, nullifier}`, `generateCommitment(string, string): string`
   - `PrivacyPool.sol`: `deposit(bytes32 _commitment) payable`
-- **历史遗留问题与防范**: 
+- **历史遗留问题与防范**:
   - **问题点**: 前端 `commitment` 计算逻辑与 ZK 电路不一致。
   - **防范措施**: `crypto.test.ts` 单元测试套件，使用预计算的、确定的值来验证 `generateCommitment` 的输出，确保其与电路的 `Poseidon(secret, amount)` 逻辑绝对一致。
 
 #### 2.1.2 子功能：取款 (Withdraw)
+
 - **用户故事**: 作为用户，我希望提供我之前保存的凭证，系统能够验证它的有效性，并允许我将资金取回到我指定的地址。
 - **预期功能**:
   1. 用户在输入框中粘贴完整的凭证字符串。
@@ -46,7 +48,7 @@
   - `Crypto.ts`: `generateNullifierHash(string): string`
   - `PrivacyPool.sol`: `withdraw(uint[2] a, uint[2][2] b, uint[2] c, bytes32 root, bytes32 nullifierHash, address recipient, uint256 amount)`
   - `ZK Circuit (withdraw.circom)`: `secret`, `amount`, `pathElements`, `pathIndices`, `merkleRoot`, `nullifier`
-- **历史遗留问题与防范**: 
+- **历史遗留问题与防范**:
   - **问题点 1**: 前端 Merkle 树的哈希逻辑与链上及电路不一致。
   - **防范措施 1**: 在前端构建 `MerkleTree` 实例时，必须显式传入一个与链上 `PoseidonMerkleTree.sol` 完全一致的、固定顺序的 `(left, right) => poseidon([left, right])` 哈希函数。
   - **问题点 2**: ZK 电路所需的 `.wasm` 和 `.zkey` 文件未能正确加载到前端。
@@ -55,6 +57,7 @@
 ### 2.2 功能模块：账户抽象 (Account Abstraction)
 
 #### 2.2.1 子功能：智能账户工厂
+
 - **用户故事**: 作为开发者/高级用户，我希望能通过一个工厂合约，以可预测的地址，为用户创建智能合约钱包。
 - **预期功能**:
   1. 工厂合约可以根据 `owner` 和 `salt`，预先计算出智能账户的地址。
@@ -62,11 +65,11 @@
 - **技术实现备忘**: `✅ 已完成` 最终实现与预期功能完全一致。核心在于 `SmartAccountFactory.sol` 中的 `getAccountAddress` 函数，它使用了正确的 `CREATE2` 地址计算逻辑。
 - **对应接口**:
   - `SmartAccountFactory.sol`: `getAccountAddress(address _owner, uint256 _salt) returns (address)`, `createAccount(address _owner, uint256 _salt) returns (address)`
-- **历史遗留问题与防范**: 
+- **历史遗留问题与防范**:
   - **问题点**: `CREATE2` 地址的链上计算逻辑与链下 `ethers.getCreate2Address` 的计算逻辑存在细微差别。
   - **防范措施**: `SmartAccountFactory.test.ts` 必须包含一个测试用例，该用例同时使用合约的 `getAccountAddress` 函数和 JS 的 `getCreate2Address` 函数来计算地址，并断言两者相等。
 
---- 
+---
 
 ## 第三部分：开发计划与状态
 

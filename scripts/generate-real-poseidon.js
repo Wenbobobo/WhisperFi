@@ -3,20 +3,20 @@
  * 这个脚本使用circomlibjs生成与前端完全兼容的Poseidon实现
  */
 
-const { poseidonContract } = require('circomlibjs');
-const fs = require('fs');
-const path = require('path');
+const { poseidonContract } = require("circomlibjs");
+const fs = require("fs");
+const path = require("path");
 
 async function main() {
-    console.log('🔧 正在生成真正的Poseidon合约...');
-    
-    try {
-        // 生成支持2个输入的Poseidon合约字节码
-        const poseidonBytecode = poseidonContract.createCode(2);
-        console.log('✅ 成功生成Poseidon合约字节码');
-        
-        // 创建完整的Solidity合约，包含预编译的Poseidon库
-        const fullContractCode = `// SPDX-License-Identifier: MIT
+  console.log("🔧 正在生成真正的Poseidon合约...");
+
+  try {
+    // 生成支持2个输入的Poseidon合约字节码
+    const poseidonBytecode = poseidonContract.createCode(2);
+    console.log("✅ 成功生成Poseidon合约字节码");
+
+    // 创建完整的Solidity合约，包含预编译的Poseidon库
+    const fullContractCode = `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
 /**
@@ -82,37 +82,36 @@ contract PoseidonHasher is IPoseidonHasher {
 }
 `;
 
-        // 写入合约文件
-        const contractsDir = path.join(process.cwd(), 'contracts');
-        const outputPath = path.join(contractsDir, 'PoseidonHasher.sol');
-        fs.writeFileSync(outputPath, fullContractCode);
-        
-        console.log(`✅ 真正的Poseidon合约已生成: ${outputPath}`);
-        
-        // 生成ABI
-        const abi = poseidonContract.generateABI(2);
-        const abiDir = path.join(process.cwd(), 'frontend', 'src', 'abi');
-        if (!fs.existsSync(abiDir)) {
-            fs.mkdirSync(abiDir, { recursive: true });
-        }
-        const abiPath = path.join(abiDir, 'PoseidonHasher.json');
-        fs.writeFileSync(abiPath, JSON.stringify(abi, null, 2));
-        
-        console.log(`✅ ABI文件已生成: ${abiPath}`);
-        
-    } catch (error) {
-        console.error('❌ 生成Poseidon合约时出错:', error);
-        throw error;
+    // 写入合约文件
+    const contractsDir = path.join(process.cwd(), "contracts");
+    const outputPath = path.join(contractsDir, "PoseidonHasher.sol");
+    fs.writeFileSync(outputPath, fullContractCode);
+
+    console.log(`✅ 真正的Poseidon合约已生成: ${outputPath}`);
+
+    // 生成ABI
+    const abi = poseidonContract.generateABI(2);
+    const abiDir = path.join(process.cwd(), "frontend", "src", "abi");
+    if (!fs.existsSync(abiDir)) {
+      fs.mkdirSync(abiDir, { recursive: true });
     }
+    const abiPath = path.join(abiDir, "PoseidonHasher.json");
+    fs.writeFileSync(abiPath, JSON.stringify(abi, null, 2));
+
+    console.log(`✅ ABI文件已生成: ${abiPath}`);
+  } catch (error) {
+    console.error("❌ 生成Poseidon合约时出错:", error);
+    throw error;
+  }
 }
 
 if (require.main === module) {
-    main()
-        .then(() => console.log('🎉 真正的Poseidon合约生成完成！'))
-        .catch(error => {
-            console.error('💥 生成失败:', error);
-            process.exit(1);
-        });
+  main()
+    .then(() => console.log("🎉 真正的Poseidon合约生成完成！"))
+    .catch((error) => {
+      console.error("💥 生成失败:", error);
+      process.exit(1);
+    });
 }
 
 module.exports = { generateRealPoseidonContract: main };

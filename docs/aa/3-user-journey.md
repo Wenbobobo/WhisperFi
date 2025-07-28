@@ -6,22 +6,22 @@ Now that we have a solid understanding of the ERC-4337 standard, let's take a cl
 
 ### 1. Onboarding
 
--   **Standard EOA:** The user starts with a standard EOA, such as MetaMask. This is the wallet they will use to interact with our protocol.
--   **Smart Contract Wallet (Optional):** The user has the option to create a new Smart Contract Wallet. This can be done at any time, and it will give them access to the full benefits of AA for their other on-chain activities.
+- **Standard EOA:** The user starts with a standard EOA, such as MetaMask. This is the wallet they will use to interact with our protocol.
+- **Smart Contract Wallet (Optional):** The user has the option to create a new Smart Contract Wallet. This can be done at any time, and it will give them access to the full benefits of AA for their other on-chain activities.
 
 ### 2. Depositing Funds
 
--   The user deposits funds into our privacy pool from their EOA. This is a standard transaction that is visible on-chain.
--   The user's funds are now held in the privacy pool, and they are associated with a private note that is only known to the user.
+- The user deposits funds into our privacy pool from their EOA. This is a standard transaction that is visible on-chain.
+- The user's funds are now held in the privacy pool, and they are associated with a private note that is only known to the user.
 
 ### 3. Executing a Trade
 
--   **High-Value, Sensitive Trades:** For high-value, sensitive trades, the user will use our core relayer-based model. This will ensure that their transaction is protected from MEV and that their privacy is preserved.
--   **Low-Value, Non-Sensitive Trades:** For low-value, non-sensitive trades, the user can use our AA-based model. This will give them the flexibility to interact with any DeFi protocol, without needing to worry about the gas costs or the complexities of the underlying transaction.
+- **High-Value, Sensitive Trades:** For high-value, sensitive trades, the user will use our core relayer-based model. This will ensure that their transaction is protected from MEV and that their privacy is preserved.
+- **Low-Value, Non-Sensitive Trades:** For low-value, non-sensitive trades, the user can use our AA-based model. This will give them the flexibility to interact with any DeFi protocol, without needing to worry about the gas costs or the complexities of the underlying transaction.
 
 ### 4. Withdrawing Funds
 
--   The user can withdraw their funds from the privacy pool to any address they choose. This can be their original EOA, a new EOA, or a Smart Contract Wallet.
+- The user can withdraw their funds from the privacy pool to any address they choose. This can be their original EOA, a new EOA, or a Smart Contract Wallet.
 
 ### The Hybrid Model in Action
 

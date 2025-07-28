@@ -24,7 +24,7 @@ describe("Account Abstraction E2E", function () {
     // For each test, create a new smart account owned by the 'user'
     const { factory, user, owner } = env;
     const userAddress = await user.getAddress();
-    
+
     await factory.createAccount(userAddress, 0);
     smartAccountAddress = await factory.getAccountAddress(userAddress, 0);
 
@@ -45,42 +45,71 @@ describe("Account Abstraction E2E", function () {
 
     // 1. Create the calldata for the deposit action
     const commitment = ethers.randomBytes(32);
-    const depositCallData = privacyPool.interface.encodeFunctionData("deposit", [commitment]);
+    const depositCallData = privacyPool.interface.encodeFunctionData(
+      "deposit",
+      [commitment]
+    );
 
     // 2. Create the calldata for the SmartAccount's `execute` function
-    const executionCallData = smartAccount.interface.encodeFunctionData("execute", [
-      privacyPoolAddress,
-      depositAmount,
-      depositCallData,
-    ]);
+    const executionCallData = smartAccount.interface.encodeFunctionData(
+      "execute",
+      [privacyPoolAddress, depositAmount, depositCallData]
+    );
 
     // 3. Generate the signed UserOperation using the helper function
-    const userOp = await generateUserOp(env, smartAccountAddress, executionCallData);
+    const userOp = await generateUserOp(
+      env,
+      smartAccountAddress,
+      executionCallData
+    );
 
     // 4. Get initial state for verification
     const initialRoot = await privacyPool.merkleRoot();
-    const initialPaymasterBalance = await entryPoint.balanceOf(paymasterAddress);
-    const initialAccountBalance = await ethers.provider.getBalance(smartAccountAddress);
+    const initialPaymasterBalance = await entryPoint.balanceOf(
+      paymasterAddress
+    );
+    const initialAccountBalance = await ethers.provider.getBalance(
+      smartAccountAddress
+    );
 
     // 5. Submit the UserOperation via the bundler
-    const tx = await entryPoint.connect(bundler).handleOps([userOp], await bundler.getAddress());
+    const tx = await entryPoint
+      .connect(bundler)
+      .handleOps([userOp], await bundler.getAddress());
     const receipt = await tx.wait();
-    
+
     // Find the Deposit event to confirm success
-    const depositEvent = receipt?.logs.map(log => {
-        try { return privacyPool.interface.parseLog(log as any); } catch (e) { return null; }
-    }).find(event => event?.name === "Deposit");
+    const depositEvent = receipt?.logs
+      .map((log) => {
+        try {
+          return privacyPool.interface.parseLog(log as any);
+        } catch (e) {
+          return null;
+        }
+      })
+      .find((event) => event?.name === "Deposit");
 
     // 6. Verify the results
     const finalRoot = await privacyPool.merkleRoot();
     const finalPaymasterBalance = await entryPoint.balanceOf(paymasterAddress);
-    const finalAccountBalance = await ethers.provider.getBalance(smartAccountAddress);
+    const finalAccountBalance = await ethers.provider.getBalance(
+      smartAccountAddress
+    );
 
     // Assertions
     expect(depositEvent).to.not.be.undefined;
-    expect(finalRoot).to.not.equal(initialRoot, "Privacy pool root should change after deposit");
-    expect(finalPaymasterBalance).to.be.lessThan(initialPaymasterBalance, "Paymaster should pay for gas");
-    expect(finalAccountBalance).to.be.lessThan(initialAccountBalance, "Account should pay the deposit amount");
+    expect(finalRoot).to.not.equal(
+      initialRoot,
+      "Privacy pool root should change after deposit"
+    );
+    expect(finalPaymasterBalance).to.be.lessThan(
+      initialPaymasterBalance,
+      "Paymaster should pay for gas"
+    );
+    expect(finalAccountBalance).to.be.lessThan(
+      initialAccountBalance,
+      "Account should pay the deposit amount"
+    );
   });
 
   it("should reject unsupported targets", async function () {
@@ -98,13 +127,16 @@ describe("Account Abstraction E2E", function () {
 
     // This should fail because the target is not in the paymaster's supported list
     await expect(
-      entryPoint.connect(bundler).handleOps([userOp], await bundler.getAddress())
-    ).to.be.revertedWithCustomError(entryPoint, "FailedOpWithRevert")
-     .withArgs(
-        0, 
-        "AA33 reverted", 
+      entryPoint
+        .connect(bundler)
+        .handleOps([userOp], await bundler.getAddress())
+    )
+      .to.be.revertedWithCustomError(entryPoint, "FailedOpWithRevert")
+      .withArgs(
+        0,
+        "AA33 reverted",
         paymaster.interface.encodeErrorResult("UnsupportedTarget")
-    );
+      );
   });
 
   it("should reject expired UserOperations", async function () {
@@ -114,15 +146,17 @@ describe("Account Abstraction E2E", function () {
 
     // Create calldata for a valid deposit action
     const commitment = ethers.randomBytes(32);
-    const depositCallData = privacyPool.interface.encodeFunctionData("deposit", [commitment]);
-    const executionCallData = smartAccount.interface.encodeFunctionData("execute", [
-      privacyPoolAddress,
-      depositAmount,
-      depositCallData,
-    ]);
+    const depositCallData = privacyPool.interface.encodeFunctionData(
+      "deposit",
+      [commitment]
+    );
+    const executionCallData = smartAccount.interface.encodeFunctionData(
+      "execute",
+      [privacyPoolAddress, depositAmount, depositCallData]
+    );
 
     // Create expired time parameters
-    const currentBlock = await ethers.provider.getBlock('latest');
+    const currentBlock = await ethers.provider.getBlock("latest");
     const expiredTimestamp = currentBlock!.timestamp - 3600; // 1 hour ago
 
     // Manually create expired paymasterAndData
@@ -132,20 +166,28 @@ describe("Account Abstraction E2E", function () {
       expiredTimestamp, // validUntil is in the past
       0
     );
-    
+
     // Generate UserOp, overriding with the expired paymasterAndData
-    const userOp = await generateUserOp(env, smartAccountAddress, executionCallData, {
-        paymasterAndData: paymasterAndData
-    });
+    const userOp = await generateUserOp(
+      env,
+      smartAccountAddress,
+      executionCallData,
+      {
+        paymasterAndData: paymasterAndData,
+      }
+    );
 
     // This should fail because the UserOperation's timestamp is invalid
     await expect(
-      entryPoint.connect(bundler).handleOps([userOp], await bundler.getAddress())
-    ).to.be.revertedWithCustomError(entryPoint, "FailedOpWithRevert")
-     .withArgs(
+      entryPoint
+        .connect(bundler)
+        .handleOps([userOp], await bundler.getAddress())
+    )
+      .to.be.revertedWithCustomError(entryPoint, "FailedOpWithRevert")
+      .withArgs(
         0,
         "AA33 reverted",
         paymaster.interface.encodeErrorResult("InvalidTimestamp")
-    );
+      );
   });
 });

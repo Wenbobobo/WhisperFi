@@ -10,15 +10,15 @@ A commitment scheme is a cryptographic primitive that allows a party to commit t
 
 A commitment scheme must have two key properties:
 
--   **Hiding:** It is impossible to determine the committed value from the commitment itself.
--   **Binding:** It is impossible to change the committed value once the commitment has been made.
+- **Hiding:** It is impossible to determine the committed value from the commitment itself.
+- **Binding:** It is impossible to change the committed value once the commitment has been made.
 
 In our protocol, we use a **hash-based commitment scheme**. A private note is defined by its `amount`, the `asset type`, and a unique, randomly generated `secret`. The commitment is the hash of these values:
 
 `commitment = HASH(amount, asset, secret)`
 
--   **`HASH`**: We use a ZK-friendly hash function like Poseidon. This is critical for efficiency when generating proofs.
--   **`commitment`**: This is the value that is stored on-chain. It is a single, pseudorandom number that reveals nothing about the underlying data (hiding), but is uniquely determined by it (binding).
+- **`HASH`**: We use a ZK-friendly hash function like Poseidon. This is critical for efficiency when generating proofs.
+- **`commitment`**: This is the value that is stored on-chain. It is a single, pseudorandom number that reveals nothing about the underlying data (hiding), but is uniquely determined by it (binding).
 
 ### 2. Nullifiers
 

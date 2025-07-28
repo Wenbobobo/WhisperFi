@@ -45,7 +45,7 @@ describe("Deposit-Withdraw Integration Test", function () {
 
   function poseidonHash(inputs: bigint[]): string {
     const hash = poseidon(inputs);
-    return '0x' + poseidon.F.toObject(hash).toString(16).padStart(64, '0');
+    return "0x" + poseidon.F.toObject(hash).toString(16).padStart(64, "0");
   }
 
   // Updated to match ZK circuit: commitment = poseidon([secret, amount])
@@ -66,17 +66,14 @@ describe("Deposit-Withdraw Integration Test", function () {
       const secretNote = "my-secret-note-123";
       const secretHash = ethers.keccak256(ethers.toUtf8Bytes(secretNote));
       const depositAmount = await privacyPool.DEPOSIT_AMOUNT();
-      
+
       // Use ZK circuit compatible commitment calculation: poseidon([secret, amount])
       const commitment = generateCommitment(secretHash, depositAmount);
 
-      console.log("Secret note:", secretNote);
-      console.log("Secret hash:", secretHash);
-      console.log("Deposit amount:", depositAmount.toString());
-      console.log("Generated commitment:", commitment);
-
       // Step 2: Make deposit
-      const tx = await privacyPool.deposit(commitment, { value: depositAmount });
+      const tx = await privacyPool.deposit(commitment, {
+        value: depositAmount,
+      });
       await tx.wait();
 
       // Step 3: Get deposit events
@@ -91,19 +88,17 @@ describe("Deposit-Withdraw Integration Test", function () {
       const allDepositEvents = await privacyPool.queryFilter(
         privacyPool.filters.Deposit()
       );
-      
-      const commitments = allDepositEvents.map(event => event.args.commitment);
-      console.log("All commitments:", commitments);
-      
-      const foundIndex = commitments.findIndex(c => c === commitment);
-      console.log("Found commitment at index:", foundIndex);
-      
+
+      const commitments = allDepositEvents.map(
+        (event) => event.args.commitment
+      );
+      const foundIndex = commitments.findIndex((c) => c === commitment);
+
       expect(foundIndex).to.be.greaterThan(-1);
-      
+
       // Step 5: Verify nullifier hash generation (ZK circuit compatible)
       const nullifierHash = generateNullifierHash(secretHash);
-      console.log("Generated nullifier hash:", nullifierHash);
-      
+
       expect(nullifierHash).to.match(/^0x[0-9a-fA-F]{64}$/);
     });
 
@@ -111,31 +106,27 @@ describe("Deposit-Withdraw Integration Test", function () {
       const secret1 = "secret-1";
       const secret2 = "secret-2";
       const depositAmount = await privacyPool.DEPOSIT_AMOUNT();
-      
+
       const secretHash1 = ethers.keccak256(ethers.toUtf8Bytes(secret1));
       const commitment1 = generateCommitment(secretHash1, depositAmount);
-      
+
       const secretHash2 = ethers.keccak256(ethers.toUtf8Bytes(secret2));
       const commitment2 = generateCommitment(secretHash2, depositAmount);
-      
+
       expect(commitment1).to.not.equal(commitment2);
-      console.log("Commitment 1:", commitment1);
-      console.log("Commitment 2:", commitment2);
     });
 
     it("should generate different commitments for same secret with different amounts", async function () {
       const secret = "same-secret";
       const secretHash = ethers.keccak256(ethers.toUtf8Bytes(secret));
-      
+
       const amount1 = ethers.parseEther("0.1");
       const amount2 = ethers.parseEther("0.2");
-      
+
       const commitment1 = generateCommitment(secretHash, amount1);
       const commitment2 = generateCommitment(secretHash, amount2);
-      
+
       expect(commitment1).to.not.equal(commitment2);
-      console.log("Commitment with amount1:", commitment1);
-      console.log("Commitment with amount2:", commitment2);
     });
   });
 });

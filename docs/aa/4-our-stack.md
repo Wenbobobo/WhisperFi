@@ -14,9 +14,9 @@ This model provides the highest level of security and privacy for our users, as 
 
 On top of our core privacy pool, we will build a feature layer that uses Account Abstraction to enhance the user experience. This will allow us to provide our users with the following features:
 
--   **Gas Sponsorship:** We will use a Paymaster to sponsor gas fees for our users. This will allow them to interact with our protocol without needing to have ETH in their wallet.
--   **Flexible Withdrawals:** We will allow users to withdraw funds from our privacy pool directly to a new Smart Contract Wallet. This will give them access to the full benefits of AA for their other on-chain activities.
--   **Simplified Onboarding:** We will use AA to create a more seamless onboarding experience for new users. For example, we could create a Smart Contract Wallet for each new user automatically, and then use a Paymaster to sponsor their first few transactions.
+- **Gas Sponsorship:** We will use a Paymaster to sponsor gas fees for our users. This will allow them to interact with our protocol without needing to have ETH in their wallet.
+- **Flexible Withdrawals:** We will allow users to withdraw funds from our privacy pool directly to a new Smart Contract Wallet. This will give them access to the full benefits of AA for their other on-chain activities.
+- **Simplified Onboarding:** We will use AA to create a more seamless onboarding experience for new users. For example, we could create a Smart Contract Wallet for each new user automatically, and then use a Paymaster to sponsor their first few transactions.
 
 ### The Hybrid Model in Action
 

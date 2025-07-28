@@ -1,4 +1,4 @@
-// test/Paymaster.test.ts
+// test/Paymaster.test.ts - Unit tests for the Paymaster contract.
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { Signer } from "ethers";
@@ -8,11 +8,7 @@ import {
   TestEnvironment,
   generateUserOp,
 } from "./environment";
-import {
-  EntryPoint,
-  Paymaster,
-  PrivacyPool,
-} from "../typechain-types";
+import { EntryPoint, Paymaster, PrivacyPool } from "../typechain-types";
 import { PackedUserOperation } from "./utils/UserOperation";
 
 describe("Paymaster", function () {
@@ -34,45 +30,59 @@ describe("Paymaster", function () {
   describe("Deployment", function () {
     it("should set the correct owner and entrypoint", async function () {
       expect(await paymaster.owner()).to.equal(await owner.getAddress());
-      expect(await paymaster.entryPoint()).to.equal(await entryPoint.getAddress());
+      expect(await paymaster.entryPoint()).to.equal(
+        await entryPoint.getAddress()
+      );
     });
   });
 
   describe("Sponsorship Logic", function () {
     it("should reject UserOp for an unsupported target", async function () {
-        const unsupportedTarget = await notOwner.getAddress();
-        const smartAccountAddress = await owner.getAddress(); // Using owner as the mock SA
-  
-        // Create calldata for a generic execute function
-        const executeInterface = new ethers.Interface(["function execute(address,uint256,bytes)"]);
-        const callData = executeInterface.encodeFunctionData("execute", [unsupportedTarget, 0, "0x"]);
-  
-        const userOp = await generateUserOp(env, smartAccountAddress, callData);
-  
-        await expect(
-          paymaster.validatePaymasterUserOp(userOp, ethers.randomBytes(32), 0)
-        ).to.be.revertedWithCustomError(paymaster, "UnsupportedTarget");
-      });
-  
-      it("should validate UserOp for a supported target", async function () {
-        const supportedTarget = await privacyPool.getAddress();
-        const smartAccountAddress = await owner.getAddress(); // Using owner as the mock SA
-  
-        // Create calldata for a generic execute function
-        const executeInterface = new ethers.Interface(["function execute(address,uint256,bytes)"]);
-        const callData = executeInterface.encodeFunctionData("execute", [supportedTarget, 0, "0x"]);
-  
-        const userOp = await generateUserOp(env, smartAccountAddress, callData);
-  
-        const [context, validationData] = await paymaster.validatePaymasterUserOp(
-          userOp,
-          ethers.randomBytes(32),
-          0
-        );
-  
-        expect(context).to.equal("0x");
-        expect(validationData).to.not.equal(1); // Should not be SIG_VALIDATION_FAILED
-      });
+      const unsupportedTarget = await notOwner.getAddress();
+      const smartAccountAddress = await owner.getAddress(); // Using owner as the mock SA
+
+      // Create calldata for a generic execute function
+      const executeInterface = new ethers.Interface([
+        "function execute(address,uint256,bytes)",
+      ]);
+      const callData = executeInterface.encodeFunctionData("execute", [
+        unsupportedTarget,
+        0,
+        "0x",
+      ]);
+
+      const userOp = await generateUserOp(env, smartAccountAddress, callData);
+
+      await expect(
+        paymaster.validatePaymasterUserOp(userOp, ethers.randomBytes(32), 0)
+      ).to.be.revertedWithCustomError(paymaster, "UnsupportedTarget");
+    });
+
+    it("should validate UserOp for a supported target", async function () {
+      const supportedTarget = await privacyPool.getAddress();
+      const smartAccountAddress = await owner.getAddress(); // Using owner as the mock SA
+
+      // Create calldata for a generic execute function
+      const executeInterface = new ethers.Interface([
+        "function execute(address,uint256,bytes)",
+      ]);
+      const callData = executeInterface.encodeFunctionData("execute", [
+        supportedTarget,
+        0,
+        "0x",
+      ]);
+
+      const userOp = await generateUserOp(env, smartAccountAddress, callData);
+
+      const [context, validationData] = await paymaster.validatePaymasterUserOp(
+        userOp,
+        ethers.randomBytes(32),
+        0
+      );
+
+      expect(context).to.equal("0x");
+      expect(validationData).to.not.equal(1); // Should not be SIG_VALIDATION_FAILED
+    });
   });
 
   describe("Funding", function () {

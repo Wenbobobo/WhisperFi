@@ -1,2 +1,2 @@
-// test/setup.ts - 测试环境设置文件
+// test/setup.ts - Test environment setup file.
 import "@nomicfoundation/hardhat-chai-matchers";

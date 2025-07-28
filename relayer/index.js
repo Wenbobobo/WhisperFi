@@ -1,17 +1,17 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
+require("dotenv").config({ path: require("path").resolve(__dirname, ".env") });
 
 const express = require("express");
 const { ethers } = require("ethers");
-const fs = require('fs');
-const path = require('path');
-const { 
-    setupDatabase, 
-    createIntent, 
-    getIntentById, 
-    updateIntentStatus, 
-    generateIntentId 
-} = require('./database');
-const IntentProcessor = require('./processor');
+const fs = require("fs");
+const path = require("path");
+const {
+  setupDatabase,
+  createIntent,
+  getIntentById,
+  updateIntentStatus,
+  generateIntentId,
+} = require("./database");
+const IntentProcessor = require("./processor");
 
 const app = express();
 const port = 3000;
@@ -22,8 +22,11 @@ const port = 3000;
 const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
 
 // 2. Load the contract ABI
-const abiPath = path.join(__dirname, '../artifacts/contracts/PrivacyPool.sol/PrivacyPool.json');
-const contractArtifact = JSON.parse(fs.readFileSync(abiPath, 'utf8'));
+const abiPath = path.join(
+  __dirname,
+  "../artifacts/contracts/PrivacyPool.sol/PrivacyPool.json"
+);
+const contractArtifact = JSON.parse(fs.readFileSync(abiPath, "utf8"));
 const privacyPoolAbi = contractArtifact.abi;
 
 // 3. Get the contract address (replace with your actual deployed address)
@@ -33,41 +36,77 @@ const privacyPoolAddress = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9";
 // 4. Create a contract instance
 // We need a signer to send transactions, for now we'll get the first Hardhat account
 const signer = new ethers.Wallet(process.env.PRIVATE_KEY, provider); // Make sure to set a PRIVATE_KEY env variable
-const privacyPool = new ethers.Contract(privacyPoolAddress, privacyPoolAbi, signer);
+const privacyPool = new ethers.Contract(
+  privacyPoolAddress,
+  privacyPoolAbi,
+  signer
+);
 
-console.log(`Connected to PrivacyPool at address: ${privacyPoolAddress}`);
-
-// 创建增强版意图处理器实例
+// Create an enhanced intent processor instance
 const intentProcessor = new IntentProcessor(privacyPool, provider, {
-    chainId: 1, // 主网链ID，测试时可调整
-    flashbotsKey: process.env.FLASHBOTS_PRIVATE_KEY, // 可选的 Flashbots 私钥
-    flashbots: {
-        enabled: process.env.FLASHBOTS_ENABLED !== 'false', // 默认启用
-        simulationMode: process.env.NODE_ENV === 'development', // 开发环境使用模拟模式
-        fallbackToRegular: true // 允许降级到常规交易
-    }
+  chainId: 1, // Mainnet chain ID, adjustable for testing
+  flashbotsKey: process.env.FLASHBOTS_PRIVATE_KEY, // Optional Flashbots private key
+  flashbots: {
+    enabled: process.env.FLASHBOTS_ENABLED !== "false", // Enabled by default
+    simulationMode: process.env.NODE_ENV === "development", // Use simulation mode in development
+    fallbackToRegular: true, // Allow fallback to regular transactions
+  },
 });
 
 // --- Express Server ---
 
 app.use(express.json());
 
-// 新的意图提交端点
+/**
+ * @api {post} /intent/trade Submit a trade intent
+ * @apiName PostTradeIntent
+ * @apiGroup Intent
+ *
+ * @apiBody {Object} proofData ZK proof data.
+ * @apiBody {String} executor The executor address.
+ * @apiBody {String} target The target contract address.
+ * @apiBody {String} [callData] The call data for the target contract.
+ *
+ * @apiSuccess {String} status The status of the intent.
+ * @apiSuccess {String} intentId The ID of the created intent.
+ * @apiSuccess {String} message A confirmation message.
+ */
 app.post("/intent/trade", async (req, res) => {
-  const { pA, pB, pC, proofRoot, nullifier, newCommitment, tradeDataHash, executor, target, callData } = req.body;
-
-  console.log("收到交易意图请求:", req.body);
+  const {
+    pA,
+    pB,
+    pC,
+    proofRoot,
+    nullifier,
+    newCommitment,
+    tradeDataHash,
+    executor,
+    target,
+    callData,
+  } = req.body;
 
   try {
-    // 基础输入验证
-    if (!pA || !pB || !pC || !proofRoot || !nullifier || !newCommitment || !tradeDataHash || !executor || !target) {
-      return res.status(400).json({ error: "缺少交易必需字段" });
+    // Basic input validation
+    if (
+      !pA ||
+      !pB ||
+      !pC ||
+      !proofRoot ||
+      !nullifier ||
+      !newCommitment ||
+      !tradeDataHash ||
+      !executor ||
+      !target
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Missing required fields for trade intent." });
     }
 
-    // 生成唯一的意图 ID
+    // Generate a unique intent ID
     const intentId = generateIntentId();
-    
-    // 将交易意图存储到数据库
+
+    // Store the trade intent in the database
     await createIntent(intentId, {
       pA,
       pB,
@@ -78,37 +117,71 @@ app.post("/intent/trade", async (req, res) => {
       tradeDataHash,
       executor,
       target,
-      callData: callData || "0x"
+      callData: callData || "0x",
     });
 
-    console.log(`✅ 交易意图已创建，ID: ${intentId}`);
-    
-    // 返回意图 ID 和状态
-    res.json({ 
-      status: "pending", 
+    // Return the intent ID and status
+    res.json({
+      status: "pending",
       intentId: intentId,
-      message: "交易意图已接收并正在处理中"
+      message: "Trade intent received and is being processed.",
     });
-
   } catch (error) {
-    console.error("创建交易意图时出错:", error);
-    res.status(500).json({ error: "创建交易意图失败", details: error.message });
+    res
+      .status(500)
+      .json({
+        error: "Failed to create trade intent.",
+        details: error.message,
+      });
   }
 });
 
-// 保留原有的直接交易端点（用于向后兼容）
+/**
+ * @api {post} /relay/trade Direct trade relay (legacy)
+ * @apiName RelayTrade
+ * @apiGroup Relayer
+ * @apiDescription Kept for backward compatibility.
+ *
+ * @apiBody {Object} proofData ZK proof data.
+ * @apiBody {String} executor The executor address.
+ * @apiBody {String} target The target contract address.
+ *
+ * @apiSuccess {String} status The status of the transaction.
+ * @apiSuccess {String} txHash The transaction hash.
+ */
 app.post("/relay/trade", async (req, res) => {
-  const { pA, pB, pC, proofRoot, nullifier, newCommitment, tradeDataHash, executor, target, callData } = req.body;
-
-  console.log("收到直接交易请求:", req.body);
+  const {
+    pA,
+    pB,
+    pC,
+    proofRoot,
+    nullifier,
+    newCommitment,
+    tradeDataHash,
+    executor,
+    target,
+    callData,
+  } = req.body;
 
   try {
-    // 基础输入验证
-    if (!pA || !pB || !pC || !proofRoot || !nullifier || !newCommitment || !tradeDataHash || !executor || !target) {
-      return res.status(400).json({ error: "缺少交易必需字段" });
+    // Basic input validation
+    if (
+      !pA ||
+      !pB ||
+      !pC ||
+      !proofRoot ||
+      !nullifier ||
+      !newCommitment ||
+      !tradeDataHash ||
+      !executor ||
+      !target
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Missing required fields for trade." });
     }
 
-    // 直接与 PrivacyPool 合约交互 - 使用 withdraw 函数而不是 trade
+    // Interact directly with the PrivacyPool contract using the withdraw function
     const tx = await privacyPool.withdraw(
       pA,
       pB,
@@ -116,122 +189,181 @@ app.post("/relay/trade", async (req, res) => {
       proofRoot,
       nullifier,
       executor, // _recipient
-      "0", // _fee (设为0，表示没有手续费)
+      "0", // _fee (set to 0, no fee)
       signer.address // _relayer
     );
 
-    console.log(`交易已发送: ${tx.hash}`);
     await tx.wait();
-    console.log(`交易已确认: ${tx.hash}`);
 
     res.json({ status: "success", txHash: tx.hash });
-
   } catch (error) {
-    console.error("直接交易执行出错:", error);
-    res.status(500).json({ error: "交易执行失败", details: error.message });
+    res
+      .status(500)
+      .json({ error: "Trade execution failed.", details: error.message });
   }
 });
 
-// 新的交易意图端点（支持 Uniswap 交易）
+/**
+ * @api {post} /intent/trade-swap Submit a Uniswap trade intent
+ * @apiName PostTradeSwapIntent
+ * @apiGroup Intent
+ *
+ * @apiBody {Object} proofData ZK proof data.
+ * @apiBody {Object} tradeIntent Details of the swap.
+ * @apiBody {String} [recipient] The final recipient of the swapped tokens.
+ *
+ * @apiSuccess {String} status The status of the intent.
+ * @apiSuccess {String} intentId The ID of the created intent.
+ * @apiSuccess {String} message A confirmation message.
+ */
 app.post("/intent/trade-swap", async (req, res) => {
   const {
-    pA, pB, pC, proofRoot, nullifier, newCommitment, tradeDataHash,
-    tradeIntent, recipient
+    pA,
+    pB,
+    pC,
+    proofRoot,
+    nullifier,
+    newCommitment,
+    tradeDataHash,
+    tradeIntent,
+    recipient,
   } = req.body;
 
-  console.log("收到 Uniswap 交易意图请求:", { tradeIntent, recipient });
-
   try {
-    // 验证必要的 ZK 证明字段
-    if (!pA || !pB || !pC || !proofRoot || !nullifier || !newCommitment || !tradeDataHash) {
-      return res.status(400).json({ error: "缺少 ZK 证明字段" });
+    // Validate required ZK proof fields
+    if (
+      !pA ||
+      !pB ||
+      !pC ||
+      !proofRoot ||
+      !nullifier ||
+      !newCommitment ||
+      !tradeDataHash
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Missing required ZK proof fields." });
     }
 
-    // 验证交易意图字段
-    if (!tradeIntent || !tradeIntent.tokenIn || !tradeIntent.tokenOut || !tradeIntent.amountIn) {
-      return res.status(400).json({ error: "缺少交易意图字段" });
+    // Validate trade intent fields
+    if (
+      !tradeIntent ||
+      !tradeIntent.tokenIn ||
+      !tradeIntent.tokenOut ||
+      !tradeIntent.amountIn
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Missing required trade intent fields." });
     }
 
-    // 生成唯一的意图 ID
+    // Generate a unique intent ID
     const intentId = generateIntentId();
-    
-    // 将交易意图存储到数据库
+
+    // Store the trade intent in the database
     await createIntent(intentId, {
-      // ZK 证明数据
-      pA, pB, pC, proofRoot, nullifier, newCommitment, tradeDataHash,
-      // 交易意图数据
+      // ZK proof data
+      pA,
+      pB,
+      pC,
+      proofRoot,
+      nullifier,
+      newCommitment,
+      tradeDataHash,
+      // Trade intent data
       tradeIntent: tradeIntent,
       recipient: recipient || privacyPoolAddress,
-      // 标记为交易意图类型
-      intentType: 'trade-swap'
+      // Mark as a trade-swap intent type
+      intentType: "trade-swap",
     });
 
-    console.log(`✅ Uniswap 交易意图已创建，ID: ${intentId}`);
-    
     res.json({
       status: "pending",
       intentId: intentId,
-      message: "Uniswap 交易意图已接收并正在处理中"
+      message: "Uniswap trade intent received and is being processed.",
     });
-
   } catch (error) {
-    console.error("创建 Uniswap 交易意图时出错:", error);
-    res.status(500).json({ error: "创建交易意图失败", details: error.message });
+    res
+      .status(500)
+      .json({
+        error: "Failed to create Uniswap trade intent.",
+        details: error.message,
+      });
   }
 });
 
-// 获取交易报价端点
+/**
+ * @api {post} /trade/quote Get a trade quote
+ * @apiName GetTradeQuote
+ * @apiGroup Trade
+ *
+ * @apiBody {String} tokenIn The input token address.
+ * @apiBody {String} tokenOut The output token address.
+ * @apiBody {String} amountIn The amount of the input token.
+ *
+ * @apiSuccess {Boolean} success Indicates if the quote was successful.
+ * @apiSuccess {Object} quote The trade quote details.
+ * @apiSuccess {String} timestamp The timestamp of the quote.
+ */
 app.post("/trade/quote", async (req, res) => {
   const { tokenIn, tokenOut, amountIn } = req.body;
 
-  console.log("收到交易报价请求:", { tokenIn, tokenOut, amountIn });
-
   try {
     if (!tokenIn || !tokenOut || !amountIn) {
-      return res.status(400).json({ error: "缺少报价请求字段" });
+      return res
+        .status(400)
+        .json({ error: "Missing required fields for quote request." });
     }
 
     const quoteResult = await intentProcessor.getTradeQuote({
-      tokenIn, tokenOut, amountIn
+      tokenIn,
+      tokenOut,
+      amountIn,
     });
 
     if (quoteResult.success) {
       res.json({
         success: true,
         quote: quoteResult.quote,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } else {
       res.status(500).json({
-        error: "获取报价失败",
-        details: quoteResult.error
+        error: "Failed to get quote.",
+        details: quoteResult.error,
       });
     }
-
   } catch (error) {
-    console.error("获取交易报价时出错:", error);
-    res.status(500).json({ error: "获取报价失败", details: error.message });
+    res
+      .status(500)
+      .json({ error: "Failed to get trade quote.", details: error.message });
   }
 });
 
-// 意图状态查询端点
+/**
+ * @api {get} /intent/status/:intentId Get intent status
+ * @apiName GetIntentStatus
+ * @apiGroup Intent
+ *
+ * @apiParam {String} intentId The ID of the intent.
+ *
+ * @apiSuccess {Object} intent The full intent status object.
+ */
 app.get("/intent/status/:intentId", async (req, res) => {
   const { intentId } = req.params;
-  
-  console.log(`查询意图状态，ID: ${intentId}`);
 
   try {
-    // 从数据库查询意图记录
+    // Query the intent record from the database
     const intent = await getIntentById(intentId);
-    
+
     if (!intent) {
-      return res.status(404).json({ 
-        error: "未找到对应的交易意图",
-        intentId: intentId 
+      return res.status(404).json({
+        error: "Trade intent not found.",
+        intentId: intentId,
       });
     }
 
-    // 返回完整的意图状态信息
+    // Return the complete intent status information
     res.json({
       intentId: intent.id,
       status: intent.status,
@@ -239,121 +371,132 @@ app.get("/intent/status/:intentId", async (req, res) => {
       retry_count: intent.retry_count,
       created_at: intent.created_at,
       updated_at: intent.updated_at,
-      intent_data: intent.intent_data
+      intent_data: intent.intent_data,
     });
-
   } catch (error) {
-    console.error(`查询意图状态出错 (ID: ${intentId}):`, error);
-    res.status(500).json({ 
-      error: "查询意图状态失败", 
-      details: error.message 
+    res.status(500).json({
+      error: "Failed to query intent status.",
+      details: error.message,
     });
   }
 });
 
-// 手动触发意图处理端点
+/**
+ * @api {post} /intent/process Manually trigger intent processing
+ * @apiName ProcessIntents
+ * @apiGroup Intent
+ *
+ * @apiSuccess {String} message A confirmation message.
+ * @apiSuccess {Object} result The result of the processing.
+ */
 app.post("/intent/process", async (req, res) => {
-  console.log('🔧 收到手动处理意图请求');
-
   try {
     const result = await intentProcessor.processIntents();
     res.json({
-      message: "意图处理完成",
-      result: result
+      message: "Intent processing finished.",
+      result: result,
     });
   } catch (error) {
-    console.error('❌ 手动处理意图失败:', error);
     res.status(500).json({
-      error: "手动处理意图失败",
-      details: error.message
+      error: "Manual intent processing failed.",
+      details: error.message,
     });
   }
 });
 
-// 处理器状态查询端点
+/**
+ * @api {get} /processor/status Get processor status
+ * @apiName GetProcessorStatus
+ * @apiGroup Processor
+ *
+ * @apiSuccess {Object} processor_status The current status of the intent processor.
+ * @apiSuccess {String} timestamp The timestamp of the status check.
+ */
 app.get("/processor/status", (req, res) => {
   const status = intentProcessor.getStatus();
   res.json({
     processor_status: status,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
-// 启动/停止处理器的管理端点
+/**
+ * @api {post} /processor/start Start the intent processor
+ * @apiName StartProcessor
+ * @apiGroup Processor
+ *
+ * @apiBody {Number} [interval] The processing interval in milliseconds.
+ *
+ * @apiSuccess {String} message A confirmation message.
+ * @apiSuccess {Number} interval The active processing interval.
+ */
 app.post("/processor/start", (req, res) => {
-  const { interval } = req.body; // 可选的处理间隔
+  const { interval } = req.body; // Optional processing interval
   try {
     intentProcessor.start(interval);
     res.json({
-      message: "意图处理器已启动",
-      interval: interval || 30000
+      message: "Intent processor started.",
+      interval: interval || 30000,
     });
   } catch (error) {
-    console.error('❌ 启动处理器失败:', error);
     res.status(500).json({
-      error: "启动处理器失败",
-      details: error.message
+      error: "Failed to start processor.",
+      details: error.message,
     });
   }
 });
 
+/**
+ * @api {post} /processor/stop Stop the intent processor
+ * @apiName StopProcessor
+ * @apiGroup Processor
+ *
+ * @apiSuccess {String} message A confirmation message.
+ */
 app.post("/processor/stop", (req, res) => {
   try {
     intentProcessor.stop();
     res.json({
-      message: "意图处理器已停止"
+      message: "Intent processor stopped.",
     });
   } catch (error) {
-    console.error('❌ 停止处理器失败:', error);
     res.status(500).json({
-      error: "停止处理器失败",
-      details: error.message
+      error: "Failed to stop processor.",
+      details: error.message,
     });
   }
 });
 
-// 启动服务器
+// --- Server Startup ---
+
+/**
+ * Initializes the database and starts the Express server.
+ */
 async function startServer() {
   try {
-    // 初始化数据库
+    // Initialize the database
     await setupDatabase();
-    
-    // 启动 Express 服务器
+
+    // Start the Express server
     app.listen(port, () => {
-      console.log(`🚀 Relayer 服务已启动，监听端口: http://localhost:${port}`);
-      console.log(`📋 可用端点:`);
-      console.log(`   POST /intent/trade      - 提交交易意图`);
-      console.log(`   GET  /intent/status/:id - 查询意图状态`);
-      console.log(`   POST /intent/process    - 手动触发处理`);
-      console.log(`   GET  /processor/status  - 查询处理器状态`);
-      console.log(`   POST /processor/start   - 启动自动处理器`);
-      console.log(`   POST /processor/stop    - 停止自动处理器`);
-      console.log(`   POST /relay/trade       - 直接执行交易（向后兼容）`);
-      console.log(`   POST /intent/trade-swap - 提交 Uniswap 交易意图`);
-      console.log(`   POST /trade/quote       - 获取交易报价`);
-      
-      // 自动启动处理器（30秒间隔）
-      console.log(`🤖 自动启动意图处理器...`);
+      // Automatically start the processor (30-second interval)
       intentProcessor.start(30000);
     });
   } catch (error) {
-    console.error('❌ 服务器启动失败:', error);
     process.exit(1);
   }
 }
 
-// 优雅关闭处理
-process.on('SIGINT', () => {
-  console.log('\n🛑 收到退出信号，正在优雅关闭...');
+/**
+ * Handles graceful shutdown.
+ */
+function gracefulShutdown() {
   intentProcessor.stop();
   process.exit(0);
-});
+}
 
-process.on('SIGTERM', () => {
-  console.log('\n🛑 收到终止信号，正在优雅关闭...');
-  intentProcessor.stop();
-  process.exit(0);
-});
+process.on("SIGINT", gracefulShutdown);
+process.on("SIGTERM", gracefulShutdown);
 
-// 启动服务器
+// Start the server
 startServer();

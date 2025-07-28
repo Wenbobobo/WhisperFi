@@ -58,3 +58,5 @@ Possible causes:
 As I am unable to resolve this issue, I will proceed with the smart contract development using a placeholder for the ZK verifier. The `IVerifier.sol` interface has been created for this purpose. The smart contracts will be written as if the verifier exists, and the actual verifier can be plugged in once the compilation issue is resolved.
 
 ```
+
+```

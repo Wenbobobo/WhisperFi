@@ -1,277 +1,281 @@
 const { ethers } = require("ethers");
-const { getNetworkConfig, getTokenConfig } = require('./config');
+const { getNetworkConfig, getTokenConfig } = require("./config");
 
 /**
- * 环境感知的 Uniswap 交易编码器
- * 使用纯 ethers 实现，避免复杂的 SDK 依赖冲突
- * 专注于核心功能：将交易意图编码为 Uniswap V3 calldata
- * 支持多网络配置，根据 chainId 自动选择合适的代币地址
+ * Environment-aware Uniswap trade encoder.
+ * Uses pure ethers implementation to avoid complex SDK dependency conflicts.
+ * Focuses on the core function: encoding a trade intent into Uniswap V3 calldata.
+ * Supports multi-network configuration, automatically selecting appropriate token addresses based on chainId.
  */
 class UniswapEncoder {
-    constructor(provider, chainId = 31337) {
-        this.provider = provider;
-        this.chainId = chainId;
-        
-        // 环境感知配置
-        try {
-            this.networkConfig = getNetworkConfig(chainId);
-            this.SWAP_ROUTER_ADDRESS = this.networkConfig.uniswap.routerAddress;
-            console.log(`🌐 使用 ${this.networkConfig.name} 网络配置 (Chain ID: ${chainId})`);
-        } catch (error) {
-            console.warn(`⚠️  网络配置加载失败: ${error.message}`);
-            console.warn(`🔄 回退到默认配置`);
-            // 回退到安全的默认配置
-            this.networkConfig = null;
-            this.SWAP_ROUTER_ADDRESS = "0x0000000000000000000000000000000000000000"; // 占位符
-        }
-        
-        // 初始化自定义代币存储
-        this.customTokens = {};
-        
-        // Uniswap V3 SwapRouter02 接口
-        this.swapRouterInterface = new ethers.Interface([
-            'function exactInputSingle(tuple(address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96) params) external payable returns (uint256 amountOut)',
-            'function exactInput(tuple(bytes path, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum) params) external payable returns (uint256 amountOut)',
-            'function multicall(bytes[] calldata data) external payable returns (bytes[] memory results)'
-        ]);
+  constructor(provider, chainId = 31337) {
+    this.provider = provider;
+    this.chainId = chainId;
 
-        console.log('🛠️  环境感知 Uniswap 编码器已初始化');
+    // Environment-aware configuration
+    try {
+      this.networkConfig = getNetworkConfig(chainId);
+      this.SWAP_ROUTER_ADDRESS = this.networkConfig.uniswap.routerAddress;
+    } catch (error) {
+      // Fallback to a safe default configuration
+      this.networkConfig = null;
+      this.SWAP_ROUTER_ADDRESS = "0x0000000000000000000000000000000000000000"; // Placeholder
     }
 
-    /**
-     * 编码交易意图为具体的 Uniswap 交易
-     * @param {Object} tradeIntent - 交易意图
-     * @param {string} tradeIntent.tokenIn - 输入代币符号
-     * @param {string} tradeIntent.tokenOut - 输出代币符号
-     * @param {string} tradeIntent.amountIn - 输入金额 (字符串形式的 wei)
-     * @param {string} tradeIntent.recipient - 接收地址
-     * @param {string} tradeIntent.slippage - 滑点容忍度 (如 "0.5" 表示 0.5%)
-     * @returns {Promise<Object>} 编码结果
-     */
-    async encodeTrade(tradeIntent) {
-        const { tokenIn, tokenOut, amountIn, recipient, slippage = "0.5" } = tradeIntent;
-        
-        console.log(`🔄 编码 Uniswap 交易: ${amountIn} ${tokenIn} -> ${tokenOut}`);
-        
-        try {
-            // 1. 验证交易意图
-            this.validateTradeIntent(tradeIntent);
-            
-            // 2. 获取代币信息
-            const inputToken = this.getToken(tokenIn);
-            const outputToken = this.getToken(tokenOut);
-            
-            // 3. 构建交易参数
-            const params = {
-                tokenIn: inputToken.address,
-                tokenOut: outputToken.address,
-                fee: 3000, // 0.3% 手续费池 (最常用的池子)
-                recipient: recipient,
-                deadline: Math.floor(Date.now() / 1000) + 1800, // 30分钟后过期
-                amountIn: amountIn,
-                amountOutMinimum: '0', // 简化版本，实际应该根据滑点计算
-                sqrtPriceLimitX96: '0' // 不设置价格限制
-            };
-            
-            // 4. 编码函数调用
-            const calldata = this.swapRouterInterface.encodeFunctionData('exactInputSingle', [params]);
-            
-            // 5. 确定是否需要发送 ETH
-            const value = inputToken.symbol === 'WETH' ? amountIn : '0';
-            
-            console.log(`✅ 交易编码完成，目标合约: ${this.SWAP_ROUTER_ADDRESS}`);
-            console.log(`📊 预估 Gas: 200000 (简化估算)`);
-            
-            return {
-                target: this.SWAP_ROUTER_ADDRESS,
-                calldata: calldata,
-                value: value,
-                estimatedGas: '200000', // 简化的固定估算
-                expectedOutput: 'unknown', // 简化版本无法精确计算
-                route: `${inputToken.symbol} -> ${outputToken.symbol}`,
-                impact: 'unknown'
-            };
-            
-        } catch (error) {
-            console.error(`❌ 交易编码失败:`, error);
-            throw new Error(`交易编码失败: ${error.message}`);
-        }
+    // Initialize custom token storage
+    this.customTokens = {};
+
+    // Uniswap V3 SwapRouter02 interface
+    this.swapRouterInterface = new ethers.Interface([
+      "function exactInputSingle(tuple(address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96) params) external payable returns (uint256 amountOut)",
+      "function exactInput(tuple(bytes path, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum) params) external payable returns (uint256 amountOut)",
+      "function multicall(bytes[] calldata data) external payable returns (bytes[] memory results)",
+    ]);
+  }
+
+  /**
+   * Encodes a trade intent into a specific Uniswap transaction.
+   * @param {Object} tradeIntent - The trade intent.
+   * @param {string} tradeIntent.tokenIn - The input token symbol.
+   * @param {string} tradeIntent.tokenOut - The output token symbol.
+   * @param {string} tradeIntent.amountIn - The input amount in wei as a string.
+   * @param {string} tradeIntent.recipient - The recipient address.
+   * @param {string} [tradeIntent.slippage="0.5"] - The slippage tolerance (e.g., "0.5" for 0.5%).
+   * @returns {Promise<Object>} The encoded result.
+   */
+  async encodeTrade(tradeIntent) {
+    const {
+      tokenIn,
+      tokenOut,
+      amountIn,
+      recipient,
+      slippage = "0.5",
+    } = tradeIntent;
+
+    try {
+      // 1. Validate the trade intent
+      this.validateTradeIntent(tradeIntent);
+
+      // 2. Get token information
+      const inputToken = this.getToken(tokenIn);
+      const outputToken = this.getToken(tokenOut);
+
+      // 3. Construct transaction parameters
+      const params = {
+        tokenIn: inputToken.address,
+        tokenOut: outputToken.address,
+        fee: 3000, // 0.3% fee pool (most common)
+        recipient: recipient,
+        deadline: Math.floor(Date.now() / 1000) + 1800, // 30 minutes from now
+        amountIn: amountIn,
+        amountOutMinimum: "0", // Simplified version, should be calculated based on slippage
+        sqrtPriceLimitX96: "0", // No price limit
+      };
+
+      // 4. Encode the function call
+      const calldata = this.swapRouterInterface.encodeFunctionData(
+        "exactInputSingle",
+        [params]
+      );
+
+      // 5. Determine if ETH needs to be sent
+      const value = inputToken.symbol === "WETH" ? amountIn : "0";
+
+      return {
+        target: this.SWAP_ROUTER_ADDRESS,
+        calldata: calldata,
+        value: value,
+        estimatedGas: "200000", // Simplified fixed estimate
+        expectedOutput: "unknown", // Simplified version cannot calculate precisely
+        route: `${inputToken.symbol} -> ${outputToken.symbol}`,
+        impact: "unknown",
+      };
+    } catch (error) {
+      throw new Error(`Trade encoding failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Gets token information - environment-aware version.
+   * @param {string} tokenSymbol - The token symbol.
+   * @returns {Object} The token information object.
+   */
+  getToken(tokenSymbol) {
+    try {
+      // Prioritize network-specific configuration
+      if (this.networkConfig) {
+        return getTokenConfig(this.chainId, tokenSymbol);
+      }
+
+      // Fallback to locally stored tokens if available
+      if (this.customTokens && this.customTokens[tokenSymbol.toUpperCase()]) {
+        return this.customTokens[tokenSymbol.toUpperCase()];
+      }
+
+      throw new Error(
+        `Token ${tokenSymbol} is not available on network ${this.chainId}`
+      );
+    } catch (error) {
+      // Provide a helpful error message
+      const supportedTokens = this.networkConfig
+        ? Object.keys(this.networkConfig.tokens).join(", ")
+        : this.customTokens
+        ? Object.keys(this.customTokens).join(", ")
+        : "none";
+
+      throw new Error(
+        `Unsupported token: ${tokenSymbol}. Supported tokens on the current network (${this.chainId}): ${supportedTokens}`
+      );
+    }
+  }
+
+  /**
+   * Gets a trade quote (simplified version).
+   * @param {string} tokenIn - The input token symbol.
+   * @param {string} tokenOut - The output token symbol.
+   * @param {string} amountIn - The input amount.
+   * @returns {Promise<Object>} The quote information.
+   */
+  async getQuote(tokenIn, tokenOut, amountIn) {
+    try {
+      const inputToken = this.getToken(tokenIn);
+      const outputToken = this.getToken(tokenOut);
+
+      // Simplified version: returns mock data
+      // In a production environment, this should call the Quoter contract for a real quote
+      return {
+        inputAmount: amountIn,
+        outputAmount: "unknown", // Simplified version cannot calculate real output
+        priceImpact: "unknown",
+        route: `${inputToken.symbol} -> ${outputToken.symbol}`,
+        gasEstimate: "200000",
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Validates the format of a trade intent.
+   * @param {Object} tradeIntent - The trade intent object.
+   * @param {boolean} [requireRecipient=true] - Whether the recipient field is required.
+   * @returns {boolean} True if valid.
+   */
+  validateTradeIntent(tradeIntent, requireRecipient = true) {
+    const { tokenIn, tokenOut, amountIn, recipient } = tradeIntent;
+
+    // Check for core required fields
+    if (!tokenIn || !tokenOut || !amountIn) {
+      throw new Error(
+        "Missing required trade parameters: tokenIn, tokenOut, amountIn"
+      );
     }
 
-    /**
-     * 获取代币信息 - 环境感知版本
-     * @param {string} tokenSymbol - 代币符号
-     * @returns {Object} 代币信息对象
-     */
-    getToken(tokenSymbol) {
-        try {
-            // 优先使用网络特定配置
-            if (this.networkConfig) {
-                return getTokenConfig(this.chainId, tokenSymbol);
-            }
-            
-            // 回退到本地存储的代币（如果有的话）
-            if (this.customTokens && this.customTokens[tokenSymbol.toUpperCase()]) {
-                return this.customTokens[tokenSymbol.toUpperCase()];
-            }
-            
-            throw new Error(`代币 ${tokenSymbol} 在网络 ${this.chainId} 上不可用`);
-            
-        } catch (error) {
-            // 提供有用的错误信息
-            const supportedTokens = this.networkConfig
-                ? Object.keys(this.networkConfig.tokens).join(', ')
-                : (this.customTokens ? Object.keys(this.customTokens).join(', ') : '无');
-            
-            throw new Error(`不支持的代币: ${tokenSymbol}. 当前网络 (${this.chainId}) 支持的代币: ${supportedTokens}`);
-        }
+    // Check for recipient if required
+    if (requireRecipient && !recipient) {
+      throw new Error("Missing required trade parameter: recipient");
     }
 
-    /**
-     * 获取交易报价 (简化版本)
-     * @param {string} tokenIn - 输入代币符号
-     * @param {string} tokenOut - 输出代币符号
-     * @param {string} amountIn - 输入金额
-     * @returns {Promise<Object>} 报价信息
-     */
-    async getQuote(tokenIn, tokenOut, amountIn) {
-        console.log(`💰 获取交易报价: ${amountIn} ${tokenIn} -> ${tokenOut}`);
-        console.log(`⚠️  简化模式：返回模拟报价数据`);
-        
-        try {
-            const inputToken = this.getToken(tokenIn);
-            const outputToken = this.getToken(tokenOut);
-            
-            // 简化版本：返回模拟数据
-            // 在实际生产环境中，应该调用 Quoter 合约获取真实报价
-            return {
-                inputAmount: amountIn,
-                outputAmount: 'unknown', // 简化版本无法计算真实输出
-                priceImpact: 'unknown',
-                route: `${inputToken.symbol} -> ${outputToken.symbol}`,
-                gasEstimate: '200000'
-            };
-            
-        } catch (error) {
-            console.error(`❌ 获取报价失败:`, error);
-            throw error;
-        }
+    // Validate token support
+    try {
+      this.getToken(tokenIn);
+      this.getToken(tokenOut);
+    } catch (error) {
+      throw new Error(`Unsupported token pair: ${tokenIn}/${tokenOut}`);
     }
 
-    /**
-     * 验证交易意图格式
-     * @param {Object} tradeIntent - 交易意图对象
-     * @param {boolean} requireRecipient - 是否要求 recipient 字段
-     * @returns {boolean} 是否有效
-     */
-    validateTradeIntent(tradeIntent, requireRecipient = true) {
-        const { tokenIn, tokenOut, amountIn, recipient } = tradeIntent;
-        
-        // 检查核心必要字段
-        if (!tokenIn || !tokenOut || !amountIn) {
-            throw new Error("缺少必要的交易参数: tokenIn, tokenOut, amountIn");
-        }
-        
-        // 检查 recipient（如果需要的话）
-        if (requireRecipient && !recipient) {
-            throw new Error("缺少必要的交易参数: recipient");
-        }
-        
-        // 验证代币支持
-        try {
-            this.getToken(tokenIn);
-            this.getToken(tokenOut);
-        } catch (error) {
-            throw new Error(`不支持的代币配对: ${tokenIn}/${tokenOut}`);
-        }
-        
-        // 验证金额格式 (应该是 wei 格式的字符串)
-        try {
-            const amountBigInt = BigInt(amountIn);
-            if (amountBigInt <= 0n) {
-                throw new Error(`无效的金额: ${amountIn} (应该是正整数 wei 值)`);
-            }
-        } catch (error) {
-            if (error.message.includes('Cannot convert') || error.message.includes('invalid BigInt')) {
-                throw new Error(`无效的金额格式: ${amountIn} (应该是正整数 wei 值)`);
-            }
-            throw error;
-        }
-        
-        // 验证地址格式（仅在需要 recipient 时）
-        if (requireRecipient && !ethers.isAddress(recipient)) {
-            throw new Error(`无效的接收地址: ${recipient}`);
-        }
-        
-        // 验证不能是相同代币
-        if (tokenIn.toUpperCase() === tokenOut.toUpperCase()) {
-            throw new Error(`输入和输出代币不能相同: ${tokenIn}`);
-        }
-        
-        return true;
+    // Validate amount format (should be a string in wei)
+    try {
+      const amountBigInt = BigInt(amountIn);
+      if (amountBigInt <= 0n) {
+        throw new Error(
+          `Invalid amount: ${amountIn} (should be a positive integer wei value)`
+        );
+      }
+    } catch (error) {
+      if (
+        error.message.includes("Cannot convert") ||
+        error.message.includes("invalid BigInt")
+      ) {
+        throw new Error(
+          `Invalid amount format: ${amountIn} (should be a positive integer wei value)`
+        );
+      }
+      throw error;
     }
 
-    /**
-     * 获取支持的代币列表 - 环境感知版本
-     * @returns {Object} 支持的代币信息
-     */
-    getSupportedTokens() {
-        if (this.networkConfig && this.networkConfig.tokens) {
-            return { ...this.networkConfig.tokens };
-        }
-        
-        // 回退到自定义代币
-        return { ...this.customTokens };
+    // Validate address format (only if recipient is required)
+    if (requireRecipient && !ethers.isAddress(recipient)) {
+      throw new Error(`Invalid recipient address: ${recipient}`);
     }
 
-    /**
-     * 添加自定义代币支持 - 环境感知版本
-     * @param {string} symbol - 代币符号
-     * @param {string} address - 代币合约地址
-     * @param {number} decimals - 小数位数
-     * @param {string} name - 代币名称
-     */
-    addCustomToken(symbol, address, decimals, name) {
-        if (!ethers.isAddress(address)) {
-            throw new Error(`无效的代币地址: ${address}`);
-        }
-        
-        // 确保自定义代币存储已初始化
-        if (!this.customTokens) {
-            this.customTokens = {};
-        }
-        
-        this.customTokens[symbol.toUpperCase()] = {
-            symbol: symbol.toUpperCase(),
-            address: address,
-            decimals: decimals,
-            name: name
-        };
-        
-        console.log(`✅ 已添加自定义代币支持: ${symbol} (${address})`);
+    // Validate that tokens are not the same
+    if (tokenIn.toUpperCase() === tokenOut.toUpperCase()) {
+      throw new Error(`Input and output tokens cannot be the same: ${tokenIn}`);
     }
 
-    /**
-     * 将人类可读的金额转换为 wei
-     * @param {string} amount - 人类可读金额 (如 "1.5")
-     * @param {string} tokenSymbol - 代币符号
-     * @returns {string} wei 格式的金额字符串
-     */
-    parseAmount(amount, tokenSymbol) {
-        const token = this.getToken(tokenSymbol);
-        return ethers.parseUnits(amount, token.decimals).toString();
+    return true;
+  }
+
+  /**
+   * Gets the list of supported tokens - environment-aware version.
+   * @returns {Object} Supported token information.
+   */
+  getSupportedTokens() {
+    if (this.networkConfig && this.networkConfig.tokens) {
+      return { ...this.networkConfig.tokens };
     }
 
-    /**
-     * 将 wei 金额转换为人类可读格式
-     * @param {string} amountWei - wei 格式的金额
-     * @param {string} tokenSymbol - 代币符号
-     * @returns {string} 人类可读的金额
-     */
-    formatAmount(amountWei, tokenSymbol) {
-        const token = this.getToken(tokenSymbol);
-        return ethers.formatUnits(amountWei, token.decimals);
+    // Fallback to custom tokens
+    return { ...this.customTokens };
+  }
+
+  /**
+   * Adds support for a custom token - environment-aware version.
+   * @param {string} symbol - The token symbol.
+   * @param {string} address - The token contract address.
+   * @param {number} decimals - The number of decimals.
+   * @param {string} name - The token name.
+   */
+  addCustomToken(symbol, address, decimals, name) {
+    if (!ethers.isAddress(address)) {
+      throw new Error(`Invalid token address: ${address}`);
     }
+
+    // Ensure custom token storage is initialized
+    if (!this.customTokens) {
+      this.customTokens = {};
+    }
+
+    this.customTokens[symbol.toUpperCase()] = {
+      symbol: symbol.toUpperCase(),
+      address: address,
+      decimals: decimals,
+      name: name,
+    };
+  }
+
+  /**
+   * Converts a human-readable amount to wei.
+   * @param {string} amount - The human-readable amount (e.g., "1.5").
+   * @param {string} tokenSymbol - The token symbol.
+   * @returns {string} The amount in wei as a string.
+   */
+  parseAmount(amount, tokenSymbol) {
+    const token = this.getToken(tokenSymbol);
+    return ethers.parseUnits(amount, token.decimals).toString();
+  }
+
+  /**
+   * Converts a wei amount to a human-readable format.
+   * @param {string} amountWei - The amount in wei.
+   * @param {string} tokenSymbol - The token symbol.
+   * @returns {string} The human-readable amount.
+   */
+  formatAmount(amountWei, tokenSymbol) {
+    const token = this.getToken(tokenSymbol);
+    return ethers.formatUnits(amountWei, token.decimals);
+  }
 }
 
 module.exports = { UniswapEncoder };

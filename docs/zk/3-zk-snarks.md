@@ -8,10 +8,10 @@ zk-SNARK is an acronym that stands for **Zero-Knowledge Succinct Non-Interactive
 
 Let's break down what each of these terms means:
 
--   **Zero-Knowledge:** As we've discussed, the proof reveals no information about the secret witness.
--   **Succinct:** The proofs are small in size and can be verified very quickly, regardless of the complexity of the statement being proven. This is crucial for blockchain applications, where gas costs are a major concern.
--   **Non-Interactive:** The Prover can generate the proof without any back-and-forth communication with the Verifier. The proof is a single piece of data that can be published on-chain for anyone to verify.
--   **Argument of Knowledge:** The proof is not just a proof of the statement's truth, but also a proof that the Prover *knows* the secret witness that makes the statement true. This prevents a Prover from generating a valid proof without actually knowing the secret.
+- **Zero-Knowledge:** As we've discussed, the proof reveals no information about the secret witness.
+- **Succinct:** The proofs are small in size and can be verified very quickly, regardless of the complexity of the statement being proven. This is crucial for blockchain applications, where gas costs are a major concern.
+- **Non-Interactive:** The Prover can generate the proof without any back-and-forth communication with the Verifier. The proof is a single piece of data that can be published on-chain for anyone to verify.
+- **Argument of Knowledge:** The proof is not just a proof of the statement's truth, but also a proof that the Prover _knows_ the secret witness that makes the statement true. This prevents a Prover from generating a valid proof without actually knowing the secret.
 
 ### How zk-SNARKs Work (A High-Level Overview)
 

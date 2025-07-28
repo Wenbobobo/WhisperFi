@@ -6,20 +6,20 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title MockUniswapRouter
- * @notice 用于测试的简化版 Uniswap 路由器
- * @dev 实现基本的代币交换功能，支持测试环境中的代币交易验证
+ * @notice Simplified Uniswap router for testing purposes
+ * @dev Implements basic token swapping functionality for testing token trade verification
  */
 contract MockUniswapRouter is Ownable {
     
-    // 添加事件用于调试
+    // Events for debugging
     event SwapCalled(address indexed caller, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut);
     event SwapFailed(address indexed caller, string reason);
     
     constructor() Ownable(msg.sender) {
-        // 构造函数现在符合新版 OpenZeppelin Ownable 要求
+        // Constructor now complies with new OpenZeppelin Ownable requirements
     }
     
-    // 简化的交换参数结构
+    // Simplified swap parameter structure
     struct ExactInputSingleParams {
         address tokenIn;
         address tokenOut;
@@ -31,18 +31,18 @@ contract MockUniswapRouter is Ownable {
         uint160 sqrtPriceLimitX96;
     }
     
-    // 模拟的汇率映射 (tokenIn => tokenOut => rate)
-    // rate 表示 1 tokenIn 可以换取多少 tokenOut (考虑小数位差异)
+    // Simulated exchange rate mapping (tokenIn => tokenOut => rate)
+    // rate represents how much tokenOut can be obtained for 1 tokenIn (considering decimal differences)
     mapping(address => mapping(address => uint256)) public exchangeRates;
     
-    // 支持的代币对
+    // Supported token pairs
     mapping(address => mapping(address => bool)) public supportedPairs;
     
     /**
-     * @notice 设置代币对的汇率
-     * @param tokenIn 输入代币地址
-     * @param tokenOut 输出代币地址
-     * @param rate 汇率 (1 tokenIn = rate * tokenOut)
+     * @notice Sets the exchange rate for a token pair
+     * @param tokenIn Input token address
+     * @param tokenOut Output token address
+     * @param rate Exchange rate (1 tokenIn = rate * tokenOut)
      */
     function setExchangeRate(address tokenIn, address tokenOut, uint256 rate) external onlyOwner {
         exchangeRates[tokenIn][tokenOut] = rate;
@@ -50,9 +50,9 @@ contract MockUniswapRouter is Ownable {
     }
     
     /**
-     * @notice 执行精确输入的单笔交换
-     * @param params 交换参数
-     * @return amountOut 实际输出金额
+     * @notice Executes a single exact input swap
+     * @param params Swap parameters
+     * @return amountOut Actual output amount
      */
     function exactInputSingle(ExactInputSingleParams calldata params)
         external
@@ -80,31 +80,35 @@ contract MockUniswapRouter is Ownable {
         require(supportedPairs[params.tokenIn][params.tokenOut], "Unsupported pair");
         require(params.amountIn > 0, "Amount must be greater than 0");
         
-        // 计算输出金额
+        // Calculate output amount
         uint256 rate = exchangeRates[params.tokenIn][params.tokenOut];
         require(rate > 0, "Exchange rate not set");
         
-        // 简化计算：amountOut = amountIn * rate / 1e18
-        // 这里假设汇率以 1e18 为基准
+        // Simplified calculation: amountOut = amountIn * rate / 1e18
+        // Assumes exchange rate is based on 1e18
         amountOut = (params.amountIn * rate) / 1e18;
         require(amountOut >= params.amountOutMinimum, "Insufficient output amount");
         
-        // 获取真正的调用者（通过 tx.origin 或者通过参数传递）
-        address realCaller = tx.origin; // 在测试环境中，这应该是发起交易的账户
+        // Transfer tokenIn from caller (usually PrivacyPool contract)
+        // Note: Using external call's msg.sender, not current internal call's msg.sender
+        address caller = address(uint160(uint256(keccak256(abi.encode(block.timestamp, msg.sender)))));
         
-        // 从真正的调用者转入 tokenIn
-        IERC20(params.tokenIn).transferFrom(realCaller, address(this), params.amountIn);
+        // In real scenarios, we should get the actual caller from parameters
+        // For testing, we assume call chain: relayer -> PrivacyPool -> MockUniswapRouter
+        // So tokens should come from PrivacyPool, but PrivacyPool has no tokens, tokens are in SmartAccount
+        // We need to modify logic to transfer tokens from recipient (which is SmartAccount)
+        IERC20(params.tokenIn).transferFrom(params.recipient, address(this), params.amountIn);
         
-        // 向接收者转出 tokenOut
+        // Transfer tokenOut to recipient
         IERC20(params.tokenOut).transfer(params.recipient, amountOut);
         
         return amountOut;
     }
     
     /**
-     * @notice 多调用功能 (简化版本)
-     * @param data 调用数据数组
-     * @return results 结果数组
+     * @notice Multicall functionality (simplified version)
+     * @param data Array of call data
+     * @return results Array of results
      */
     function multicall(bytes[] calldata data) external payable returns (bytes[] memory results) {
         results = new bytes[](data.length);
@@ -116,9 +120,9 @@ contract MockUniswapRouter is Ownable {
     }
     
     /**
-     * @notice 紧急提取代币（仅限所有者）
-     * @param token 代币地址
-     * @param amount 提取金额
+     * @notice Emergency token withdrawal (owner only)
+     * @param token Token address
+     * @param amount Withdrawal amount
      */
     function emergencyWithdraw(address token, uint256 amount) external onlyOwner {
         IERC20(token).transfer(owner(), amount);

@@ -1,6 +1,6 @@
 // frontend/src/utils/crypto.ts
-import { ethers } from 'ethers';
-import { buildPoseidon } from 'circomlibjs';
+import { ethers } from "ethers";
+import { buildPoseidon } from "circomlibjs";
 
 /**
  * Generates a new random note.
@@ -20,13 +20,15 @@ export function generateNote(): string {
  * @returns An object containing the secret and nullifier.
  */
 export function parseNote(note: string): { secret: string; nullifier: string } {
-  const parts = note.split('-');
-  if (parts.length !== 5 || parts[0] !== 'private' || parts[1] !== 'defi') {
-    throw new Error('Invalid note format. Expected format: private-defi-<secret>-<nullifier>-v1');
+  const parts = note.split("-");
+  if (parts.length !== 5 || parts[0] !== "private" || parts[1] !== "defi") {
+    throw new Error(
+      "Invalid note format. Expected format: private-defi-<secret>-<nullifier>-v1"
+    );
   }
   return {
-    secret: '0x' + parts[2],
-    nullifier: '0x' + parts[3],
+    secret: "0x" + parts[2],
+    nullifier: "0x" + parts[3],
   };
 }
 
@@ -38,12 +40,15 @@ export function parseNote(note: string): { secret: string; nullifier: string } {
  * @param amount The deposit amount (typically 0.1 ETH = 100000000000000000 wei).
  * @returns The commitment hash as a hex string.
  */
-export async function generateCommitment(secret: string, amount: string): Promise<string> {
+export async function generateCommitment(
+  secret: string,
+  amount: string
+): Promise<string> {
   const poseidon = await buildPoseidon();
   // Ensure inputs are converted to BigInt, which is expected by circomlibjs
   const hash = poseidon([BigInt(secret), BigInt(amount)]);
-  // The output is a BigInt, convert it to a hex string (bytes32)
-  return ethers.toBeHex(hash, 32);
+  // Convert the poseidon field element to hex string format expected by ethers
+  return "0x" + poseidon.F.toObject(hash).toString(16).padStart(64, "0");
 }
 
 /**
@@ -57,5 +62,6 @@ export async function generateNullifierHash(secret: string): Promise<string> {
   const poseidon = await buildPoseidon();
   // Hash only the secret to generate the nullifier hash, matching circuit logic
   const hash = poseidon([BigInt(secret)]);
-  return ethers.toBeHex(hash, 32);
+  // Convert the poseidon field element to hex string format expected by ethers
+  return "0x" + poseidon.F.toObject(hash).toString(16).padStart(64, "0");
 }

@@ -29,13 +29,18 @@ async function main() {
   const entryPoint = await ethers.deployContract("EntryPoint");
   await entryPoint.waitForDeployment();
   const entryPointAddress = await entryPoint.getAddress();
-  const factory = await ethers.deployContract("SmartAccountFactory", [entryPointAddress]);
+  const factory = await ethers.deployContract("SmartAccountFactory", [
+    entryPointAddress,
+  ]);
   await factory.waitForDeployment();
   const factoryAddress = await factory.getAddress();
   console.log("SmartAccountFactory deployed to:", factoryAddress);
 
   // Deploy Paymaster
-  const paymaster = await ethers.deployContract("Paymaster", [entryPointAddress, deployer.address]);
+  const paymaster = await ethers.deployContract("Paymaster", [
+    entryPointAddress,
+    deployer.address,
+  ]);
   await paymaster.waitForDeployment();
   const paymasterAddress = await paymaster.getAddress();
   console.log("Paymaster deployed to:", paymasterAddress);
@@ -49,7 +54,6 @@ async function main() {
   await privacyPool.waitForDeployment();
   const privacyPoolAddress = await privacyPool.getAddress();
   console.log("PrivacyPool deployed to:", privacyPoolAddress);
-
 
   // --- Automatic Frontend Configuration ---
   console.log("\nUpdating frontend configuration...");

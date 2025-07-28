@@ -1,12 +1,6 @@
 // test/environment.ts
 import { ethers } from "hardhat";
-import {
-  BaseWallet,
-  Contract,
-  Signer,
-  getBytes,
-  solidityPacked,
-} from "ethers";
+import { BaseWallet, Contract, Signer, getBytes, solidityPacked } from "ethers";
 import {
   EntryPoint,
   EntryPoint__factory,
@@ -71,8 +65,10 @@ export async function deployTestEnvironment(): Promise<TestEnvironment> {
   await verifier.waitForDeployment();
   const verifierAddress = await verifier.getAddress();
 
-  // 3. Deploy PoseidonHasher (Mock version for testing)
-  const poseidonHasherFactory = await ethers.getContractFactory("PoseidonHasherMock");
+  // 3. Deploy PoseidonHasher (Real ZK-friendly version)
+  const poseidonHasherFactory = await ethers.getContractFactory(
+    "PoseidonHasher"
+  );
   const poseidonHasher = await poseidonHasherFactory.deploy();
   await poseidonHasher.waitForDeployment();
   const poseidonHasherAddress = await poseidonHasher.getAddress();
@@ -101,33 +97,40 @@ export async function deployTestEnvironment(): Promise<TestEnvironment> {
 
   // 7. Deploy MockERC20 tokens
   const mockERC20Factory = await ethers.getContractFactory("MockERC20");
-  
+
   // Deploy WETH with 18 decimals and initial supply of 1 million tokens
-  const weth = await mockERC20Factory.deploy(
+  const weth = (await mockERC20Factory.deploy(
     "Wrapped Ethereum",
     "WETH",
     18,
     ethers.parseEther("1000000")
-  ) as MockERC20;
+  )) as MockERC20;
   await weth.waitForDeployment();
-  
+
   // Deploy USDC with 6 decimals and initial supply of 1 million tokens
-  const usdc = await mockERC20Factory.deploy(
+  const usdc = (await mockERC20Factory.deploy(
     "USD Coin",
     "USDC",
     6,
     ethers.parseUnits("1000000", 6)
-  ) as MockERC20;
+  )) as MockERC20;
   await usdc.waitForDeployment();
 
   // 8. Deploy MockUniswapRouter
-  const mockUniswapRouterFactory = await ethers.getContractFactory("MockUniswapRouter");
-  const mockUniswapRouter = await mockUniswapRouterFactory.deploy() as MockUniswapRouter;
+  const mockUniswapRouterFactory = await ethers.getContractFactory(
+    "MockUniswapRouter"
+  );
+  const mockUniswapRouter =
+    (await mockUniswapRouterFactory.deploy()) as MockUniswapRouter;
   await mockUniswapRouter.waitForDeployment();
 
   // 9. Fund Paymaster
-  await paymaster.connect(owner).depositToEntryPoint({ value: ethers.parseEther("1") });
-  await paymaster.connect(owner).setSupportedTarget(await privacyPool.getAddress(), true);
+  await paymaster
+    .connect(owner)
+    .depositToEntryPoint({ value: ethers.parseEther("1") });
+  await paymaster
+    .connect(owner)
+    .setSupportedTarget(await privacyPool.getAddress(), true);
 
   return {
     owner,

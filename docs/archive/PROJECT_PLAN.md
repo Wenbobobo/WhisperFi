@@ -9,6 +9,7 @@ This document tracks the progress of the project, from initial conception to pro
 **Objective:** Define the precise problem, target market, technical solution, and product specifications.
 
 **Key Tasks:**
+
 - [ ] Initial document review and analysis.
 - [ ] Foundational Socratic questioning and debate.
 - [ ] Target Customer Profile Definition.
@@ -29,6 +30,7 @@ This document tracks the progress of the project, from initial conception to pro
 **Objective:** Create comprehensive documentation for new team members and for the open-source community.
 
 **Key Tasks:**
+
 - [ ] Develop "Zero-to-Hero" guide on Zero-Knowledge proofs in the context of this project.
 - [ ] Develop "Zero-to-Hero" guide on Account Abstraction (ERC-4337) and its application in our solution.
 - [ ] Write user-facing documentation for the prototype.
@@ -40,6 +42,7 @@ This document tracks the progress of the project, from initial conception to pro
 **Objective:** Build a functional prototype based on the specifications from Phase 1.
 
 **Key Tasks:**
+
 - [ ] Set up development environment (Hardhat, Circom, etc.).
 - [ ] Implement ZK circuits.
 - [ ] Implement smart contracts (PrivacyPool, Verifier, Account Abstraction modules).
