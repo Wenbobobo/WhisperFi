@@ -1,24 +1,24 @@
-// scripts/deploy.js
-const { ethers } = require("hardhat");
-const fs = require("fs");
-const path = require("path");
-const { deployPoseidon } = require("./deploy-poseidon");
+// scripts/deploy.ts
+import { ethers } from "hardhat";
+import fs from "fs";
+import path from "path";
+import { deployPoseidon } from "./deploy-poseidon";
 
 async function main() {
   const [deployer] = await ethers.getSigners();
   console.log("Deploying contracts with the account:", deployer.address);
+
+  // Deploy Poseidon Hasher first using the new official implementation
+  console.log("\n🔧 Deploying official Poseidon hasher...");
+  const poseidonResult = await deployPoseidon();
+  const poseidonHasherAddress = poseidonResult.address;
+  console.log("✅ Official PoseidonHasher deployed to:", poseidonHasherAddress);
 
   // Deploy Verifier
   const verifier = await ethers.deployContract("Verifier");
   await verifier.waitForDeployment();
   const verifierAddress = await verifier.getAddress();
   console.log("Verifier deployed to:", verifierAddress);
-
-  // Deploy official Poseidon hasher using circomlibjs
-  console.log("🚀 Deploying official Poseidon hasher...");
-  const poseidonResult = await deployPoseidon();
-  const poseidonHasherAddress = poseidonResult.address;
-  console.log("✅ Official PoseidonHasher deployed to:", poseidonHasherAddress);
 
   // Deploy Executor
   const executor = await ethers.deployContract("Executor", [deployer.address]);
@@ -46,15 +46,16 @@ async function main() {
   const paymasterAddress = await paymaster.getAddress();
   console.log("Paymaster deployed to:", paymasterAddress);
 
-  // Deploy PrivacyPool
+  // Deploy PrivacyPool with the official Poseidon hasher
+  console.log("\n🏊 Deploying PrivacyPool with official Poseidon hasher...");
   const privacyPool = await ethers.deployContract("PrivacyPool", [
     verifierAddress,
-    poseidonHasherAddress,
+    poseidonHasherAddress, // Use the official Poseidon hasher
     deployer.address,
   ]);
   await privacyPool.waitForDeployment();
   const privacyPoolAddress = await privacyPool.getAddress();
-  console.log("PrivacyPool deployed to:", privacyPoolAddress);
+  console.log("✅ PrivacyPool deployed to:", privacyPoolAddress);
 
   // --- Automatic Frontend Configuration ---
   console.log("\nUpdating frontend configuration...");
@@ -79,6 +80,8 @@ export const CONTRACTS = {
 
   fs.writeFileSync(configPath, configContent);
   console.log(`Frontend configuration updated at ${configPath}`);
+  
+  console.log("\n🎉 All contracts deployed successfully with official Poseidon hasher!");
 }
 
 main()

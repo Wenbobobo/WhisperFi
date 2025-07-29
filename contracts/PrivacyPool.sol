@@ -3,8 +3,12 @@ pragma solidity ^0.8.28;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IVerifier } from "./IVerifier.sol";
-import { IPoseidonHasher } from "./PoseidonHasher.sol";
 import { SNARK_SCALAR_FIELD } from "./lib/Globals.sol";
+
+// Interface for circomlibjs generated Poseidon contract
+interface IPoseidonHasher {
+    function poseidon(uint256[2] memory input) external pure returns (uint256);
+}
 
 /**
  * @title PrivacyPool
@@ -167,14 +171,14 @@ contract PrivacyPool is Ownable {
         address _recipient,
         bytes32 _tradeDataHash
     ) internal view returns (uint256) {
-        uint256[] memory publicSignals = new uint256[](6);
-        publicSignals[0] = uint256(_merkleRoot);
-        publicSignals[1] = uint256(_nullifier);
-        publicSignals[2] = uint256(_newCommitment);
-        publicSignals[3] = _tradeAmount;
-        publicSignals[4] = uint256(uint160(_recipient));
-        publicSignals[5] = uint256(_tradeDataHash);
-        return poseidonHasher.poseidon(publicSignals);
+        // For 6 inputs, we need to hash sequentially using the uint256[2] function
+        // Hash the first two, then sequentially hash with subsequent elements
+        uint256 result = poseidonHasher.poseidon([uint256(_merkleRoot), uint256(_nullifier)]);
+        result = poseidonHasher.poseidon([result, uint256(_newCommitment)]);
+        result = poseidonHasher.poseidon([result, _tradeAmount]);
+        result = poseidonHasher.poseidon([result, uint256(uint160(_recipient))]);
+        result = poseidonHasher.poseidon([result, uint256(_tradeDataHash)]);
+        return result;
     }
 
     function _executeTradeCall(address _target, bytes calldata _callData) internal {
@@ -193,11 +197,8 @@ contract PrivacyPool is Ownable {
     }
 
     function _calculateTradeDataHash(address _recipient, uint256 _tradeAmount) internal view returns (bytes32) {
-        uint256[] memory inputs = new uint256[](2);
-        inputs[0] = uint256(uint160(_recipient));
-        inputs[1] = _tradeAmount;
-        
-        return bytes32(poseidonHasher.poseidon(inputs));
+        // Use the uint256[2] function signature from circomlibjs
+        return bytes32(poseidonHasher.poseidon([uint256(uint160(_recipient)), _tradeAmount]));
     }
 
     function _insertLeaf(bytes32 _leaf) internal {
@@ -222,17 +223,13 @@ contract PrivacyPool is Ownable {
     }
 
     function _hashLeftRight(bytes32 _left, bytes32 _right) internal view returns (bytes32) {
-        uint256[] memory inputs = new uint256[](2);
-        inputs[0] = uint256(_left);
-        inputs[1] = uint256(_right);
-        return bytes32(poseidonHasher.poseidon(inputs));
+        // Use the uint256[2] function signature from circomlibjs
+        return bytes32(poseidonHasher.poseidon([uint256(_left), uint256(_right)]));
     }
 
     function calculateCommitment(uint256 _nullifier, uint256 _secret) public view returns (bytes32) {
-        uint256[] memory inputs = new uint256[](2);
-        inputs[0] = _nullifier;
-        inputs[1] = _secret;
-        return bytes32(poseidonHasher.poseidon(inputs));
+        // Use the uint256[2] function signature from circomlibjs
+        return bytes32(poseidonHasher.poseidon([_nullifier, _secret]));
     }
 
     function _calculatePublicInputsHash(
@@ -242,13 +239,12 @@ contract PrivacyPool is Ownable {
         uint256 _fee,
         address _relayer
     ) internal view returns (uint256) {
-        // This hash must match the one computed in the circuit.
-        uint256[] memory inputs = new uint256[](5);
-        inputs[0] = uint256(_root);
-        inputs[1] = uint256(_nullifier);
-        inputs[2] = uint256(uint160(address(_recipient)));
-        inputs[3] = _fee;
-        inputs[4] = uint256(uint160(address(_relayer)));
-        return poseidonHasher.poseidon(inputs);
+        // For 5 inputs, we need to hash sequentially using the uint256[2] function
+        // Hash the first two, then sequentially hash with subsequent elements
+        uint256 result = poseidonHasher.poseidon([uint256(_root), uint256(_nullifier)]);
+        result = poseidonHasher.poseidon([result, uint256(uint160(address(_recipient)))]);
+        result = poseidonHasher.poseidon([result, _fee]);
+        result = poseidonHasher.poseidon([result, uint256(uint160(address(_relayer)))]);
+        return result;
     }
 }

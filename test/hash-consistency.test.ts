@@ -1,30 +1,30 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { PrivacyPool, PoseidonHasher } from "../typechain-types";
+import { PrivacyPool } from "../typechain-types";
+import { deployPoseidon } from "../scripts/deploy-poseidon";
 // @ts-ignore
 import * as circomlibjs from "circomlibjs";
 
 describe("Hash Consistency Test", function () {
   let privacyPool: PrivacyPool;
-  let poseidonHasher: PoseidonHasher;
+  let poseidonHasher: any;
   let poseidon: any;
 
   before(async function () {
     // Initialize circomlibjs poseidon
     poseidon = await circomlibjs.buildPoseidon();
 
-    // Deploy contracts
-    const PoseidonHasherFactory = await ethers.getContractFactory(
-      "PoseidonHasher"
-    );
-    poseidonHasher = await PoseidonHasherFactory.deploy();
-    await poseidonHasher.waitForDeployment();
+    // Deploy official Poseidon hasher using deployPoseidon function
+    console.log("🔧 Deploying official Poseidon hasher for testing...");
+    const poseidonResult = await deployPoseidon();
+    poseidonHasher = poseidonResult.contract;
+    console.log("✅ Official Poseidon hasher deployed at:", poseidonResult.address);
 
     const [owner] = await ethers.getSigners();
     const PrivacyPoolFactory = await ethers.getContractFactory("PrivacyPool");
     privacyPool = await PrivacyPoolFactory.deploy(
       "0x0000000000000000000000000000000000000000", // Mock verifier for this test
-      await poseidonHasher.getAddress(),
+      poseidonResult.address,
       await owner.getAddress()
     );
     await privacyPool.waitForDeployment();
@@ -41,11 +41,8 @@ describe("Hash Consistency Test", function () {
     // Convert the poseidon field element to hex string format expected by ethers
     const frontendHashHex = "0x" + poseidon.F.toObject(frontendHash).toString(16).padStart(64, "0");
 
-    // Backend hash calculation (calling contract)
-    const backendHash = await poseidonHasher.calculateCommitment(
-      secret,
-      amount
-    );
+    // Backend hash calculation (calling official Poseidon contract)
+    const backendHash = await poseidonHasher["poseidon(uint256[2])"]([BigInt(secret), BigInt(amount.toString())]);
     const backendHashHex = ethers.toBeHex(backendHash, 32);
 
     // Assert equality
@@ -61,15 +58,14 @@ describe("Hash Consistency Test", function () {
       "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
 
     // Frontend nullifier hash calculation (using circomlibjs)
-    const frontendNullifierHash = poseidon([BigInt(secret)]);
+    // Use zero padding to match the backend contract's poseidon(uint256[2]) signature
+    const frontendNullifierHash = poseidon([BigInt(secret), 0n]);
     // Convert the poseidon field element to hex string format expected by ethers
     const frontendNullifierHashHex = "0x" + poseidon.F.toObject(frontendNullifierHash).toString(16).padStart(64, "0");
 
-    // Backend nullifier hash calculation (calling contract directly)
-    const backendNullifierHash = await poseidonHasher.calculateCommitment(
-      secret,
-      0
-    ); // Using 0 for nullifier hash
+    // Backend nullifier hash calculation (calling official Poseidon contract)
+    // For single input, we add a 0 as the second input to match circomlibjs behavior
+    const backendNullifierHash = await poseidonHasher["poseidon(uint256[2])"]([BigInt(secret), 0n]);
     const backendNullifierHashHex = ethers.toBeHex(backendNullifierHash, 32);
 
     // Assert equality

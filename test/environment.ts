@@ -13,6 +13,7 @@ import {
   MockUniswapRouter,
 } from "../typechain-types";
 import { PackedUserOperation } from "./utils/UserOperation";
+import { deployPoseidon } from "../scripts/deploy-poseidon";
 
 /**
  * @dev A helper function to pack uints for accountGasLimits and gasFees.
@@ -65,13 +66,9 @@ export async function deployTestEnvironment(): Promise<TestEnvironment> {
   await verifier.waitForDeployment();
   const verifierAddress = await verifier.getAddress();
 
-  // 3. Deploy PoseidonHasher (Real ZK-friendly version)
-  const poseidonHasherFactory = await ethers.getContractFactory(
-    "PoseidonHasher"
-  );
-  const poseidonHasher = await poseidonHasherFactory.deploy();
-  await poseidonHasher.waitForDeployment();
-  const poseidonHasherAddress = await poseidonHasher.getAddress();
+  // 3. Deploy PoseidonHasher using official deployment script
+  const poseidonDeployment = await deployPoseidon();
+  const poseidonHasherAddress = poseidonDeployment.address;
 
   // 4. Deploy PrivacyPool
   const privacyPoolFactory = await ethers.getContractFactory("PrivacyPool");

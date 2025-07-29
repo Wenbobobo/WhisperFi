@@ -1,14 +1,16 @@
 // test/integration/deposit-withdraw.test.ts
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { Signer, Contract } from "ethers";
+import { Signer } from "ethers";
 import { buildPoseidon } from "circomlibjs";
+import { Groth16Verifier, PrivacyPool, Executor } from "../../typechain-types";
+import { deployPoseidon } from "../../scripts/deploy-poseidon";
 
 describe("Deposit-Withdraw Integration Test", function () {
   let owner: Signer;
-  let verifier: Contract;
-  let privacyPool: Contract;
-  let executor: Contract;
+  let verifier: Groth16Verifier;
+  let privacyPool: PrivacyPool;
+  let executor: Executor;
   let poseidon: any;
 
   before(async function () {
@@ -19,21 +21,29 @@ describe("Deposit-Withdraw Integration Test", function () {
   beforeEach(async function () {
     [owner] = await ethers.getSigners();
 
-    // Deploy the actual Verifier contract
-    const Verifier = await ethers.getContractFactory("Verifier");
-    verifier = await Verifier.deploy();
-    await verifier.waitForDeployment();
+    // Pre-fetch addresses to avoid ENS resolution issues
+    const ownerAddress = await owner.getAddress();
 
-    const Executor = await ethers.getContractFactory("Executor");
-    executor = await Executor.deploy(await owner.getAddress());
+    // Deploy the actual Groth16Verifier contract (production verifier)
+    const Groth16VerifierFactory = await ethers.getContractFactory("Groth16Verifier");
+    verifier = await Groth16VerifierFactory.deploy();
+    await verifier.waitForDeployment();
+    const verifierAddress = await verifier.getAddress();
+
+    // Deploy PoseidonHasher using the official deployment script
+    const poseidonDeployment = await deployPoseidon();
+    const poseidonHasherAddress = poseidonDeployment.address;
+
+    const ExecutorFactory = await ethers.getContractFactory("Executor");
+    executor = await ExecutorFactory.deploy(ownerAddress);
     await executor.waitForDeployment();
 
-    const initialRoot = ethers.encodeBytes32String("initialRoot");
-    const PrivacyPool = await ethers.getContractFactory("PrivacyPool");
-    privacyPool = await PrivacyPool.deploy(
-      await verifier.getAddress(),
-      initialRoot,
-      await owner.getAddress()
+    // Deploy PrivacyPool with correct constructor parameters
+    const PrivacyPoolFactory = await ethers.getContractFactory("PrivacyPool");
+    privacyPool = await PrivacyPoolFactory.deploy(
+      verifierAddress,        // _verifier
+      poseidonHasherAddress,  // _poseidonHasher (修复：传递正确的 PoseidonHasher 地址而不是 initialRoot)
+      ownerAddress            // _initialOwner
     );
     await privacyPool.waitForDeployment();
   });
@@ -82,7 +92,7 @@ describe("Deposit-Withdraw Integration Test", function () {
       );
 
       expect(depositEvents.length).to.equal(1);
-      expect(depositEvents[0].args.commitment).to.equal(commitment);
+      expect((depositEvents[0] as any).args.commitment).to.equal(commitment);
 
       // Step 4: Simulate withdrawal commitment lookup
       const allDepositEvents = await privacyPool.queryFilter(
@@ -90,7 +100,7 @@ describe("Deposit-Withdraw Integration Test", function () {
       );
 
       const commitments = allDepositEvents.map(
-        (event) => event.args.commitment
+        (event) => (event as any).args.commitment
       );
       const foundIndex = commitments.findIndex((c) => c === commitment);
 

@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 import { Signer } from "ethers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { deployTestEnvironment, TestEnvironment } from "./environment";
-import { PrivacyPool, Groth16Verifier } from "../typechain-types";
+import { PrivacyPool, MockVerifier } from "../typechain-types";
 
 /**
  * @dev Generates a mock proof for testing purposes.
@@ -27,7 +27,7 @@ const generateMockProof = (): [
 describe("PrivacyPool", function () {
   let env: TestEnvironment;
   let owner: Signer;
-  let verifier: Groth16Verifier;
+  let verifier: MockVerifier;
   let privacyPool: PrivacyPool;
 
   beforeEach(async function () {
@@ -96,12 +96,15 @@ describe("PrivacyPool", function () {
       await privacyPool.deposit(commitment, { value: depositAmount });
       const currentRoot = await privacyPool.merkleRoot();
 
+      // Configure MockVerifier to return false for this test
+      await verifier.setMockResult(false);
+
       const [pA, pB, pC] = generateMockProof(); // This is a mock proof
       const nullifier = ethers.randomBytes(32);
       const recipient = await owner.getAddress();
       const amount = ethers.parseEther("1");
 
-      // The Verifier will return false for this mock proof
+      // The MockVerifier will now return false, causing the withdraw to fail
       await expect(
         privacyPool.withdraw(
           pA,
@@ -114,6 +117,9 @@ describe("PrivacyPool", function () {
           recipient // relayer (using same address for simplicity)
         )
       ).to.be.revertedWith("Invalid proof");
+
+      // Reset MockVerifier to true for other tests
+      await verifier.setMockResult(true);
     });
   });
 });
