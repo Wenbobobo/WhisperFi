@@ -10,6 +10,11 @@ interface IPoseidonHasher {
     function poseidon(uint256[2] memory input) external pure returns (uint256);
 }
 
+// Interface for 5-input Poseidon hasher (used for public inputs)
+interface IPoseidonHasher5 {
+    function poseidon(uint256[5] memory input) external pure returns (uint256);
+}
+
 /**
  * @title PrivacyPool
  * @notice A privacy pool for anonymous transactions using ZK-SNARKs.
@@ -23,6 +28,7 @@ contract PrivacyPool is Ownable {
 
     IVerifier public immutable verifier;
     IPoseidonHasher public immutable poseidonHasher;
+    IPoseidonHasher5 public immutable poseidonHasher5;
 
     // --- Merkle Tree State ---
     bytes32 public merkleRoot;
@@ -36,9 +42,10 @@ contract PrivacyPool is Ownable {
     event Withdrawal(address to, bytes32 nullifier);
     event Trade(bytes32 indexed nullifier, bytes32 indexed newCommitment, address target, uint256 tradeAmount);
 
-    constructor(address _verifier, address _poseidonHasher, address _initialOwner) Ownable(_initialOwner) {
+    constructor(address _verifier, address _poseidonHasher, address _poseidonHasher5, address _initialOwner) Ownable(_initialOwner) {
         verifier = IVerifier(_verifier);
         poseidonHasher = IPoseidonHasher(_poseidonHasher);
+        poseidonHasher5 = IPoseidonHasher5(_poseidonHasher5);
 
         // Initialize Merkle Tree
         bytes32 currentZero = ZERO_VALUE;
@@ -239,12 +246,15 @@ contract PrivacyPool is Ownable {
         uint256 _fee,
         address _relayer
     ) internal view returns (uint256) {
-        // For 5 inputs, we need to hash sequentially using the uint256[2] function
-        // Hash the first two, then sequentially hash with subsequent elements
-        uint256 result = poseidonHasher.poseidon([uint256(_root), uint256(_nullifier)]);
-        result = poseidonHasher.poseidon([result, uint256(uint160(address(_recipient)))]);
-        result = poseidonHasher.poseidon([result, _fee]);
-        result = poseidonHasher.poseidon([result, uint256(uint160(address(_relayer)))]);
-        return result;
+        // Use 5-input Poseidon hasher to match the circuit's parallel hashing design
+        // This must match the exact order and format used in withdraw.circom
+        uint256[5] memory inputs = [
+            uint256(_root),
+            uint256(_nullifier),
+            uint256(uint160(_recipient)),
+            _fee,
+            uint256(uint160(_relayer))
+        ];
+        return poseidonHasher5.poseidon(inputs);
     }
 }

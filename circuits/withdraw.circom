@@ -78,10 +78,12 @@ template Withdraw(levels) {
     // 公共输入
     signal input merkleRoot;
     signal input nullifier;
+    signal input recipient;
+    signal input fee;
+    signal input relayer;
     
     // 公共输出 - 这些是验证者可以看到的
-    signal output root;
-    signal output nullifierHash;
+    signal output publicInputsHash;
 
     // 1. 从secret和amount计算commitment
     component commitmentHasher = Poseidon(2);
@@ -107,10 +109,18 @@ template Withdraw(levels) {
     // 4. 约束公共nullifier必须等于从secret计算出的nullifier
     nullifier === calculatedNullifier;
     
-    // 5. 输出公共信号
-    root <== merkleRoot;
-    nullifierHash <== calculatedNullifier;
+    // 5. 计算并输出与合约一致的公开输入哈希
+    component publicHasher = Poseidon(5);
+    publicHasher.inputs[0] <== merkleRoot;
+    publicHasher.inputs[1] <== calculatedNullifier;
+    publicHasher.inputs[2] <== recipient;
+    publicHasher.inputs[3] <== fee;
+    publicHasher.inputs[4] <== relayer;
+    
+    publicInputsHash <== publicHasher.out;
 }
 
 // 定义主组件 - 使用深度为20的Merkle树
-component main = Withdraw(20);
+component main {
+    public [merkleRoot, nullifier, recipient, fee, relayer];
+} = Withdraw(20);

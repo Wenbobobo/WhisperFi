@@ -1,12 +1,13 @@
 // src/components/DepositCard.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useWriteContract,
   useWaitForTransactionReceipt,
   useAccount,
 } from "wagmi";
+import { UserRejectedRequestError } from "viem";
 import { ethers } from "ethers";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -44,11 +45,50 @@ const Spinner = () => (
 export default function DepositCard() {
   const [note, setNote] = useState("");
   const [commitment, setCommitment] = useState("");
+  const [userFriendlyError, setUserFriendlyError] = useState<string | null>(null);
   const { address, chain } = useAccount();
   const { data: hash, writeContract, isPending, error } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess: isConfirmed } =
     useWaitForTransactionReceipt({ hash });
+
+  // 🔍 DEBUG: 监控交易状态和错误
+  useEffect(() => {
+    if (error) {
+      console.error("=== TRANSACTION ERROR ===");
+      console.error("Error Object:", error);
+      console.error("Error Message:", error.message);
+      console.error("Error Cause:", error.cause);
+      console.error("Error Stack:", error.stack);
+      console.error("========================");
+
+      // 为不同类型的错误设置用户友好的信息
+      if (error instanceof UserRejectedRequestError) {
+        setUserFriendlyError("交易已取消 - 您在钱包中拒绝了交易请求。");
+      } else if (error.message?.includes("insufficient funds")) {
+        setUserFriendlyError("余额不足 - 您的账户余额不足以完成此次存款。");
+      } else if (error.message?.includes("User denied")) {
+        setUserFriendlyError("交易已取消 - 您在钱包中拒绝了交易请求。");
+      } else {
+        // 其他未知错误，显示简化的错误信息
+        const shortMessage = (error as any).shortMessage || error.message;
+        setUserFriendlyError(`交易失败: ${shortMessage}`);
+      }
+    } else {
+      // 清除错误状态
+      setUserFriendlyError(null);
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (hash) {
+      console.log("=== TRANSACTION SUBMITTED ===");
+      console.log("Transaction Hash:", hash);
+      console.log("Is Confirming:", isConfirming);
+      console.log("Is Confirmed:", isConfirmed);
+      console.log("============================");
+    }
+  }, [hash, isConfirming, isConfirmed]);
 
   const handleDeposit = async () => {
     const newNote = generateNote();
@@ -62,6 +102,17 @@ export default function DepositCard() {
     setCommitment(newCommitment);
 
     if (address && chain) {
+      // 🔍 DEBUG: 添加详细的调试日志
+      console.log("=== DEPOSIT DEBUG INFO ===");
+      console.log("Target Contract Address:", PRIVACY_POOL_ADDRESS);
+      console.log("Function Name:", "deposit");
+      console.log("Commitment:", newCommitment);
+      console.log("Value (ETH):", ethers.parseEther("0.1").toString());
+      console.log("User Address:", address);
+      console.log("Chain ID:", chain.id);
+      console.log("ABI Function Names:", PrivacyPoolAbi.filter(item => item.type === 'function').map(item => item.name));
+      console.log("========================");
+
       writeContract({
         address: PRIVACY_POOL_ADDRESS,
         abi: PrivacyPoolAbi,
@@ -163,13 +214,13 @@ export default function DepositCard() {
         </AnimatePresence>
       </div>
 
-      {error && (
+      {userFriendlyError && (
         <motion.div
           className="bg-red-900/50 border border-red-700 rounded-lg p-3 mt-4 text-sm text-red-300"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          Error: {(error as any).shortMessage || error.message}
+          {userFriendlyError}
         </motion.div>
       )}
     </motion.div>

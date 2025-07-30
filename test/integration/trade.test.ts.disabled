@@ -31,7 +31,7 @@ const IntentProcessor = require("../../relayer/processor");
  * @dev This is an atomic integration test that is independent of the Express API server.
  * It directly tests the core processor module at the code level to verify its business logic.
  */
-describe.skip("Relayer Trade Processing Integration", function () {
+describe("Relayer Trade Processing Integration", function () {
   let env: TestEnvironment;
   let poseidon: any;
   let processor: any;
@@ -412,18 +412,26 @@ describe.skip("Relayer Trade Processing Integration", function () {
   }
 
   /**
-   * @dev Generates the trade data hash using the simplified implementation matching the contract.
+   * @dev Generates the trade data hash using the correct implementation matching the contract.
+   * Contract implementation: poseidonHasher.poseidon([uint256(uint160(_recipient)), _tradeAmount])
    */
   function generateTradeDataHash(recipient: string, amount: bigint): string {
-    // Convert address to uint256(uint160(address)) to exactly match the contract logic
-    const addressBigInt = BigInt(recipient);
-    const uint160Max = (1n << 160n) - 1n; // 2^160 - 1
-    const recipientAsUint160 = addressBigInt & uint160Max; // Ensure it's within uint160 range
-    const recipientAsUint256 = recipientAsUint160; // Extend to uint256 (effectively the uint160 value)
-
-    const hash = simplifiedPoseidon([recipientAsUint256, amount]);
-    const result = ethers.toBeHex(hash, 32);
-
-    return result;
+    console.log(`🔢 [测试] generateTradeDataHash 输入参数:`);
+    console.log(`  - recipient: ${recipient}`);
+    console.log(`  - amount: ${amount}`);
+    
+    // Convert address to uint256 (same as contract: uint256(uint160(_recipient)))
+    const addressAsUint256 = BigInt(recipient);
+    console.log(`🔄 [测试] 地址转换为uint256: ${addressAsUint256}`);
+    
+    // Call poseidon with two parameters: [addressAsUint256, amount]
+    const hash = poseidon([addressAsUint256, amount]);
+    console.log(`🌟 [测试] poseidon 输入: [${addressAsUint256}, ${amount}]`);
+    console.log(`🌟 [测试] poseidon 原始结果:`, hash);
+    
+    const finalHash = ethers.toBeHex(poseidon.F.toObject(hash), 32);
+    console.log(`✅ [测试] 最终哈希结果: ${finalHash}`);
+    
+    return finalHash;
   }
 });

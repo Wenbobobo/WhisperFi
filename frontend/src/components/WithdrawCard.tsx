@@ -9,7 +9,6 @@ import {
   usePublicClient,
 } from "wagmi";
 import { ethers } from "ethers";
-import { MerkleTree } from "fixed-merkle-tree";
 // @ts-ignore
 import { groth16 } from "snarkjs";
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,8 +19,8 @@ import {
   parseNote,
   generateCommitment,
   generateNullifierHash,
+  CircuitCompatibleMerkleTree,
 } from "../utils/crypto";
-import { buildPoseidon } from "circomlibjs";
 
 const PRIVACY_POOL_ADDRESS = CONTRACTS.PRIVACY_POOL_ADDRESS as `0x${string}`;
 const PrivacyPoolAbi = PrivacyPoolArtifact.abi;
@@ -58,6 +57,7 @@ export default function WithdrawCard() {
   const [proof, setProof] = useState<any>(null);
   const [publicSignals, setPublicSignals] = useState<any>(null);
   const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const [isComplianceModalOpen, setIsComplianceModalOpen] = useState(false);
 
   const { chain, address } = useAccount();
   const publicClient = usePublicClient();
@@ -136,25 +136,49 @@ export default function WithdrawCard() {
         );
       }
 
-      const poseidon = await buildPoseidon();
-      const hashFunction = (left: any, right: any) => poseidon([left, right]);
-      const tree = new MerkleTree(20, commitments, {
-        hashFunction,
-        zeroElement:
-          "21663839004416932945382355908790599225266501822907911457504978515578255421292",
-      });
+      // 3. Build circuit-compatible Merkle tree
+      const tree = new CircuitCompatibleMerkleTree(
+        20,
+        commitments,
+        "21663839004416932945382355908790599225266501822907911457504978515578255421292"
+      );
+      await tree.initialize();
 
-      const { pathElements, pathIndices } = tree.path(leafIndex);
+      const { pathElements, pathIndices } = tree.generateProof(leafIndex);
+      const merkleRoot = tree.getRoot();
 
-      // 4. Prepare circuit inputs
-      const input = {
-        secret: BigInt(secret),
-        amount: depositAmount,
-        pathElements: pathElements,
-        pathIndices: pathIndices,
-        merkleRoot: tree.root,
-        nullifier: BigInt(nullifierHash),
-      };
+      // 4. Prepare circuit inputs with detailed logging
+      console.log("🔍 Preparing circuit inputs...");
+      console.log("Secret:", secret, "Type:", typeof secret);
+      console.log("NullifierHash:", nullifierHash, "Type:", typeof nullifierHash);
+      console.log("DepositAmount:", depositAmount, "Type:", typeof depositAmount);
+      console.log("PathElements:", pathElements);
+      console.log("PathIndices:", pathIndices);
+      console.log("MerkleRoot:", merkleRoot);
+      
+      let input;
+      try {
+        input = {
+          secret: BigInt(secret),
+          amount: BigInt(depositAmount.toString()),
+          pathElements: pathElements.map(el => BigInt(el)),
+          pathIndices: pathIndices,
+          merkleRoot: BigInt(merkleRoot),
+          nullifier: BigInt(nullifierHash),
+          // Add fee and relayer to match the contract's public inputs
+          recipient: BigInt(address),
+          fee: BigInt(0), // Placeholder value
+          relayer: BigInt(0), // Placeholder value
+        };
+        console.log("✅ Circuit input prepared successfully:", input);
+      } catch (conversionError) {
+        console.error("❌ BigInt conversion error:", conversionError);
+        console.error("Secret value:", secret);
+        console.error("NullifierHash value:", nullifierHash);
+        console.error("PathElements:", pathElements);
+        console.error("MerkleRoot:", merkleRoot);
+        throw new Error(`BigInt conversion failed: ${conversionError.message}`);
+      }
 
       // 5. Generate ZK proof
       setFeedback({
@@ -194,34 +218,79 @@ export default function WithdrawCard() {
       return;
     }
 
-    const rootBytes32 = ethers.toBeHex(BigInt(publicSignals[0]), 32);
-    const nullifierBytes32 = ethers.toBeHex(BigInt(publicSignals[1]), 32);
+    // --- 诊断日志开始 ---
+    console.log("--- 准备提交取款交易 ---");
 
+    // 1. 格式化公共信号 (publicSignals)
+    // publicSignals[0] 是 merkleRoot
+    // publicSignals[1] 是 nullifierHash
+    const rootFromSignal = BigInt(publicSignals[0]);
+    const nullifierFromSignal = BigInt(publicSignals[1]);
+    
+    const rootBytes32 = ethers.toBeHex(rootFromSignal, 32);
+    const nullifierBytes32 = ethers.toBeHex(nullifierFromSignal, 32);
+
+    console.log("原始 Public Signals:", publicSignals);
+    console.log("Merkle Root (来自信号):", rootFromSignal.toString());
+    console.log("格式化后的 Merkle Root (bytes32):", rootBytes32);
+    console.log("Nullifier Hash (来自信号):", nullifierFromSignal.toString());
+    console.log("格式化后的 Nullifier Hash (bytes32):", nullifierBytes32);
+
+    // 2. 格式化 Groth16 证明 - 确保所有值都是字符串格式
     const formattedProof = {
-      a: [proof.pi_a[0], proof.pi_a[1]],
+      a: [proof.pi_a[0].toString(), proof.pi_a[1].toString()],
       b: [
-        [proof.pi_b[0][1], proof.pi_b[0][0]],
-        [proof.pi_b[1][1], proof.pi_b[1][0]],
+        [proof.pi_b[0][1].toString(), proof.pi_b[0][0].toString()],
+        [proof.pi_b[1][1].toString(), proof.pi_b[1][0].toString()],
       ],
-      c: [proof.pi_c[0], proof.pi_c[1]],
+      c: [proof.pi_c[0].toString(), proof.pi_c[1].toString()],
     };
+    console.log("原始 Proof:", JSON.stringify(proof, null, 2));
+    console.log("格式化后的 Proof:", JSON.stringify(formattedProof, (key, value) =>
+        typeof value === 'bigint' ? value.toString() : value, 2));
 
-    writeContract({
-      address: PRIVACY_POOL_ADDRESS,
-      abi: PrivacyPoolAbi,
-      functionName: "withdraw",
-      args: [
+    // 3. 准备其他参数
+    const recipientAddress = address;
+    const amount = ethers.parseEther("0.1");
+    console.log("接收地址 (Recipient):", recipientAddress);
+    console.log("提款金额 (Amount):", amount.toString());
+
+    const finalArgs = [
         formattedProof.a,
         formattedProof.b,
         formattedProof.c,
         rootBytes32,
         nullifierBytes32,
-        address,
-        ethers.parseEther("0.1"),
-      ],
+        recipientAddress,
+        BigInt(0), // fee
+        ethers.ZeroAddress, // relayer
+    ];
+
+    console.log("--- 最终发送给 writeContract 的参数 ---");
+    console.log("函数名: withdraw");
+    console.log("参数 (args):", JSON.stringify(finalArgs, (key, value) =>
+        typeof value === 'bigint' ? value.toString() : value, 2));
+    console.log("------------------------------------");
+    // --- 诊断日志结束 ---
+
+    writeContract({
+      address: PRIVACY_POOL_ADDRESS,
+      abi: PrivacyPoolAbi,
+      functionName: "withdraw",
+      args: finalArgs,
       chain: chain,
       account: address,
     });
+  };
+
+  const handleComplianceReport = () => {
+    console.log("Opening compliance report modal");
+    setIsComplianceModalOpen(true);
+  };
+
+  const closeComplianceModal = () => {
+    console.log("Closing compliance report modal");
+    setIsComplianceModalOpen(false);
   };
 
   const cardVariants = {

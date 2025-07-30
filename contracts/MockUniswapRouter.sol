@@ -77,6 +77,21 @@ contract MockUniswapRouter is Ownable {
     {
         require(msg.sender == address(this), "Internal function");
         require(block.timestamp <= params.deadline, "Transaction too old");
+        
+        // 🔍 DEBUG: 详细的交易对诊断日志
+        emit SwapCalled(tx.origin, params.tokenIn, params.tokenOut, params.amountIn, 0);
+        
+        // 检查supportedPairs映射
+        bool pairSupported = supportedPairs[params.tokenIn][params.tokenOut];
+        if (!pairSupported) {
+            // 记录详细的诊断信息
+            emit SwapFailed(tx.origin, string(abi.encodePacked(
+                "Unsupported pair - tokenIn: ", toHexString(params.tokenIn),
+                ", tokenOut: ", toHexString(params.tokenOut),
+                ", pairSupported: ", pairSupported ? "true" : "false"
+            )));
+        }
+        
         require(supportedPairs[params.tokenIn][params.tokenOut], "Unsupported pair");
         require(params.amountIn > 0, "Amount must be greater than 0");
         
@@ -126,5 +141,23 @@ contract MockUniswapRouter is Ownable {
      */
     function emergencyWithdraw(address token, uint256 amount) external onlyOwner {
         IERC20(token).transfer(owner(), amount);
+    }
+    
+    /**
+     * @notice Convert address to hex string for logging
+     * @param addr Address to convert
+     * @return Hex string representation
+     */
+    function toHexString(address addr) internal pure returns (string memory) {
+        bytes32 value = bytes32(uint256(uint160(addr)));
+        bytes memory alphabet = "0123456789abcdef";
+        bytes memory str = new bytes(42);
+        str[0] = '0';
+        str[1] = 'x';
+        for (uint256 i = 0; i < 20; i++) {
+            str[2+i*2] = alphabet[uint8(value[i + 12] >> 4)];
+            str[3+i*2] = alphabet[uint8(value[i + 12] & 0x0f)];
+        }
+        return string(str);
     }
 }

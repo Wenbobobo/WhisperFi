@@ -3,6 +3,7 @@ import { ethers } from "hardhat";
 import fs from "fs";
 import path from "path";
 import { deployPoseidon } from "./deploy-poseidon";
+import { deployPoseidon5 } from "./deploy-poseidon5";
 
 async function main() {
   const [deployer] = await ethers.getSigners();
@@ -13,6 +14,12 @@ async function main() {
   const poseidonResult = await deployPoseidon();
   const poseidonHasherAddress = poseidonResult.address;
   console.log("✅ Official PoseidonHasher deployed to:", poseidonHasherAddress);
+
+  // Deploy Poseidon5 Hasher for public inputs hashing
+  console.log("\n🔧 Deploying Poseidon5 hasher for public inputs...");
+  const poseidon5Result = await deployPoseidon5();
+  const poseidonHasher5Address = poseidon5Result.address;
+  console.log("✅ PoseidonHasher5 deployed to:", poseidonHasher5Address);
 
   // Deploy Verifier
   const verifier = await ethers.deployContract("Verifier");
@@ -50,7 +57,8 @@ async function main() {
   console.log("\n🏊 Deploying PrivacyPool with official Poseidon hasher...");
   const privacyPool = await ethers.deployContract("PrivacyPool", [
     verifierAddress,
-    poseidonHasherAddress, // Use the official Poseidon hasher
+    poseidonHasherAddress,
+    poseidonHasher5Address,
     deployer.address,
   ]);
   await privacyPool.waitForDeployment();
@@ -75,6 +83,7 @@ export const CONTRACTS = {
   VERIFIER_ADDRESS: "${verifierAddress}",
   ENTRYPOINT_ADDRESS: "${entryPointAddress}",
   POSEIDON_HASHER_ADDRESS: "${poseidonHasherAddress}",
+  POSEIDON_HASHER5_ADDRESS: "${poseidonHasher5Address}",
 } as const;
 `;
 

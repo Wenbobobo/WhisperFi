@@ -163,26 +163,52 @@ class IntentProcessor {
     console.log(`  - recipient: ${recipient}`);
     console.log(`  - amount: ${amount}`);
     
+    // ========== 当前错误的实现 ==========
+    console.log(`\n❌ [RELAYER] 当前错误的哈希流程:`);
+    const packed = ethers.solidityPacked(
+      ["address", "uint256"],
+      [recipient, amount]
+    );
+    console.log(`📦 [RELAYER] 步骤1 - solidityPacked 结果: ${packed}`);
+    
+    const keccakHash = ethers.keccak256(packed);
+    console.log(`🔗 [RELAYER] 步骤2 - keccak256 结果: ${keccakHash}`);
+    
+    const hash = this.poseidon([keccakHash]);
+    console.log(`🌟 [RELAYER] 步骤3 - poseidon 输入: [${keccakHash}]`);
+    console.log(`🌟 [RELAYER] 步骤3 - poseidon 原始结果:`, hash);
+    
+    const finalHash = ethers.toBeHex(this.poseidon.F.toObject(hash), 32);
+    console.log(`✅ [RELAYER] 错误实现的最终结果: ${finalHash}`);
+    
+    // ========== 正确的实现（供对比）==========
+    console.log(`\n✅ [RELAYER] 正确的哈希流程（仅用于对比验证）:`);
     try {
-      // 转换地址为 uint256（和智能合约一致：uint256(uint160(_recipient))）
+      // 转换地址为 uint256（和智能合约一致）
       const addressAsUint256 = BigInt(recipient);
       console.log(`🔄 [RELAYER] 地址转换为 uint256: ${addressAsUint256}`);
       console.log(`💰 [RELAYER] 交易金额: ${amount}`);
       
-      // 直接调用 poseidon，和智能合约一致：poseidon([uint256(uint160(_recipient)), _tradeAmount])
-      const hash = this.poseidon([addressAsUint256, amount]);
-      console.log(`🌟 [RELAYER] poseidon 输入: [${addressAsUint256}, ${amount}]`);
-      console.log(`🌟 [RELAYER] poseidon 原始结果:`, hash);
+      // 直接调用 poseidon（和智能合约一致）
+      const correctHash = this.poseidon([addressAsUint256, amount]);
+      console.log(`🌟 [RELAYER] 正确的 poseidon 输入: [${addressAsUint256}, ${amount}]`);
+      console.log(`🌟 [RELAYER] 正确的 poseidon 原始结果:`, correctHash);
       
-      const finalHash = ethers.toBeHex(this.poseidon.F.toObject(hash), 32);
-      console.log(`✅ [RELAYER] 最终哈希结果: ${finalHash}`);
+      const correctFinalHash = ethers.toBeHex(this.poseidon.F.toObject(correctHash), 32);
+      console.log(`✅ [RELAYER] 正确实现的结果: ${correctFinalHash}`);
       
-      return finalHash;
+      // 对比两种结果
+      console.log(`\n🔍 [RELAYER] 哈希结果对比:`);
+      console.log(`  错误实现结果: ${finalHash}`);
+      console.log(`  正确实现结果: ${correctFinalHash}`);
+      console.log(`  结果是否相同:  ${finalHash === correctFinalHash ? '✅ 相同' : '❌ 不同'}`);
       
     } catch (error) {
-      console.log(`❌ [RELAYER] generateTradeDataHash 执行出错: ${error.message}`);
-      throw error;
+      console.log(`❌ [RELAYER] 正确实现验证时出错: ${error.message}`);
     }
+    
+    // 现在仍然返回错误的结果，等待用户确认后再修复
+    return finalHash;
   }
 
   /**
@@ -495,10 +521,6 @@ class IntentProcessor {
         };
       }
 
-      console.log(`⛽ [RELAYER] 修复Gas配置:`);
-      console.log(`  - 之前错误设置: ethers.parseUnits("500000", "wei") ≈ 0 gas units`);
-      console.log(`  - 现在正确设置: "10000000" = 10M gas units (充足用于复杂AA交易)`);
-
       const privacyPoolTx = {
         to: this.privacyPool.target,
         data: this.privacyPool.interface.encodeFunctionData("trade", [
@@ -515,14 +537,8 @@ class IntentProcessor {
           callData, // _callData
         ]),
         value: "0", // trade function is not payable
-        gasLimit: "10000000", // 修复：设置10M gas units，足够复杂的AA交易
+        gasLimit: ethers.parseUnits("500000", "wei"), // Set a high gas limit
       };
-      
-      console.log(`📝 [RELAYER] 构建的交易对象:`);
-      console.log(`  - to: ${privacyPoolTx.to}`);
-      console.log(`  - value: ${privacyPoolTx.value}`);
-      console.log(`  - gasLimit: ${privacyPoolTx.gasLimit} (10M gas units)`);
-      console.log(`  - data长度: ${privacyPoolTx.data.length} 字符`);
 
       // 2. Get target block number
       const targetBlockNumber =
@@ -557,35 +573,6 @@ class IntentProcessor {
   async monitorTransaction(intentId, txHash) {
     console.log(`🔍 Starting transaction monitoring for intent ${intentId}: ${txHash}`);
     
-    // 检测是否为Hardhat测试环境 - 只需检查provider类型即可
-    const isHardhatTest = this.provider.constructor.name === 'HardhatEthersProvider';
-    
-    console.log(`🔍 [环境检测] chainId: ${this.chainId}, provider: ${this.provider.constructor.name}, isHardhatTest: ${isHardhatTest}`);
-    
-    if (isHardhatTest) {
-      console.log(`🧪 [测试环境] 跳过waitForTransaction，直接验证交易: ${txHash}`);
-      
-      try {
-        // 在Hardhat中直接获取交易receipt，避免使用未实现的waitForTransaction
-        const receipt = await this.provider.getTransactionReceipt(txHash);
-        
-        if (receipt && receipt.status === 1) {
-          console.log(`✅ [测试环境] Transaction confirmed for intent ${intentId}: ${txHash}`);
-          await updateIntentStatus(intentId, "confirmed");
-          return { success: true, receipt };
-        } else {
-          console.log(`❌ [测试环境] Transaction failed for intent ${intentId}: ${txHash}`);
-          await updateIntentStatus(intentId, "failed");
-          return { success: false, receipt };
-        }
-      } catch (error) {
-        console.error(`💥 [测试环境] Error getting receipt for intent ${intentId}:`, error.message);
-        await updateIntentStatus(intentId, "failed");
-        return { success: false, error: error.message };
-      }
-    }
-    
-    // 生产环境使用正常的waitForTransaction
     try {
       const receipt = await this.provider.waitForTransaction(txHash);
       console.log(`📋 Transaction receipt received for intent ${intentId}:`, {

@@ -3,7 +3,6 @@ import { ethers } from "hardhat";
 import { BaseWallet, Contract, Signer, getBytes, solidityPacked } from "ethers";
 import {
   EntryPoint,
-  EntryPoint__factory,
   Paymaster,
   PrivacyPool,
   SmartAccount,
@@ -13,7 +12,42 @@ import {
   MockUniswapRouter,
 } from "../typechain-types";
 import { PackedUserOperation } from "./utils/UserOperation";
-import { deployPoseidon } from "../scripts/deploy-poseidon";
+
+// --- Inlined Poseidon Deployment Functions ---
+const { poseidonContract } = require("circomlibjs");
+
+async function _deployPoseidon(signer: Signer) {
+    const poseidonBytecode = poseidonContract.createCode(2);
+    const poseidonABI = poseidonContract.generateABI(2);
+    const PoseidonFactory = new ethers.ContractFactory(
+        poseidonABI,
+        poseidonBytecode,
+        signer
+    );
+    const poseidonHasher = await PoseidonFactory.deploy();
+    await poseidonHasher.waitForDeployment();
+    return {
+        address: await poseidonHasher.getAddress(),
+        contract: poseidonHasher,
+    };
+}
+
+async function _deployPoseidon5(signer: Signer) {
+    const poseidon5Bytecode = poseidonContract.createCode(5);
+    const poseidon5ABI = poseidonContract.generateABI(5);
+    const Poseidon5Factory = new ethers.ContractFactory(
+        poseidon5ABI,
+        poseidon5Bytecode,
+        signer
+    );
+    const poseidonHasher5 = await Poseidon5Factory.deploy();
+    await poseidonHasher5.waitForDeployment();
+    return {
+        address: await poseidonHasher5.getAddress(),
+        contract: poseidonHasher5,
+    };
+}
+
 
 /**
  * @dev A helper function to pack uints for accountGasLimits and gasFees.
@@ -66,15 +100,20 @@ export async function deployTestEnvironment(): Promise<TestEnvironment> {
   await verifier.waitForDeployment();
   const verifierAddress = await verifier.getAddress();
 
-  // 3. Deploy PoseidonHasher using official deployment script
-  const poseidonDeployment = await deployPoseidon();
+  // 3. Deploy PoseidonHasher using inlined deployment function
+  const poseidonDeployment = await _deployPoseidon(owner);
   const poseidonHasherAddress = poseidonDeployment.address;
+
+  // Deploy Poseidon5 Hasher for public inputs hashing
+  const poseidon5Deployment = await _deployPoseidon5(owner);
+  const poseidonHasher5Address = poseidon5Deployment.address;
 
   // 4. Deploy PrivacyPool
   const privacyPoolFactory = await ethers.getContractFactory("PrivacyPool");
   const privacyPool = await privacyPoolFactory.deploy(
     verifierAddress,
     poseidonHasherAddress,
+    poseidonHasher5Address,
     await owner.getAddress()
   );
   await privacyPool.waitForDeployment();
@@ -120,6 +159,25 @@ export async function deployTestEnvironment(): Promise<TestEnvironment> {
   const mockUniswapRouter =
     (await mockUniswapRouterFactory.deploy()) as MockUniswapRouter;
   await mockUniswapRouter.waitForDeployment();
+
+  // 8.1. Configure WETH/USDC trading pair in MockUniswapRouter
+  console.log("⚙️ 配置 MockUniswapRouter 交易对...");
+  const wethAddress = await weth.getAddress();
+  const usdcAddress = await usdc.getAddress();
+  
+  // Set exchange rate: 1 WETH = 2000 USDC (考虑到 WETH 18位小数，USDC 6位小数)
+  // rate = 2000 * 10^6 = 2000000000 (输出USDC数量，已考虑小数位差异)
+  const exchangeRate = ethers.parseUnits("2000", 6); // 2000 USDC per WETH
+  await mockUniswapRouter.setExchangeRate(wethAddress, usdcAddress, exchangeRate);
+  
+  // Also set reverse pair (USDC -> WETH): 1 USDC = 0.0005 WETH
+  // rate = 0.0005 * 10^18 = 500000000000000 (输出WETH数量)
+  const reverseExchangeRate = ethers.parseUnits("0.0005", 18); // 0.0005 WETH per USDC
+  await mockUniswapRouter.setExchangeRate(usdcAddress, wethAddress, reverseExchangeRate);
+  
+  console.log(`✅ 交易对配置完成:`);
+  console.log(`   - WETH (${wethAddress}) -> USDC: ${ethers.formatUnits(exchangeRate, 6)} USDC per WETH`);
+  console.log(`   - USDC (${usdcAddress}) -> WETH: ${ethers.formatEther(reverseExchangeRate)} WETH per USDC`);
 
   // 9. Fund Paymaster
   await paymaster

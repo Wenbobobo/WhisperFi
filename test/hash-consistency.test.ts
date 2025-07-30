@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { PrivacyPool } from "../typechain-types";
 import { deployPoseidon } from "../scripts/deploy-poseidon";
+import { deployPoseidon5 } from "../scripts/deploy-poseidon5";
 // @ts-ignore
 import * as circomlibjs from "circomlibjs";
 
@@ -20,11 +21,15 @@ describe("Hash Consistency Test", function () {
     poseidonHasher = poseidonResult.contract;
     console.log("✅ Official Poseidon hasher deployed at:", poseidonResult.address);
 
+    // Also deploy the 5-input hasher
+    const poseidon5Result = await deployPoseidon5();
+
     const [owner] = await ethers.getSigners();
     const PrivacyPoolFactory = await ethers.getContractFactory("PrivacyPool");
     privacyPool = await PrivacyPoolFactory.deploy(
       "0x0000000000000000000000000000000000000000", // Mock verifier for this test
       poseidonResult.address,
+      poseidon5Result.address,
       await owner.getAddress()
     );
     await privacyPool.waitForDeployment();

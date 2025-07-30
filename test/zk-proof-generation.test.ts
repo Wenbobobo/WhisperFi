@@ -64,30 +64,20 @@ describe("ZK Proof Generation", function () {
     const { nullifier } = parseNote(note);
     const nullifierHash = await generateNullifierHash(secret);
     
-    // 🔍 DEBUG: 添加日志来验证 nullifier 计算
-    console.log("🔍 DEBUG - Nullifier 验证:");
-    console.log("  从 note 解析的 nullifier:", nullifier);
-    console.log("  从 secret 计算的 nullifierHash:", nullifierHash);
-    console.log("  secret:", secret);
-    console.log("  nullifier === nullifierHash:", nullifier === nullifierHash);
-    
+    // 4. Prepare inputs for the circuit - 使用与前端完全一致的BigInt格式
     const input = {
-      secret: secret,
-      nullifier: nullifierHash, // 修复：传入计算出的 nullifierHash
-      amount: ethers.parseEther("0.1").toString(),
-      pathElements: proof.pathElements,
+      secret: BigInt(secret),
+      nullifier: BigInt(nullifierHash),
+      amount: BigInt(ethers.parseEther("0.1").toString()),
+      pathElements: proof.pathElements.map(el => BigInt(el)),
       pathIndices: proof.pathIndices,
-      merkleRoot: tree.getRoot(),
-      // 移除 nullifierHash - 它是输出信号，不是输入
+      merkleRoot: BigInt(tree.getRoot()),
     };
 
     // 5. Generate the proof
     try {
-      const wasmPath = path.join(
-        __dirname,
-        "../circuits/withdraw_js/withdraw.wasm"
-      );
-      const zkeyPath = path.join(__dirname, "../frontend/public/zk/withdraw.zkey");
+      const wasmPath = path.join(process.cwd(), "frontend", "public", "zk", "withdraw.wasm");
+      const zkeyPath = path.join(process.cwd(), "frontend", "public", "zk", "withdraw.zkey");
 
       const wasmBytes = fs.readFileSync(wasmPath);
       const zkeyBytes = fs.readFileSync(zkeyPath);

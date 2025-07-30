@@ -5,6 +5,7 @@ import { Signer } from "ethers";
 import { buildPoseidon } from "circomlibjs";
 import { Groth16Verifier, PrivacyPool, Executor } from "../../typechain-types";
 import { deployPoseidon } from "../../scripts/deploy-poseidon";
+import { deployPoseidon5 } from "../../scripts/deploy-poseidon5";
 
 describe("Deposit-Withdraw Integration Test", function () {
   let owner: Signer;
@@ -34,6 +35,10 @@ describe("Deposit-Withdraw Integration Test", function () {
     const poseidonDeployment = await deployPoseidon();
     const poseidonHasherAddress = poseidonDeployment.address;
 
+    // Deploy the 5-input Poseidon hasher as well
+    const poseidon5Deployment = await deployPoseidon5();
+    const poseidon5HasherAddress = poseidon5Deployment.address;
+
     const ExecutorFactory = await ethers.getContractFactory("Executor");
     executor = await ExecutorFactory.deploy(ownerAddress);
     await executor.waitForDeployment();
@@ -42,7 +47,8 @@ describe("Deposit-Withdraw Integration Test", function () {
     const PrivacyPoolFactory = await ethers.getContractFactory("PrivacyPool");
     privacyPool = await PrivacyPoolFactory.deploy(
       verifierAddress,        // _verifier
-      poseidonHasherAddress,  // _poseidonHasher (修复：传递正确的 PoseidonHasher 地址而不是 initialRoot)
+      poseidonHasherAddress,  // _poseidonHasher
+      poseidon5HasherAddress, // _poseidonHasher5
       ownerAddress            // _initialOwner
     );
     await privacyPool.waitForDeployment();

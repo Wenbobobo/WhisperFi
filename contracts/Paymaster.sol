@@ -19,6 +19,8 @@ contract Paymaster is IPaymaster, Ownable {
     error InvalidPaymasterAndDataLength();
     error InvalidTimestamp();
 
+    // 🔍 DEBUG: 目标验证事件
+    event TargetValidation(address indexed target, bool isSupported);
     event TargetSupportChanged(address indexed target, bool supported);
     event FundsDeposited(address indexed depositor, uint256 amount);
 

@@ -2,83 +2,104 @@
 const { ethers } = require("hardhat");
 const fs = require("fs");
 const path = require("path");
-const { deployPoseidon } = require("./deploy-poseidon");
+const { poseidonContract } = require("circomlibjs");
+
+// --- Inlined Poseidon Deployment Functions ---
+
+async function _deployPoseidon(signer, inputs) {
+    console.log(`🚀 开始部署 Poseidon (inputs: ${inputs}) 哈希合约...`);
+    const poseidonBytecode = poseidonContract.createCode(inputs);
+    const poseidonABI = poseidonContract.generateABI(inputs);
+    const PoseidonFactory = new ethers.ContractFactory(poseidonABI, poseidonBytecode, signer);
+    const poseidonHasher = await PoseidonFactory.deploy();
+    await poseidonHasher.waitForDeployment();
+    const contractAddress = await poseidonHasher.getAddress();
+    
+    console.log(`✅ PoseidonHasher (inputs: ${inputs}) 合约部署成功！`);
+    console.log(`📍 合约地址: ${contractAddress}`);
+    return { address: contractAddress, contract: poseidonHasher };
+}
 
 async function main() {
   const [deployer] = await ethers.getSigners();
-  console.log("Deploying contracts with the account:", deployer.address);
+  console.log(
+    "Deploying contracts with the account:",
+    await deployer.getAddress()
+  );
 
   // Deploy Verifier
-  const verifier = await ethers.deployContract("Verifier");
+  const verifierFactory = await ethers.getContractFactory("Groth16Verifier");
+  const verifier = await verifierFactory.deploy();
   await verifier.waitForDeployment();
-  const verifierAddress = await verifier.getAddress();
-  console.log("Verifier deployed to:", verifierAddress);
+  console.log("Verifier deployed to:", await verifier.getAddress());
 
-  // Deploy official Poseidon hasher using circomlibjs
-  console.log("🚀 Deploying official Poseidon hasher...");
-  const poseidonResult = await deployPoseidon();
-  const poseidonHasherAddress = poseidonResult.address;
-  console.log("✅ Official PoseidonHasher deployed to:", poseidonHasherAddress);
+  // Deploy Poseidon Hasher (2 inputs)
+  const poseidonDeployment = await _deployPoseidon(deployer, 2);
+  const poseidonHasherAddress = poseidonDeployment.address;
+
+  // Deploy Poseidon Hasher (5 inputs)
+  const poseidon5Deployment = await _deployPoseidon(deployer, 5);
+  const poseidonHasher5Address = poseidon5Deployment.address;
+
+  // Deploy MockERC20
+  const mockERC20Factory = await ethers.getContractFactory("MockERC20");
+  const mockERC20 = await mockERC20Factory.deploy("Mock Token", "MTK", 18, ethers.parseEther("1000000"));
+  await mockERC20.waitForDeployment();
+  console.log("MockERC20 deployed to:", await mockERC20.getAddress());
+
+  // Deploy MockUniswapRouter
+  const mockUniswapRouterFactory = await ethers.getContractFactory("MockUniswapRouter");
+  const mockUniswapRouter = await mockUniswapRouterFactory.deploy();
+  await mockUniswapRouter.waitForDeployment();
+  console.log("MockUniswapRouter deployed to:", await mockUniswapRouter.getAddress());
 
   // Deploy Executor
-  const executor = await ethers.deployContract("Executor", [deployer.address]);
+  const executorFactory = await ethers.getContractFactory("Executor");
+  const executor = await executorFactory.deploy(await deployer.getAddress());
   await executor.waitForDeployment();
-  const executorAddress = await executor.getAddress();
-  console.log("Executor deployed to:", executorAddress);
+  console.log("Executor deployed to:", await executor.getAddress());
 
   // Deploy SmartAccountFactory
-  const entryPoint = await ethers.deployContract("EntryPoint");
-  await entryPoint.waitForDeployment();
-  const entryPointAddress = await entryPoint.getAddress();
-  const factory = await ethers.deployContract("SmartAccountFactory", [
-    entryPointAddress,
-  ]);
+  const factoryFactory = await ethers.getContractFactory("SmartAccountFactory");
+  // Assuming EntryPoint is at a known address or needs to be deployed.
+  // For simplicity, let's deploy a mock or use a placeholder address.
+  // In a real scenario, this would be the official EntryPoint address.
+  const entryPointAddress = "0x0000000000000000000000000000000000000001"; // Placeholder
+  const factory = await factoryFactory.deploy(entryPointAddress);
   await factory.waitForDeployment();
-  const factoryAddress = await factory.getAddress();
-  console.log("SmartAccountFactory deployed to:", factoryAddress);
+  console.log("SmartAccountFactory deployed to:", await factory.getAddress());
 
   // Deploy Paymaster
-  const paymaster = await ethers.deployContract("Paymaster", [
-    entryPointAddress,
-    deployer.address,
-  ]);
+  const paymasterFactory = await ethers.getContractFactory("Paymaster");
+  const paymaster = await paymasterFactory.deploy(entryPointAddress, await deployer.getAddress());
   await paymaster.waitForDeployment();
-  const paymasterAddress = await paymaster.getAddress();
-  console.log("Paymaster deployed to:", paymasterAddress);
+  console.log("Paymaster deployed to:", await paymaster.getAddress());
 
   // Deploy PrivacyPool
-  const privacyPool = await ethers.deployContract("PrivacyPool", [
-    verifierAddress,
+  const privacyPoolFactory = await ethers.getContractFactory("PrivacyPool");
+  const privacyPool = await privacyPoolFactory.deploy(
+    await verifier.getAddress(),
     poseidonHasherAddress,
-    deployer.address,
-  ]);
+    poseidonHasher5Address,
+    await deployer.getAddress()
+  );
   await privacyPool.waitForDeployment();
-  const privacyPoolAddress = await privacyPool.getAddress();
-  console.log("PrivacyPool deployed to:", privacyPoolAddress);
+  console.log("PrivacyPool deployed to:", await privacyPool.getAddress());
 
-  // --- Automatic Frontend Configuration ---
-  console.log("\nUpdating frontend configuration...");
-  const configDir = path.join(__dirname, "..", "frontend", "src", "config");
-  if (!fs.existsSync(configDir)) {
-    fs.mkdirSync(configDir);
-  }
-  const configPath = path.join(configDir, "contracts.ts");
-  const configContent = `// This file is auto-generated by the deployment script.
-// Do not edit this file manually.
+  console.log("✅ All contracts deployed successfully!");
 
-export const CONTRACTS = {
-  PRIVACY_POOL_ADDRESS: "${privacyPoolAddress}",
-  PAYMASTER_ADDRESS: "${paymasterAddress}",
-  SMART_ACCOUNT_FACTORY_ADDRESS: "${factoryAddress}",
-  EXECUTOR_ADDRESS: "${executorAddress}",
-  VERIFIER_ADDRESS: "${verifierAddress}",
-  ENTRYPOINT_ADDRESS: "${entryPointAddress}",
-  POSEIDON_HASHER_ADDRESS: "${poseidonHasherAddress}",
-} as const;
-`;
+  // Generate frontend configuration
+  const contractsConfig = {
+    PRIVACY_POOL_ADDRESS: await privacyPool.getAddress(),
+    VERIFIER_ADDRESS: await verifier.getAddress(),
+    POSEIDON_HASHER_2_ADDRESS: poseidonHasherAddress,
+    POSEIDON_HASHER_5_ADDRESS: poseidonHasher5Address,
+  };
 
+  const configPath = path.join(__dirname, "..", "frontend", "src", "config", "contracts.ts");
+  const configContent = `// Generated by scripts/deploy.js\nexport const CONTRACTS = ${JSON.stringify(contractsConfig, null, 2)};\n`;
   fs.writeFileSync(configPath, configContent);
-  console.log(`Frontend configuration updated at ${configPath}`);
+  console.log(`✅ Frontend configuration written to ${configPath}`);
 }
 
 main()

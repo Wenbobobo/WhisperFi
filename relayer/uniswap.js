@@ -101,30 +101,60 @@ class UniswapEncoder {
    * @returns {Object} The token information object.
    */
   getToken(tokenSymbol) {
+    const upperSymbol = tokenSymbol.toUpperCase();
+    
+    console.log(`🔍 [UniswapEncoder.getToken] 开始查找token: ${tokenSymbol} (规范化: ${upperSymbol})`);
+    console.log(`🔍 [UniswapEncoder.getToken] chainId: ${this.chainId}`);
+    console.log(`🔍 [UniswapEncoder.getToken] networkConfig存在: ${!!this.networkConfig}`);
+    console.log(`🔍 [UniswapEncoder.getToken] customTokens存在: ${!!this.customTokens}`);
+    
+    if (this.customTokens) {
+      console.log(`🔍 [UniswapEncoder.getToken] 可用的customTokens:`, Object.keys(this.customTokens));
+    }
+
     try {
-      // Prioritize network-specific configuration
+      // 根据设计文档，对于测试网络应该优先使用customTokens
+      if (this.chainId === 31337) {
+        console.log(`🏗️  [UniswapEncoder.getToken] 测试网络(31337) - 优先检查customTokens`);
+        
+        if (this.customTokens && this.customTokens[upperSymbol]) {
+          const customToken = this.customTokens[upperSymbol];
+          console.log(`✅ [UniswapEncoder.getToken] 在customTokens中找到 ${upperSymbol}:`, customToken);
+          return customToken;
+        }
+        
+        console.log(`❌ [UniswapEncoder.getToken] 测试网络中未找到customToken: ${upperSymbol}`);
+        throw new Error(`Token ${tokenSymbol} not configured for test network ${this.chainId}`);
+      }
+
+      // 对于生产网络，优先使用networkConfig
       if (this.networkConfig) {
+        console.log(`🌐 [UniswapEncoder.getToken] 生产网络 - 使用networkConfig`);
         return getTokenConfig(this.chainId, tokenSymbol);
       }
 
-      // Fallback to locally stored tokens if available
-      if (this.customTokens && this.customTokens[tokenSymbol.toUpperCase()]) {
-        return this.customTokens[tokenSymbol.toUpperCase()];
+      // 最后回退到customTokens
+      if (this.customTokens && this.customTokens[upperSymbol]) {
+        const customToken = this.customTokens[upperSymbol];
+        console.log(`✅ [UniswapEncoder.getToken] 在customTokens中找到 ${upperSymbol}:`, customToken);
+        return customToken;
       }
 
       throw new Error(
         `Token ${tokenSymbol} is not available on network ${this.chainId}`
       );
     } catch (error) {
-      // Provide a helpful error message
-      const supportedTokens = this.networkConfig
-        ? Object.keys(this.networkConfig.tokens).join(", ")
-        : this.customTokens
+      console.error(`❌ [UniswapEncoder.getToken] 查找失败:`, error.message);
+      
+      // 提供详细的错误信息
+      const supportedTokens = this.customTokens
         ? Object.keys(this.customTokens).join(", ")
+        : this.networkConfig
+        ? Object.keys(this.networkConfig.tokens || {}).join(", ")
         : "none";
 
       throw new Error(
-        `Unsupported token: ${tokenSymbol}. Supported tokens on the current network (${this.chainId}): ${supportedTokens}`
+        `Unsupported token: ${tokenSymbol}. Supported tokens on network ${this.chainId}: ${supportedTokens}`
       );
     }
   }
