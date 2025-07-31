@@ -66,6 +66,7 @@ export interface TestEnvironment {
   owner: Signer;
   user: Signer;
   bundler: Signer;
+  accounts: Signer[]; // Add a list of accounts for general purpose use
   entryPoint: EntryPoint;
   verifier: MockVerifier;
   privacyPool: PrivacyPool;
@@ -86,7 +87,8 @@ export interface TestEnvironment {
  * @returns {Promise<TestEnvironment>} A promise that resolves to the `TestEnvironment` object.
  */
 export async function deployTestEnvironment(): Promise<TestEnvironment> {
-  const [owner, user, bundler] = await ethers.getSigners();
+  const accounts = await ethers.getSigners();
+  const [owner, user, bundler] = accounts;
 
   // 1. Deploy EntryPoint
   const entryPointFactory = await ethers.getContractFactory("EntryPoint");
@@ -191,6 +193,7 @@ export async function deployTestEnvironment(): Promise<TestEnvironment> {
     owner,
     user,
     bundler,
+    accounts, // Return all accounts
     entryPoint,
     verifier,
     privacyPool,

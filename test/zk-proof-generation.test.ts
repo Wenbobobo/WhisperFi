@@ -36,14 +36,13 @@ describe("ZK Proof Generation", function () {
     owner = env.owner;
   });
 
-  it("should generate a valid proof for a valid deposit", async function () {
+  it("should generate a valid proof for a simple withdrawal", async function () {
     // 1. Create a note and deposit
     const note = generateNote();
     const { secret } = parseNote(note);
-    const commitment = await generateCommitment(
-      secret,
-      ethers.parseEther("0.1").toString()
-    );
+    // Note: In the simplified circuit, commitment is just hash of secret.
+    const commitment = poseidon([BigInt(secret)]);
+    
     await privacyPool
       .connect(owner)
       .deposit(commitment, { value: ethers.parseEther("0.1") });
@@ -58,42 +57,35 @@ describe("ZK Proof Generation", function () {
 
     // 3. Generate the Merkle path
     const leafIndex = commitments.findIndex((c) => c === commitment);
-    const proof = tree.generateProof(leafIndex);
+    const merkleProof = tree.generateProof(leafIndex);
 
     // 4. Prepare inputs for the circuit
     const { nullifier } = parseNote(note);
     const nullifierHash = await generateNullifierHash(secret);
-    
-    // 4. Prepare inputs for the circuit - 使用与前端完全一致的BigInt格式
+
     const input = {
       secret: BigInt(secret),
       nullifier: BigInt(nullifierHash),
-      amount: BigInt(ethers.parseEther("0.1").toString()),
-      pathElements: proof.pathElements.map(el => BigInt(el)),
-      pathIndices: proof.pathIndices,
       merkleRoot: BigInt(tree.getRoot()),
+      pathElements: merkleProof.pathElements.map(el => BigInt(el)),
+      pathIndices: merkleProof.pathIndices,
     };
 
     // 5. Generate the proof
     try {
-      const wasmPath = path.join(process.cwd(), "frontend", "public", "zk", "withdraw.wasm");
-      const zkeyPath = path.join(process.cwd(), "frontend", "public", "zk", "withdraw.zkey");
-
-      const wasmBytes = fs.readFileSync(wasmPath);
-      const zkeyBytes = fs.readFileSync(zkeyPath);
+      const wasmPath = path.join(process.cwd(), "circuits", "withdraw_js", "withdraw.wasm");
+      const zkeyPath = path.join(process.cwd(), "circuits", "withdraw_0001.zkey");
 
       const { proof, publicSignals } = await groth16.fullProve(
         input,
-        wasmBytes,
-        zkeyBytes
+        wasmPath,
+        zkeyPath
       );
-      // If we reach here, the proof generation was successful.
+      
       expect(proof).to.not.be.null;
       expect(publicSignals).to.not.be.null;
     } catch (error) {
-      // This will catch any errors from snarkjs and fail the test.
-      // We are logging the inputs here to make debugging easier if the test fails.
-      console.error("ZK Proof Generation Failed. Inputs:", input);
+      console.error("ZK Proof Generation Failed (simple). Inputs:", input);
       throw error;
     }
   });

@@ -156,27 +156,58 @@ export default function WithdrawCard() {
       console.log("PathIndices:", pathIndices);
       console.log("MerkleRoot:", merkleRoot);
       
+      // === 诊断日志：地址格式转换验证 ===
+      console.log("🔍 Address conversion diagnostic:");
+      console.log("Raw address:", address);
+      console.log("Address type:", typeof address);
+      console.log("Address length:", address?.length);
+      console.log("Is valid hex:", /^0x[a-fA-F0-9]{40}$/.test(address || ""));
+      
+      let recipientBigInt;
+      try {
+        // 去掉 0x 前缀并转换为 BigInt
+        const addressWithoutPrefix = address?.replace("0x", "");
+        recipientBigInt = BigInt("0x" + addressWithoutPrefix);
+        console.log("✅ Address converted to BigInt:", recipientBigInt.toString());
+      } catch (addressError) {
+        console.error("❌ Address conversion error:", addressError);
+        console.error("Address value:", address);
+        throw new Error(`Address conversion failed: ${addressError.message}`);
+      }
+      
       let input;
       try {
+        // 根据 withdraw.circom 实际定义的信号构建输入
         input = {
+          // 私有输入
           secret: BigInt(secret),
-          amount: BigInt(depositAmount.toString()),
           pathElements: pathElements.map(el => BigInt(el)),
           pathIndices: pathIndices,
+          // 公共输入
           merkleRoot: BigInt(merkleRoot),
-          nullifier: BigInt(nullifierHash),
-          // Add fee and relayer to match the contract's public inputs
-          recipient: BigInt(address),
-          fee: BigInt(0), // Placeholder value
-          relayer: BigInt(0), // Placeholder value
+          nullifier: BigInt(nullifierHash)
         };
-        console.log("✅ Circuit input prepared successfully:", input);
+        
+        // === 诊断日志：输入对象验证 ===
+        console.log("🔍 Circuit input validation:");
+        console.log("Input keys:", Object.keys(input));
+        console.log("Input values types:", Object.fromEntries(
+          Object.entries(input).map(([k, v]) => [k, typeof v])
+        ));
+        console.log("✅ Circuit input prepared successfully:", {
+          // 将 BigInt 转换为字符串以便日志输出
+          secret: input.secret.toString(),
+          pathElements: input.pathElements.map(el => el.toString()),
+          merkleRoot: input.merkleRoot.toString(),
+          nullifier: input.nullifier.toString(),
+        });
       } catch (conversionError) {
         console.error("❌ BigInt conversion error:", conversionError);
         console.error("Secret value:", secret);
         console.error("NullifierHash value:", nullifierHash);
         console.error("PathElements:", pathElements);
         console.error("MerkleRoot:", merkleRoot);
+        console.error("Address value:", address);
         throw new Error(`BigInt conversion failed: ${conversionError.message}`);
       }
 
