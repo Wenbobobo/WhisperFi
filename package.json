@@ -18,6 +18,7 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^6.0.0",
     "@playwright/test": "^1.54.1",
+    "circom": "^0.5.46",
     "circomlibjs": "^0.1.7",
     "hardhat": "^2.25.0",
     "hardhat-preprocessor": "^0.1.5"
@@ -26,7 +27,6 @@
     "@openzeppelin/contracts": "^5.3.0",
     "@openzeppelin/contracts-upgradeable": "^5.3.0",
     "axios": "^1.10.0",
-    "circom": "^0.5.46",
     "circomlib": "^2.0.5",
     "cross-env": "^7.0.3",
     "erc4337": "^0.0.1-security",

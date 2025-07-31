@@ -9,6 +9,8 @@ wheels/
 # Virtual environments
 .venv
 .gemini
+.trae
+.kilocode
 
 # Other common files
 node_modules
@@ -19,8 +21,6 @@ account-abstraction
 temp_circom
 typechain-types
 frontend/.next
-circuits\pot12_final.ptau
-circuits\powersOfTau28_hez_final_16.ptau
 reference
 scripts/copy_libs.py
 research
