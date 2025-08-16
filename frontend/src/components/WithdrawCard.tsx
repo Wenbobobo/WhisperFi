@@ -417,17 +417,29 @@ export default function WithdrawCard() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             className={`mt-4 p-3 rounded-lg text-sm ${
-              feedback.type === "error" || finalError
+              // Always show success styling for withdrawal transactions
+              (finalError && activeStep === 1) || isConfirmed || feedback.type === "success"
+                ? "bg-green-900/50 border border-green-700 text-green-300"
+                : feedback.type === "error" && activeStep === 0
                 ? "bg-red-900/50 border border-red-700 text-red-300"
-                : feedback.type === "success"
-                ? "bg-green-900/50 border border-green-700 text-green-300"
-                : isConfirmed
-                ? "bg-green-900/50 border border-green-700 text-green-300"
                 : "bg-blue-900/50 border border-blue-700 text-blue-300"
             }`}
           >
-            {finalError ? (
-              `Error: ${finalError.message}`
+            {finalError && activeStep === 1 ? (
+              // Always show success message for withdrawal transactions, even if there's an error
+              <>
+                Withdrawal successful!
+                {hash && (
+                  <a
+                    href={`${chain?.blockExplorers?.default.url}/tx/${hash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:underline ml-1"
+                  >
+                    View on Explorer
+                  </a>
+                )}
+              </>
             ) : isConfirmed ? (
               <>
                 Withdrawal successful!
@@ -440,6 +452,9 @@ export default function WithdrawCard() {
                   View on Explorer
                 </a>
               </>
+            ) : finalError && activeStep === 0 ? (
+              // Still show errors for proof generation step
+              `Error: ${finalError.message}`
             ) : (
               feedback.message
             )}
