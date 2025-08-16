@@ -420,7 +420,7 @@ export default function WithdrawCard() {
               // Always show success styling for withdrawal transactions
               (finalError && activeStep === 1) || isConfirmed || feedback.type === "success"
                 ? "bg-green-900/50 border border-green-700 text-green-300"
-                : feedback.type === "error" && activeStep === 0
+                : (feedback.type === "error" || finalError) && activeStep === 0
                 ? "bg-red-900/50 border border-red-700 text-red-300"
                 : "bg-blue-900/50 border border-blue-700 text-blue-300"
             }`}
