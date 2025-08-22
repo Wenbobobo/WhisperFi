@@ -6,7 +6,13 @@ import { deployPoseidon } from "./deploy-poseidon";
 import { deployPoseidon5 } from "./deploy-poseidon5";
 
 async function main() {
-  const [deployer] = await ethers.getSigners();
+  // 连接到本地 Hardhat 网络节点
+  const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+  const deployer = new ethers.Wallet(
+    "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", // Hardhat 默认的第一个账户私钥
+    provider
+  );
+  
   console.log("Deploying contracts with the account:", deployer.address);
 
   // Deploy Poseidon Hasher first using the new official implementation

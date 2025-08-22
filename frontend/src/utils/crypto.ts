@@ -46,7 +46,9 @@ export async function generateCommitment(
 ): Promise<string> {
   const poseidon = await buildPoseidon();
   // Ensure inputs are converted to BigInt, which is expected by circomlibjs
-  const hash = poseidon([BigInt(secret), BigInt(amount)]);
+  // Remove "0x" prefix if present before converting to BigInt
+  const secretValue = secret.startsWith("0x") ? secret : "0x" + secret;
+  const hash = poseidon([BigInt(secretValue), BigInt(amount)]);
   // Convert the poseidon field element to hex string format expected by ethers
   return "0x" + poseidon.F.toObject(hash).toString(16).padStart(64, "0");
 }
@@ -76,12 +78,18 @@ export class CircuitCompatibleMerkleTree {
   private poseidon: any;
   private leaves: string[];
   private tree: string[][];
+  private zeros: string[];
+  private filledSubTrees: string[];
+  private merkleRoot: string;
 
   constructor(levels: number, leaves: string[], zeroValue: string = "0") {
     this.levels = levels;
     this.zeroValue = zeroValue;
     this.leaves = [...leaves];
     this.tree = [];
+    this.zeros = [];
+    this.filledSubTrees = [];
+    this.merkleRoot = "0x0000000000000000000000000000000000000000000000000000000000000000";
   }
 
   /**
@@ -90,8 +98,45 @@ export class CircuitCompatibleMerkleTree {
    */
   async initialize(): Promise<void> {
     this.poseidon = await buildPoseidon();
-    await this.buildTree();
+    
+    // Initialize zeros and filledSubTrees arrays to match contract logic
+    let currentZero = this.zeroValue;
+    for (let i = 0; i < this.levels; i++) {
+      this.zeros[i] = currentZero;
+      this.filledSubTrees[i] = currentZero;
+      const hash = this.poseidon([BigInt(currentZero), BigInt(currentZero)]);
+      currentZero = "0x" + this.poseidon.F.toObject(hash).toString(16).padStart(64, "0");
+    }
+    this.merkleRoot = currentZero;
+    
+    // Insert all leaves incrementally to match contract logic
+    for (let i = 0; i < this.leaves.length; i++) {
+      await this._insertLeaf(this.leaves[i]);
+    }
+}
+
+/**
+ * Insert a leaf into the tree using the same incremental algorithm as the contract
+ * @param leaf The leaf to insert
+ */
+private async _insertLeaf(leaf: string): Promise<void> {
+  let currentIndex = this.leaves.length; // This should be the next leaf index
+  let currentLevelHash = leaf;
+
+  for (let i = 0; i < this.levels; i++) {
+    if (currentIndex % 2 === 0) { // Left node
+      this.filledSubTrees[i] = currentLevelHash;
+      const hash = this.poseidon([BigInt(currentLevelHash), BigInt(this.zeros[i])]);
+      currentLevelHash = "0x" + this.poseidon.F.toObject(hash).toString(16).padStart(64, "0");
+    } else { // Right node
+      const hash = this.poseidon([BigInt(this.filledSubTrees[i]), BigInt(currentLevelHash)]);
+      currentLevelHash = "0x" + this.poseidon.F.toObject(hash).toString(16).padStart(64, "0");
+    }
+    currentIndex = Math.floor(currentIndex / 2);
   }
+
+  this.merkleRoot = currentLevelHash;
+}
 
   /**
    * Build the complete Merkle tree using circuit-compatible hashing.
@@ -130,10 +175,7 @@ export class CircuitCompatibleMerkleTree {
    * Get the Merkle root (top of the tree).
    */
   getRoot(): string {
-    if (!this.tree || this.tree.length === 0) {
-      throw new Error("Tree not initialized. Call initialize() first.");
-    }
-    return this.tree[this.levels][0];
+    return this.merkleRoot;
   }
 
   /**
@@ -141,10 +183,6 @@ export class CircuitCompatibleMerkleTree {
    * Returns pathElements and pathIndices that match the circuit's expectations.
    */
   generateProof(leafIndex: number): { pathElements: string[]; pathIndices: number[] } {
-    if (!this.tree || this.tree.length === 0) {
-      throw new Error("Tree not initialized. Call initialize() first.");
-    }
-
     if (leafIndex >= this.leaves.length) {
       throw new Error(`Leaf index ${leafIndex} is out of bounds`);
     }
@@ -153,14 +191,17 @@ export class CircuitCompatibleMerkleTree {
     const pathIndices: number[] = [];
     let currentIndex = leafIndex;
 
-    // Generate path from leaf to root
+    // Generate path from leaf to root using the same logic as the contract
     for (let level = 0; level < this.levels; level++) {
       const isLeft = currentIndex % 2 === 0;
-      const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
       
-      // Get sibling element (or zero if it doesn't exist)
-      const sibling = this.tree[level][siblingIndex] || this.zeroValue;
-      pathElements.push(sibling);
+      if (isLeft) {
+        // Left node: sibling is the right node (zeros[level] if it doesn't exist)
+        pathElements.push(this.zeros[level]);
+      } else {
+        // Right node: sibling is the left node (filledSubTrees[level])
+        pathElements.push(this.filledSubTrees[level]);
+      }
       
       // Path index: 0 = current node is left, 1 = current node is right
       pathIndices.push(isLeft ? 0 : 1);

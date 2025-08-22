@@ -93,10 +93,13 @@ export default function DepositCard() {
   const handleDeposit = async () => {
     const newNote = generateNote();
     const { secret, nullifier } = parseNote(newNote);
+    console.log("🔍 Parsed note - Secret:", secret, "Nullifier:", nullifier);
+    
     const newCommitment = await generateCommitment(
       secret,
       ethers.parseEther("0.1").toString()
     );
+    console.log("🔍 Generated commitment:", newCommitment);
 
     setNote(newNote);
     setCommitment(newCommitment);
@@ -107,21 +110,28 @@ export default function DepositCard() {
       console.log("Target Contract Address:", PRIVACY_POOL_ADDRESS);
       console.log("Function Name:", "deposit");
       console.log("Commitment:", newCommitment);
+      console.log("Commitment Type:", typeof newCommitment);
+      console.log("Commitment Length:", newCommitment.length);
+      console.log("Is Valid Hex:", ethers.isHexString(newCommitment));
       console.log("Value (ETH):", ethers.parseEther("0.1").toString());
       console.log("User Address:", address);
       console.log("Chain ID:", chain.id);
       console.log("ABI Function Names:", PrivacyPoolAbi.filter(item => item.type === 'function').map(item => item.name));
       console.log("========================");
 
-      writeContract({
-        address: PRIVACY_POOL_ADDRESS,
-        abi: PrivacyPoolAbi,
-        functionName: "deposit",
-        args: [newCommitment],
-        value: ethers.parseEther("0.1"),
-        account: address,
-        chain: chain,
-      });
+      try {
+        writeContract({
+          address: PRIVACY_POOL_ADDRESS,
+          abi: PrivacyPoolAbi,
+          functionName: "deposit",
+          args: [newCommitment],
+          value: ethers.parseEther("0.1"),
+          account: address,
+          chain: chain,
+        });
+      } catch (writeError) {
+        console.error("❌ Error calling writeContract:", writeError);
+      }
     }
   };
 

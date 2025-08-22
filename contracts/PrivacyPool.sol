@@ -79,7 +79,7 @@ contract PrivacyPool is Ownable {
 
         // The public signals for the withdrawal circuit are hashed into a single public input.
         // We must reconstruct the public hash input exactly as the circuit does.
-        uint256 publicInputsHash = _calculatePublicInputsHash(_proofRoot, _nullifier, _recipient, _fee, _relayer);
+        uint256 publicInputsHash = _calculatePublicInputsHash(_proofRoot, _nullifier);
 
         uint256[1] memory pubSignals = [publicInputsHash];
 
@@ -241,20 +241,14 @@ contract PrivacyPool is Ownable {
 
     function _calculatePublicInputsHash(
         bytes32 _root,
-        bytes32 _nullifier,
-        address _recipient,
-        uint256 _fee,
-        address _relayer
+        bytes32 _nullifier
     ) internal view returns (uint256) {
-        // Use 5-input Poseidon hasher to match the circuit's parallel hashing design
-        // This must match the exact order and format used in withdraw.circom
-        uint256[5] memory inputs = [
+        // Use 2-input Poseidon hasher to match the circuit's design
+        // This must match the exact order and format used in withdraw_new.circom
+        uint256[2] memory inputs = [
             uint256(_root),
-            uint256(_nullifier),
-            uint256(uint160(_recipient)),
-            _fee,
-            uint256(uint160(_relayer))
+            uint256(_nullifier)
         ];
-        return poseidonHasher5.poseidon(inputs);
+        return poseidonHasher.poseidon(inputs);
     }
 }

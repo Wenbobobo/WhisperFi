@@ -137,10 +137,14 @@ export default function WithdrawCard() {
       }
 
       // 3. Build circuit-compatible Merkle tree
+console.log("🔍 构建Merkle树...");
+      console.log("树深度:", 16);
+      console.log("叶子节点数量:", commitments.length);
+      console.log("零值:", "5738151709701895985996174429509233181681189240650583716378205449277091542814");
       const tree = new CircuitCompatibleMerkleTree(
-        20,
+        16,
         commitments,
-        "21663839004416932945382355908790599225266501822907911457504978515578255421292"
+        "5738151709701895985996174429509233181681189240650583716378205449277091542814"
       );
       await tree.initialize();
 
@@ -149,6 +153,10 @@ export default function WithdrawCard() {
 
       // 4. Prepare circuit inputs with detailed logging
       console.log("🔍 Preparing circuit inputs...");
+console.log("✅ Merkle树构建完成");
+      console.log("Merkle根:", merkleRoot);
+      console.log("路径元素数量:", pathElements.length);
+      console.log("路径索引数量:", pathIndices.length);
       console.log("Secret:", secret, "Type:", typeof secret);
       console.log("NullifierHash:", nullifierHash, "Type:", typeof nullifierHash);
       console.log("DepositAmount:", depositAmount, "Type:", typeof depositAmount);
@@ -163,24 +171,13 @@ export default function WithdrawCard() {
       console.log("Address length:", address?.length);
       console.log("Is valid hex:", /^0x[a-fA-F0-9]{40}$/.test(address || ""));
       
-      let recipientBigInt;
-      try {
-        // 去掉 0x 前缀并转换为 BigInt
-        const addressWithoutPrefix = address?.replace("0x", "");
-        recipientBigInt = BigInt("0x" + addressWithoutPrefix);
-        console.log("✅ Address converted to BigInt:", recipientBigInt.toString());
-      } catch (addressError) {
-        console.error("❌ Address conversion error:", addressError);
-        console.error("Address value:", address);
-        throw new Error(`Address conversion failed: ${addressError.message}`);
-      }
-      
       let input;
       try {
         // 根据 withdraw.circom 实际定义的信号构建输入
         input = {
           // 私有输入
           secret: BigInt(secret),
+          amount: BigInt(depositAmount.toString()),  // 添加缺失的 amount 字段
           pathElements: pathElements.map(el => BigInt(el)),
           pathIndices: pathIndices,
           // 公共输入
@@ -197,6 +194,7 @@ export default function WithdrawCard() {
         console.log("✅ Circuit input prepared successfully:", {
           // 将 BigInt 转换为字符串以便日志输出
           secret: input.secret.toString(),
+          amount: input.amount.toString(),
           pathElements: input.pathElements.map(el => el.toString()),
           merkleRoot: input.merkleRoot.toString(),
           nullifier: input.nullifier.toString(),
@@ -235,6 +233,9 @@ export default function WithdrawCard() {
         type: "error",
         message: `Proof generation failed: ${err.message}`,
       });
+      // 重置proof和publicSignals状态，确保状态一致性
+      setProof(null);
+      setPublicSignals(null);
     } finally {
       setIsProving(false);
     }
@@ -271,8 +272,8 @@ export default function WithdrawCard() {
     const formattedProof = {
       a: [proof.pi_a[0].toString(), proof.pi_a[1].toString()],
       b: [
-        [proof.pi_b[0][1].toString(), proof.pi_b[0][0].toString()],
-        [proof.pi_b[1][1].toString(), proof.pi_b[1][0].toString()],
+        [proof.pi_b[0][0].toString(), proof.pi_b[0][1].toString()],
+        [proof.pi_b[1][0].toString(), proof.pi_b[1][1].toString()],
       ],
       c: [proof.pi_c[0].toString(), proof.pi_c[1].toString()],
     };
@@ -285,6 +286,17 @@ export default function WithdrawCard() {
     const amount = ethers.parseEther("0.1");
     console.log("接收地址 (Recipient):", recipientAddress);
     console.log("提款金额 (Amount):", amount.toString());
+    
+    // 额外的调试信息
+    console.log("=== Proof 调试信息 ===");
+    console.log("Proof A:", formattedProof.a);
+    console.log("Proof B:", formattedProof.b);
+    console.log("Proof C:", formattedProof.c);
+    console.log("Root bytes32:", rootBytes32);
+    console.log("Nullifier bytes32:", nullifierBytes32);
+    console.log("Recipient:", recipientAddress);
+    console.log("Fee:", BigInt(0));
+    console.log("Relayer:", ethers.ZeroAddress);
 
     const finalArgs = [
         formattedProof.a,
