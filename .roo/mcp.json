@@ -1,0 +1,14 @@
+{
+    "mcpServers": {
+        "ppt": {
+            "command": "D:\\zWenbo\\AI\\Tools\\Office-PowerPoint-MCP-Server\\.venv\\Scripts\\python.exe",
+            "args": [
+                "D:\\zWenbo\\AI\\Tools\\Office-PowerPoint-MCP-Server\\ppt_mcp_server.py"
+            ],
+            "env": {
+                "PYTHONPATH": "D:\\zWenbo\\AI\\Tools\\Office-PowerPoint-MCP-Server",
+                "PPT_TEMPLATE_PATH": "D:\\zWenbo\\AI\\Tools\\Office-PowerPoint-MCP-Server\\templates"
+            }
+        }
+    }
+}
