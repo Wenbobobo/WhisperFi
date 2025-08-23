@@ -90,6 +90,19 @@ export default function DepositCard() {
     }
   }, [hash, isConfirming, isConfirmed]);
 
+  // 新增：自动下载凭证功能
+  const downloadNote = (noteContent: string) => {
+    const blob = new Blob([noteContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `whisperfi-${Date.now()}.key`; // Changed to .key format
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleDeposit = async () => {
     const newNote = generateNote();
     const { secret, nullifier } = parseNote(newNote);
@@ -185,8 +198,8 @@ export default function DepositCard() {
                 )}
               </div>
               <div className="bg-red-900/50 border border-red-700 rounded-lg p-4 mt-4">
-                <h4 className="font-bold text-red-300">
-                  ACTION REQUIRED: Copy and save this note!
+                <h4 className="font-bold text-red-300 mb-3">
+                  ACTION REQUIRED: Save your private note!
                 </h4>
                 <textarea
                   readOnly
@@ -194,9 +207,22 @@ export default function DepositCard() {
                   className="w-full bg-gray-900 text-gray-200 border border-gray-600 rounded-md p-2 mt-2 font-mono text-sm resize-none h-28"
                   onClick={(e) => (e.target as HTMLTextAreaElement).select()}
                 />
-                <p className="text-xs text-red-400 mt-1">
-                  If you lose this note, you will lose your funds. There is no
-                  recovery.
+                <div className="flex space-x-2 mt-3">
+                  <button
+                    onClick={() => downloadNote(note)}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center"
+                  >
+                    Download Note
+                  </button>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(note)}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center"
+                  >
+                    Copy to Clipboard
+                  </button>
+                </div>
+                <p className="text-xs text-red-400 mt-2">
+                  If you lose this note, you will lose your funds. There is no recovery possible.
                 </p>
               </div>
             </motion.div>

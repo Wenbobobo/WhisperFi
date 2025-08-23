@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import DepositCard from "../components/DepositCard";
 import WithdrawCard from "../components/WithdrawCard";
 import TradeCard from "../components/TradeCard";
+import TradeHistoryModal from "../components/TradeHistoryModal";
 
 // Wallet Connection Component
 function ConnectWalletButton() {
@@ -71,6 +72,7 @@ export default function Home() {
   const { isConnected } = useAccount();
   const [mounted, setMounted] = useState(false);
   const [tabValue, setTabValue] = useState(0);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -109,8 +111,17 @@ export default function Home() {
       <AppBar position="static">
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Private DeFi
+            WhisperFi
           </Typography>
+          {isConnected && (
+            <Button 
+              color="inherit" 
+              onClick={() => setIsHistoryModalOpen(true)}
+              sx={{ mr: 2 }}
+            >
+              Trade History
+            </Button>
+          )}
           <ConnectWalletButton />
         </Toolbar>
       </AppBar>
@@ -142,6 +153,12 @@ export default function Home() {
           <Typography variant="body1">Connect your wallet to begin.</Typography>
         )}
       </Container>
+      
+      {/* Trade History Modal */}
+      <TradeHistoryModal 
+        isOpen={isHistoryModalOpen} 
+        onClose={() => setIsHistoryModalOpen(false)} 
+      />
     </Box>
   );
 }
