@@ -134,7 +134,7 @@ export default function TradeHistoryModal({ isOpen, onClose }: TradeHistoryModal
                         </span>
                         {trade.realTransaction && (
                           <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
-                            Real TX
+                            Tx
                           </span>
                         )}
                       </div>
