@@ -24,3 +24,6 @@ frontend/.next
 reference
 scripts/copy_libs.py
 research
+docs/pics
+error.txt
+docs/DEMO_SETUP_GUIDE.md
