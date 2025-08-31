@@ -24,7 +24,7 @@ import {
 
 const PRIVACY_POOL_ADDRESS = CONTRACTS.PRIVACY_POOL_ADDRESS as `0x${string}`;
 const PrivacyPoolAbi = PrivacyPoolArtifact.abi;
-const steps = ["Generate Proof", "Submit Transaction", "Complete"];
+const steps = ["Generate Proof", "Submit Transaction"];
 
 // A simple spinner component
 const Spinner = () => (
@@ -60,7 +60,6 @@ export default function WithdrawCard() {
   const [publicSignals, setPublicSignals] = useState<any>(null);
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isComplianceModalOpen, setIsComplianceModalOpen] = useState(false);
-  const [isTransactionComplete, setIsTransactionComplete] = useState(false);
 
   const { chain, address } = useAccount();
   const publicClient = usePublicClient();
@@ -286,12 +285,7 @@ export default function WithdrawCard() {
     // This simulates the 0.1 ETH withdrawal
     try {
       if (window.ethereum) {
-        setFeedback({
-          type: "info",
-          message: "Please confirm the transaction in your wallet..."
-        });
-        
-        const txHash = await window.ethereum.request({
+        await window.ethereum.request({
           method: 'eth_sendTransaction',
           params: [{
             from: address,
@@ -300,23 +294,10 @@ export default function WithdrawCard() {
             gas: '0x5208', // 21000 gas for simple transfer
           }],
         });
-        
-        // Transaction succeeded
-        setActiveStep(2); // Move to completion step
-        setIsTransactionComplete(true);
-        setFeedback({
-          type: "success",
-          message: `Withdrawal complete! 0.1 ETH sent to ${recipientAddress.slice(0, 6)}...${recipientAddress.slice(-4)}`
-        });
-        
-        console.log("Withdrawal transaction hash:", txHash);
       }
     } catch (error) {
-      console.log("Demo withdrawal transaction failed:", error);
-      setFeedback({
-        type: "error",
-        message: "Transaction failed or was cancelled by user"
-      });
+      console.log("Demo withdrawal transaction:", error);
+      // Continue with UI update even if transaction fails
     }
   };
 
@@ -343,9 +324,6 @@ export default function WithdrawCard() {
       if (isPending) return "Confirm in wallet...";
       if (isConfirming) return "Submitting Transaction...";
       return "Withdraw 0.1 ETH";
-    }
-    if (activeStep === 2) {
-      return "Withdrawal Complete";
     }
   };
 
@@ -470,39 +448,14 @@ export default function WithdrawCard() {
         </div>
 
         <div className="mt-4 space-y-3">
-          {!isTransactionComplete && (
-            <button
-              onClick={activeStep === 0 ? generateProof : handleWithdraw}
-              disabled={!note || isProving || isPending || isConfirming || !recipientAddress || (recipientAddress && !ethers.isAddress(recipientAddress))}
-              className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 disabled:scale-100"
-            >
-              {(isProving || isPending || isConfirming) && <Spinner />}
-              {getButtonText()}
-            </button>
-          )}
-
-          {isTransactionComplete && (
-            <div className="space-y-3">
-              <div className="w-full flex items-center justify-center bg-green-600 text-white font-bold py-3 px-4 rounded-lg">
-                ✅ Withdrawal Complete
-              </div>
-              <button
-                onClick={() => {
-                  setActiveStep(0);
-                  setIsTransactionComplete(false);
-                  setNote("");
-                  setUploadedFile(null);
-                  setRecipientAddress("");
-                  setProof(null);
-                  setPublicSignals(null);
-                  setFeedback({ type: "", message: "" });
-                }}
-                className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
-              >
-                New Withdrawal
-              </button>
-            </div>
-          )}
+          <button
+            onClick={activeStep === 0 ? generateProof : handleWithdraw}
+            disabled={!note || isProving || isPending || isConfirming}
+            className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 disabled:scale-100"
+          >
+            {(isProving || isPending || isConfirming) && <Spinner />}
+            {getButtonText()}
+          </button>
 
           <button
             onClick={handleComplianceReport}

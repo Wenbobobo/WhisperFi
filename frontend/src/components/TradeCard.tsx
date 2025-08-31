@@ -240,9 +240,7 @@ export default function TradeCard() {
   // Calculate exchange rate when tokens change
   useEffect(() => {
     if (tokenFrom && tokenTo) {
-      // Rate = how many tokenTo you get for 1 tokenFrom
-      // Example: 1 ETH ($2650) = 2650 USDC ($1)
-      const rate = tokenFrom.price / tokenTo.price;
+      const rate = tokenTo.price / tokenFrom.price;
       setExchangeRate(rate);
     }
   }, [tokenFrom, tokenTo]);
