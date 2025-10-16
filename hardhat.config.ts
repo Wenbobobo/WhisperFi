@@ -1,6 +1,9 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-chai-matchers";
+import "solidity-coverage";
+
+const isCoverage = !!process.env.SOLIDITY_COVERAGE;
 
 // 加载测试设置
 import "./test/setup";
@@ -17,6 +20,7 @@ const config: HardhatUserConfig = {
         runs: 200,
       },
       evmVersion: "cancun", // 添加这行以支持瞬态存储
+      viaIR: isCoverage, // enable IR optimizer under coverage to avoid stack-too-deep
     },
   },
   networks: {

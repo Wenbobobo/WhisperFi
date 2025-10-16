@@ -9,7 +9,8 @@ wheels/
 # LLM-related
 .gemini/
 .trae/
-.kilocode
+.kilocode/
+.roo/
 
 # Environments
 .env

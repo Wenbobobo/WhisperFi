@@ -33,6 +33,13 @@ def test_e2e() -> int:
     return run(["npx", "playwright", "test"], cwd=os.getcwd())
 
 
+def test_coverage() -> int:
+    # Runs solidity-coverage; zk-heavy tests are skipped via SOLIDITY_COVERAGE env
+    env = os.environ.copy()
+    env["SOLIDITY_COVERAGE"] = "1"
+    return subprocess.run(["npx", "hardhat", "coverage"], cwd=os.getcwd(), env=env).returncode
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run project tests")
     parser.add_argument(
@@ -42,6 +49,7 @@ def main() -> int:
     )
     parser.add_argument("--frontend", action="store_true", help="Run frontend Vitest tests")
     parser.add_argument("--e2e", action="store_true", help="Run Playwright E2E tests")
+    parser.add_argument("--coverage", action="store_true", help="Run solidity-coverage")
     args = parser.parse_args()
 
     exit_code = 0
@@ -58,7 +66,11 @@ def main() -> int:
         code = test_e2e()
         exit_code = exit_code or code
 
-    if not (args.contracts or args.frontend or args.e2e):
+    if args.coverage:
+        code = test_coverage()
+        exit_code = exit_code or code
+
+    if not (args.contracts or args.frontend or args.e2e or args.coverage):
         # Default: run contracts (all) then frontend
         if (code := test_contracts()) != 0:
             return code
@@ -72,4 +84,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

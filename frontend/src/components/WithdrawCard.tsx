@@ -14,6 +14,7 @@ import { groth16 } from "snarkjs";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { CONTRACTS } from "../config/contracts";
+import { isValidRecipientAddress } from "../utils/validation";
 import PrivacyPoolArtifact from "../abi/PrivacyPool.json";
 import {
   parseNote,
@@ -169,7 +170,7 @@ console.log("✅ Merkle树构建完成");
       console.log("Raw address:", address);
       console.log("Address type:", typeof address);
       console.log("Address length:", address?.length);
-      console.log("Is valid hex:", /^0x[a-fA-F0-9]{40}$/.test(address || ""));
+      console.log("Recipient address valid:", isValidRecipientAddress(address));
       
       let input;
       try {

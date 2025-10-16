@@ -18,6 +18,8 @@ import { Signer } from "ethers";
 import * as fs from "fs";
 import * as path from "path";
 
+const isCoverage = !!process.env.SOLIDITY_COVERAGE;
+
 describe("ZK Proof Generation", function () {
   let env: TestEnvironment;
   let privacyPool: PrivacyPool;
@@ -36,7 +38,7 @@ describe("ZK Proof Generation", function () {
     owner = env.owner;
   });
 
-  it("should generate a valid proof for a simple withdrawal", async function () {
+  (isCoverage ? it.skip : it)("should generate a valid proof for a simple withdrawal", async function () {
     // 1. Create a note and deposit
     const note = generateNote();
     const { secret } = parseNote(note);
