@@ -6,21 +6,59 @@ dist/
 wheels/
 *.egg-info
 
-# Virtual environments
-.venv
-.gemini
-.trae
+# LLM-related
+.gemini/
+.trae/
 .kilocode
 
-# Other common files
-node_modules
+# Environments
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.venv
+.code-workspace
+.vscode/
+.idea/
+config.ts
 
-artifacts
-cache
+# Blockchain related
+typechain-types/
+artifacts/
+broadcast/
+.deploy/
+deployments/
+hardhat-network/
+
+# Dependency 
+node_modules/
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Cache
+cache/
+.nyc_output/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Other
+*.exe
+log.txt
+*.pdf
+.coverage
+*.tar
+
+
 account-abstraction
 temp_circom
-typechain-types
-frontend/.next
 reference
 scripts/copy_libs.py
 research
