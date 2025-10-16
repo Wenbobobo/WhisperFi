@@ -7,8 +7,8 @@ import {
   TestEnvironment,
   generateUserOp,
   getSmartAccountClient,
-} from "./environment";
-import { SmartAccount } from "../typechain-types";
+} from "../environment";
+import { SmartAccount } from "../../typechain-types";
 import { ZeroAddress, ZeroHash, getBytes } from "ethers";
 
 describe("Account Abstraction E2E", function () {

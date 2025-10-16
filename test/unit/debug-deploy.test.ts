@@ -2,7 +2,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { deployTestEnvironment, TestEnvironment } from "./environment";
+import { deployTestEnvironment, TestEnvironment } from "../environment";
 import { ZeroAddress } from "ethers";
 
 describe("Debug Deployment", function () {

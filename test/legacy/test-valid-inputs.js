@@ -1,3 +1,4 @@
+// legacy debug script (moved)
 const { buildPoseidon } = require("circomlibjs");
 const snarkjs = require("snarkjs");
 

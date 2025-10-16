@@ -1,7 +1,7 @@
 // test/deployment.test.ts
 import { expect } from "chai";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { deployTestEnvironment, TestEnvironment } from "./environment";
+import { deployTestEnvironment, TestEnvironment } from "../environment";
 
 describe("Deployment Test", function () {
   let env: TestEnvironment;

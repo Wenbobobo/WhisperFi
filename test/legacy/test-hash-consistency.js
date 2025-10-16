@@ -1,4 +1,4 @@
-// Hash Consistency Test
+// legacy debug script (moved) - Hash Consistency Test
 // 测试前端circomlibjs和合约PoseidonT3是否产生相同的哈希结果
 
 const { buildPoseidon } = require("circomlibjs");

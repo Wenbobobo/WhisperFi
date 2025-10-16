@@ -1,7 +1,8 @@
+// legacy debug script (moved)
 import { ethers } from "ethers";
 import { task } from "hardhat/config";
 
-// 这个任务可以直接通过 npx hardhat run test-deposit-with-correct-commitment.ts 来运行
+// 这个任务可以直接通过 npx hardhat run test-deposit.ts 来运行
 async function main() {
   // 连接到本地Hardhat网络
   const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
@@ -36,22 +37,14 @@ async function main() {
     const depositAmount = await privacyPool.DEPOSIT_AMOUNT();
     console.log("Deposit Amount:", ethers.formatEther(depositAmount), "ETH");
     
-    // 使用与前端相同的逻辑生成commitment（直接从DepositCard.tsx中复制）
-    // 这是DepositCard.tsx中生成commitment的方式：
-    // const newCommitment = await generateCommitment(
-    //   secret,
-    //   ethers.parseEther("0.1").toString()
-    // );
-    
-    // 我们直接使用一个已知有效的commitment来测试
-    // 这个commitment是使用正确的poseidon([secret, amount])生成的
-    const commitment = "0x0e518400376900b1a419912b49ed15430f8033d97e4f397d848392b90c942706";
-    
-    console.log("Using Commitment:", commitment);
+    // 生成一个随机的commitment
+    const commitment = ethers.randomBytes(32);
+    const commitmentHex = ethers.hexlify(commitment);
+    console.log("Generated Commitment:", commitmentHex);
     
     // 尝试存款
     console.log("Attempting deposit...");
-    const tx = await privacyPool.deposit(commitment, {
+    const tx = await privacyPool.deposit(commitmentHex, {
       value: depositAmount
     });
     

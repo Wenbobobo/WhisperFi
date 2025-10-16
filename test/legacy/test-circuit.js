@@ -1,3 +1,4 @@
+// legacy debug script (moved)
 const snarkjs = require("snarkjs");
 
 async function testCircuit() {

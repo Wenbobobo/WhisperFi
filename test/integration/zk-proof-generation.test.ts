@@ -2,18 +2,18 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { deployTestEnvironment, TestEnvironment } from "./environment";
+import { deployTestEnvironment, TestEnvironment } from "../environment";
 import {
   generateNote,
   parseNote,
   generateCommitment,
   generateNullifierHash,
   CircuitCompatibleMerkleTree,
-} from "../frontend/src/utils/crypto";
+} from "../../frontend/src/utils/crypto";
 import { buildPoseidon } from "circomlibjs";
 // @ts-ignore
 import { groth16 } from "snarkjs";
-import { PrivacyPool } from "../typechain-types";
+import { PrivacyPool } from "../../typechain-types";
 import { Signer } from "ethers";
 import * as fs from "fs";
 import * as path from "path";

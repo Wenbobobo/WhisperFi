@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { PrivacyPool } from "../typechain-types";
-import { deployPoseidon } from "../scripts/deploy-poseidon";
-import { deployPoseidon5 } from "../scripts/deploy-poseidon5";
+import { PrivacyPool } from "../../typechain-types";
+import { deployPoseidon } from "../../scripts/deploy-poseidon";
+import { deployPoseidon5 } from "../../scripts/deploy-poseidon5";
 // @ts-ignore
 import * as circomlibjs from "circomlibjs";
 

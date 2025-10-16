@@ -1,3 +1,4 @@
+// moved to test/e2e; Playwright picks this by pattern
 import { test, expect } from '@playwright/test';
 
 test('should render the Private DeFi application UI correctly', async ({ page }) => {

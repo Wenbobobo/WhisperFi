@@ -1,4 +1,4 @@
-// 简化的哈希一致性测试 - 只测试前端部分
+// legacy debug script (moved): 简化的哈希一致性测试 - 只测试前端部分
 const { buildPoseidon } = require("circomlibjs");
 
 async function testFrontendPoseidon() {

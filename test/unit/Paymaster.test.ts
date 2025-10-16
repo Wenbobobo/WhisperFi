@@ -7,9 +7,9 @@ import {
   deployTestEnvironment,
   TestEnvironment,
   generateUserOp,
-} from "./environment";
-import { EntryPoint, Paymaster, PrivacyPool } from "../typechain-types";
-import { PackedUserOperation } from "./utils/UserOperation";
+} from "../environment";
+import { EntryPoint, Paymaster, PrivacyPool } from "../../typechain-types";
+import { PackedUserOperation } from "../utils/UserOperation";
 
 describe("Paymaster", function () {
   let env: TestEnvironment;

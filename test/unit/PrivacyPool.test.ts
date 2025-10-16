@@ -2,8 +2,8 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { Signer } from "ethers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { deployTestEnvironment, TestEnvironment } from "./environment";
-import { PrivacyPool, MockVerifier } from "../typechain-types";
+import { deployTestEnvironment, TestEnvironment } from "../environment";
+import { PrivacyPool, MockVerifier } from "../../typechain-types";
 
 /**
  * @dev Generates a mock proof for testing purposes.

@@ -16,7 +16,7 @@ graph TB
     subgraph "智能合约层"
         D[PrivacyPool.sol]
         E[PoseidonHasher.sol]
-        F[Groth16VeriFi er.sol]
+        F[Groth16Verifier.sol]
         G[SmartAccount.sol]
         H[SmartAccountFactory.sol]
         I[Paymaster.sol]
@@ -46,10 +46,10 @@ graph TB
     M --> D
     M --> N
   
-    style E Fi ll:#ff9999
-    style B Fi ll:#ff9999
-    style J Fi ll:#ff9999
-    style K Fi ll:#ff9999
+    style E fill:#ff9999
+    style B fill:#ff9999
+    style J fill:#ff9999
+    style K fill:#ff9999
 ```
 
 ## 核心功能
@@ -66,7 +66,7 @@ sequenceDiagram
     participant Frontend
     participant PrivacyPool
     participant PoseidonHasher
-    participant VeriFi er
+    participant Verifier
   
     User->>Frontend: 发起存款请求
     Frontend->>Frontend: generateNote() 生成凭证
@@ -79,9 +79,9 @@ sequenceDiagram
     Frontend->>Frontend: parseNote() 解析凭证
     Frontend->>Frontend: 构建Merkle证明
     Frontend->>Frontend: 生成ZK证明
-    Frontend->>PrivacyPool: withdraw(proof, nulliFi er)
-    PrivacyPool->>VeriFi er: verifyProof()
-    PrivacyPool->>PrivacyPool: 检查nulliFi er重复
+    Frontend->>PrivacyPool: withdraw(proof, nullifier)
+    PrivacyPool->>Verifier: verifyProof()
+    PrivacyPool->>PrivacyPool: 检查nullifier重复
     PrivacyPool->>User: 转账至目标地址
 ```
 
@@ -118,7 +118,7 @@ graph LR
 private-deFi /
 ├── contracts/                    # 智能合约系统 (2,847行)
 │   ├── PrivacyPool.sol           # 核心隐私池合约
-│   ├── Groth16VeriFi er.sol       # ZK证明验证器
+│   ├── Groth16Verifier.sol       # ZK证明验证器
 │   ├── SmartAccount.sol          # ERC-4337智能账户
 │   ├── SmartAccountFactory.sol   # 账户工厂合约
 │   ├── Paymaster.sol            # Gas代付合约
@@ -131,7 +131,7 @@ private-deFi /
 ├── frontend/                     # React前端应用 (4,892行)
 │   ├── src/components/          # UI组件库
 │   ├── src/utils/crypto.ts      # 核心加密逻辑
-│   ├── src/conFi g/contracts.ts  # 合约配置
+│   ├── src/config/contracts.ts  # 合约配置
 │   └── public/zk/              # ZK资源文件
 ├── relayer/                      # 中继服务器 (1,847行)
 │   ├── index.js                # 主服务程序

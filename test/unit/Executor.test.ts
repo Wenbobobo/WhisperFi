@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { deployTestEnvironment, TestEnvironment } from "./environment";
+import { deployTestEnvironment, TestEnvironment } from "../environment";
 import { Signer } from "ethers";
-import { Executor } from "../typechain-types";
+import { Executor } from "../../typechain-types";
 
 describe("Executor", function () {
   let env: TestEnvironment;

@@ -1,3 +1,4 @@
+// legacy debug script (moved)
 import { buildPoseidon } from "circomlibjs";
 import { ethers } from "ethers";
 

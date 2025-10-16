@@ -1,3 +1,4 @@
+// legacy debug script (moved)
 const { ethers } = require("ethers");
 
 // 根据合约中的事件定义计算正确的签名
