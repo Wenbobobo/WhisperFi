@@ -24,16 +24,18 @@ Commands
   - `npx hardhat test test/e2e`
 - Frontend: `cd frontend && npm run test`
 - Playwright UI E2E: `npx playwright test`
+ - Optional on-chain ZK proof: `ZK_ONCHAIN=1 npx hardhat test test/integration/withdraw-onchain-verification.test.ts`
 
 Windows + uv
 
 - All (contracts + frontend): `uv run python tasks/test_all.py`
 - With scopes: `uv run python tasks/test_all.py --contracts unit --frontend`
 - Add `--e2e` to include Playwright (requires browsers installed).
+ - Add `--coverage` for solidity-coverage.
 
 Notes
 
 - Poseidon consistency is validated against circomlibjs-generated contracts via `scripts/deploy-poseidon*.ts`.
 - ZK assets are large; ensure paths point to the checked-in `.wasm` and `.zkey` files.
 - E2E tests assume local Hardhat network and configured Paymaster support.
-
+- Playwright specs are under `frontend/tests` and configured via `playwright.config.ts`.

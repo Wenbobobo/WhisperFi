@@ -6,6 +6,22 @@
 
 ---
 
+更新（2025-10-16）
+
+- 测试与覆盖率
+  - 完成测试目录重构；接入 solidity-coverage（覆盖率模式下启用 viaIR）。
+  - 新增单测：PrivacyPool 守卫用例与多存款、Withdraw 成功路径、SmartAccountFactory 预测地址等。
+  - ZK 重型集成测试在覆盖率模式下自动跳过；新增 on-chain Groth16 校验脚手架（默认跳过，`ZK_ONCHAIN=1` 可启用）。
+- 前端重构
+  - 提取 zk 证明工具（`frontend/src/lib/zk/withdraw.ts`）；新增 `WithdrawForm` 并集成至 `WithdrawCard`；
+  - 配置 Vitest + Testing Library，补充工具与组件测试（一个生成回调测试暂跳过，后续稳定单实例渲染后恢复）。
+- 文档与清理
+  - 过时文档归档至 `docs/archive/`；移除根目录冗余二进制与演示文件；新增 `docs/DEV_HANDOVER_NOTES.md`。
+- 下一步
+  1) 继续拆分 WithdrawCard 并补充组合流程测试；提炼 TradeCard 逻辑与单测（功能仍搁置）。
+  2) 扩展 EntryPoint/AA 与 PrivacyPool 边界用例，提升覆盖率与鲁棒性。
+  3) 对齐 withdraw.circom 公共输入与合约哈希，打通 on-chain Groth16 验证。
+
 ## 📋 执行摘要
 
 WhisperFi是一个突破性的隐私DeFi项目，旨在解决链上大户交易被狙击的核心痛点。项目采用独创的"ZK+AA混合架构"，成功攻克了业界普遍存在的跨域哈希一致性难题，建立了坚实的"可信根基"。
