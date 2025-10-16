@@ -15,11 +15,12 @@
 - 前端重构
   - 提取 zk 证明工具（`frontend/src/lib/zk/withdraw.ts`）；新增 `WithdrawForm` 并集成至 `WithdrawCard`；
   - 配置 Vitest + Testing Library，补充工具与组件测试（一个生成回调测试暂跳过，后续稳定单实例渲染后恢复）。
+  - 修复 `WithdrawCard` 生成证明读取 note 的状态时序问题；补充 `WithdrawCard` 组件组合流程测试（mock wagmi）。
 - 文档与清理
   - 过时文档归档至 `docs/archive/`；移除根目录冗余二进制与演示文件；新增 `docs/DEV_HANDOVER_NOTES.md`。
 - 下一步
   1) 继续拆分 WithdrawCard 并补充组合流程测试；提炼 TradeCard 逻辑与单测（功能仍搁置）。
-  2) 扩展 EntryPoint/AA 与 PrivacyPool 边界用例，提升覆盖率与鲁棒性。
+  2) 扩展 EntryPoint/AA 与 PrivacyPool 边界用例，提升覆盖率与鲁棒性。（已新增 Paymaster 时间窗校验单测）
   3) 对齐 withdraw.circom 公共输入与合约哈希，打通 on-chain Groth16 验证。
 
 ## 📋 执行摘要

@@ -19,9 +19,9 @@ Commands
 
 - Contracts (all): `npx hardhat test`
 - Contracts (by scope):
-  - `npx hardhat test test/unit`
-  - `npx hardhat test test/integration`
-  - `npx hardhat test test/e2e`
+  - `npx hardhat test "test/unit/**/*.ts"`
+  - `npx hardhat test "test/integration/**/*.ts"`
+  - `npx hardhat test "test/e2e/**/*.ts"`
 - Frontend: `cd frontend && npm run test`
 - Playwright UI E2E: `npx playwright test`
  - Optional on-chain ZK proof: `ZK_ONCHAIN=1 npx hardhat test test/integration/withdraw-onchain-verification.test.ts`
@@ -39,3 +39,4 @@ Notes
 - ZK assets are large; ensure paths point to the checked-in `.wasm` and `.zkey` files.
 - E2E tests assume local Hardhat network and configured Paymaster support.
 - Playwright specs are under `frontend/tests` and configured via `playwright.config.ts`.
+ - Vitest: tests auto-cleanup via `vitest.setup.ts` (prevents duplicate renders). When asserting async UI updates, prefer `waitFor`.

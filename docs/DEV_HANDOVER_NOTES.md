@@ -22,6 +22,8 @@
   - Extracted proof utilities: `frontend/src/lib/zk/withdraw.ts` + tests.
   - Added lightweight `WithdrawForm` (`frontend/src/components/WithdrawForm.tsx`) and integrated it into `WithdrawCard`.
   - Vitest configured with jsdom + Testing Library; initial component tests added.
+  - Stabilized and un-skipped `WithdrawForm` proof-callback test; added cleanup in `vitest.setup.ts` to prevent duplicate renders.
+  - Fixed `WithdrawCard` bug where `generateProof` read a stale `note`; now takes a parameter to ensure correct note is used. Added `WithdrawCard` mocked flow test.
 
 - Cleanup
   - Archived outdated docs into `docs/archive/` in batches.
@@ -50,12 +52,13 @@
 ## Prioritized TODOs
 1) Frontend Refactor + Tests (High)
 - Split `WithdrawCard` into pure modules: proof builder, submitter, and UI.
-- Add component tests for combined flow using Testing Library (mock wagmi where needed).
+- Add component tests for combined flow using Testing Library (mock wagmi where needed). [Initial mocked flow test added]
 - Extract `TradeCard` logic into utils; add unit tests (feature remains on-hold).
 
 2) Contracts / AA / Coverage (High)
 - Expand EntryPoint/AA property tests (invalid signature path, timestamp windows, unsupported targets already covered; add more).
 - Add more PrivacyPool edge cases (near capacity, event indices, fee/non-zero relayer paths).
+  - New: added Paymaster timestamp window test to validate `validAfter` handling.
 
 3) ZK Proof Alignment (Med-High)
 - Align `withdraw.circom` public inputs with `_calculatePublicInputsHash` and groth16 `publicSignals` packing.
@@ -85,4 +88,3 @@
 - Prefer property-focused, minimal tests that cover security invariants over broad E2E first; then expand.
 - For ZK alignment, lock down the exact publicSignals order and the same hasher for contract and circuit to avoid drift.
 - Maintain small, reviewable PRs: tests first, implementation next, docs updated alongside.
-
