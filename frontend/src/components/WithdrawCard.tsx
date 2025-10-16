@@ -1,7 +1,7 @@
 // src/components/WithdrawCard.tsx
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   useWriteContract,
   useWaitForTransactionReceipt,
@@ -18,6 +18,7 @@ import { isValidRecipientAddress } from "../utils/validation";
 import PrivacyPoolArtifact from "../abi/PrivacyPool.json";
 import { parseNote, generateCommitment, generateNullifierHash, CircuitCompatibleMerkleTree } from "../utils/crypto";
 import { buildWithdrawInputs, generateWithdrawProof } from "../lib/zk/withdraw";
+import WithdrawForm from "./WithdrawForm";
 
 const PRIVACY_POOL_ADDRESS = CONTRACTS.PRIVACY_POOL_ADDRESS as `0x${string}`;
 const PrivacyPoolAbi = PrivacyPoolArtifact.abi;
@@ -71,7 +72,7 @@ export default function WithdrawCard() {
     error: receiptError,
   } = useWaitForTransactionReceipt({ hash });
 
-  const generateProof = async () => {
+  const generateProof = async (noteArg?: string) => {
     if (!address || !publicClient) {
       setFeedback({
         type: "error",
@@ -79,7 +80,8 @@ export default function WithdrawCard() {
       });
       return;
     }
-    if (!note) {
+    const noteToUse = noteArg ?? note;
+    if (!noteToUse) {
       setFeedback({ type: "error", message: "Please enter your note." });
       return;
     }
@@ -93,7 +95,7 @@ export default function WithdrawCard() {
 
     try {
       // 1. Parse note and generate hashes
-      const { secret } = parseNote(note);
+      const { secret } = parseNote(noteToUse);
       const depositAmount = ethers.parseEther("0.1");
       const commitment = await generateCommitment(
         secret,
@@ -382,27 +384,20 @@ console.log("✅ Merkle树构建完成");
           ))}
         </div>
 
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          disabled={isProving || isPending || isConfirming || activeStep === 1}
-          placeholder="Paste the complete note you saved during deposit..."
-          className="w-full bg-gray-900 text-gray-200 border border-gray-600 rounded-md p-3 font-mono text-sm resize-none h-28 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
-
         <div className="mt-4 space-y-3">
-          <button
-            onClick={activeStep === 0 ? generateProof : handleWithdraw}
-            disabled={!note || isProving || isPending || isConfirming}
-            className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 disabled:scale-100"
-          >
-            {(isProving || isPending || isConfirming) && <Spinner />}
-            {getButtonText()}
-          </button>
+          <WithdrawForm
+            onGenerateProof={async (n: string) => {
+              setNote(n);
+              await generateProof(n);
+            }}
+            onSubmit={async () => handleWithdraw()}
+            loading={isProving || isConfirming}
+            disabled={isPending || isConfirming}
+          />
 
           <button
             onClick={handleComplianceReport}
-            disabled={!note || isProving || isPending || isConfirming}
+            disabled={isProving || isPending || isConfirming}
             className="w-full flex items-center justify-center bg-gray-600 hover:bg-gray-700 disabled:bg-gray-500 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 disabled:scale-100"
           >
             Generate Compliance Report

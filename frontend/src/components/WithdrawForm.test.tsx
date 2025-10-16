@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import WithdrawForm from "./WithdrawForm";
 
 describe("WithdrawForm", () => {
@@ -16,7 +16,7 @@ describe("WithdrawForm", () => {
     expect(onGen).not.toHaveBeenCalled();
   });
 
-  it.skip("calls onGenerateProof with provided note", async () => {
+  it("calls onGenerateProof with provided note", async () => {
     const onGen = vi.fn().mockResolvedValue(undefined);
     const onSub = vi.fn();
     render(<WithdrawForm onGenerateProof={onGen} onSubmit={onSub} />);
@@ -24,9 +24,10 @@ describe("WithdrawForm", () => {
     const form = forms[0] as HTMLElement;
     const input = within(form).getByLabelText(/Private Note/i) as HTMLInputElement;
     fireEvent.change(input, { target: { value: "private-defi-a-b-v1" } });
-    await Promise.resolve();
     const genBtn = within(form).getByText(/Generate Proof/i);
     genBtn.click();
-    expect(onGen).toHaveBeenCalledWith("private-defi-a-b-v1");
+    await waitFor(() => {
+      expect(onGen).toHaveBeenCalledWith("private-defi-a-b-v1");
+    });
   });
 });

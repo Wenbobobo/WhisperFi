@@ -15,12 +15,9 @@ def test_contracts(scope: str | None = None) -> int:
     env = os.environ.copy()
     # Mocha can filter by grep; we map scope to folder patterns
     if scope in {"unit", "integration", "e2e"}:
-        env["MOCHA_GREP"] = "^$"  # unused; run directory instead
-        test_dir = os.path.join("test", scope)
-        if not os.path.isdir(test_dir):
-            print(f"No such test folder: {test_dir}")
-            return 1
-        return run(["npx", "hardhat", "test", test_dir], cwd=os.getcwd())
+        # Use a glob pattern for compatibility across environments
+        pattern = os.path.join("test", scope, "**", "*.ts")
+        return run(["npx", "hardhat", "test", pattern], cwd=os.getcwd())
     else:
         return run(["npx", "hardhat", "test"], cwd=os.getcwd())
 
