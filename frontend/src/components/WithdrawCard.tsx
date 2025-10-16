@@ -16,12 +16,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { CONTRACTS } from "../config/contracts";
 import { isValidRecipientAddress } from "../utils/validation";
 import PrivacyPoolArtifact from "../abi/PrivacyPool.json";
-import {
-  parseNote,
-  generateCommitment,
-  generateNullifierHash,
-  CircuitCompatibleMerkleTree,
-} from "../utils/crypto";
+import { parseNote, generateCommitment, generateNullifierHash, CircuitCompatibleMerkleTree } from "../utils/crypto";
+import { buildWithdrawInputs, generateWithdrawProof } from "../lib/zk/withdraw";
 
 const PRIVACY_POOL_ADDRESS = CONTRACTS.PRIVACY_POOL_ADDRESS as `0x${string}`;
 const PrivacyPoolAbi = PrivacyPoolArtifact.abi;
@@ -174,17 +170,12 @@ console.log("✅ Merkle树构建完成");
       
       let input;
       try {
-        // 根据 withdraw.circom 实际定义的信号构建输入
-        input = {
-          // 私有输入
-          secret: BigInt(secret),
-          amount: BigInt(depositAmount.toString()),  // 添加缺失的 amount 字段
-          pathElements: pathElements.map(el => BigInt(el)),
-          pathIndices: pathIndices,
-          // 公共输入
-          merkleRoot: BigInt(merkleRoot),
-          nullifier: BigInt(nullifierHash)
-        };
+        input = await buildWithdrawInputs(
+          secret,
+          depositAmount.toString(),
+          { pathElements, pathIndices, root: merkleRoot },
+          nullifierHash
+        );
         
         // === 诊断日志：输入对象验证 ===
         console.log("🔍 Circuit input validation:");
@@ -215,11 +206,7 @@ console.log("✅ Merkle树构建完成");
         type: "info",
         message: "Generating ZK proof... this is computationally intensive.",
       });
-      const { proof, publicSignals } = await groth16.fullProve(
-        input,
-        "/zk/withdraw.wasm",
-        "/zk/withdraw.zkey"
-      );
+      const { proof, publicSignals } = await generateWithdrawProof(input, "/zk/withdraw.wasm", "/zk/withdraw.zkey");
 
       setProof(proof);
       setPublicSignals(publicSignals);

@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "./test",
+  testDir: "./frontend/tests",
   // Match either classic e2e.test.ts or files ending with .playwright.ts
   testMatch: /(e2e\.test\.ts|\.playwright\.ts)$/,
   timeout: 120 * 1000,
