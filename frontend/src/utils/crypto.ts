@@ -62,9 +62,8 @@ export async function generateCommitment(
  */
 export async function generateNullifierHash(secret: string): Promise<string> {
   const poseidon = await buildPoseidon();
-  // Hash only the secret to generate the nullifier hash, matching circuit logic
-  const hash = poseidon([BigInt(secret)]);
-  // Convert the poseidon field element to hex string format expected by ethers
+  // Use Poseidon(2) with zero padding to mirror on-chain 2-ary hasher
+  const hash = poseidon([BigInt(secret), 0n]);
   return "0x" + poseidon.F.toObject(hash).toString(16).padStart(64, "0");
 }
 

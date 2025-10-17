@@ -17,7 +17,9 @@ import { CONTRACTS } from "../config/contracts";
 import { isValidRecipientAddress } from "../utils/validation";
 import PrivacyPoolArtifact from "../abi/PrivacyPool.json";
 import { parseNote, generateCommitment, generateNullifierHash, CircuitCompatibleMerkleTree } from "../utils/crypto";
-import { buildWithdrawInputs, generateWithdrawProof } from "../lib/zk/withdraw";
+import { generateWithdrawProof } from "../lib/zk/withdraw";
+import { buildWithdrawCircuitInputs } from "../lib/zk/builder";
+import { toWithdrawArgs } from "../lib/zk/submit";
 import WithdrawForm from "./WithdrawForm";
 
 const PRIVACY_POOL_ADDRESS = CONTRACTS.PRIVACY_POOL_ADDRESS as `0x${string}`;
@@ -135,24 +137,19 @@ export default function WithdrawCard() {
         );
       }
 
-      // 3. Build circuit-compatible Merkle tree
-console.log("🔍 构建Merkle树...");
-      console.log("树深度:", 16);
-      console.log("叶子节点数量:", commitments.length);
-      console.log("零值:", "5738151709701895985996174429509233181681189240650583716378205449277091542814");
-      const tree = new CircuitCompatibleMerkleTree(
-        16,
+      // 3. Prepare circuit inputs via builder
+      console.log("🔍 构建Merkle树并准备电路输入...");
+      const ZERO = "5738151709701895985996174429509233181681189240650583716378205449277091542814";
+      const { input, merkle } = await buildWithdrawCircuitInputs(
+        secret,
+        depositAmount.toString(),
         commitments,
-        "5738151709701895985996174429509233181681189240650583716378205449277091542814"
+        leafIndex,
+        ZERO,
+        16
       );
-      await tree.initialize();
-
-      const { pathElements, pathIndices } = tree.generateProof(leafIndex);
-      const merkleRoot = tree.getRoot();
-
-      // 4. Prepare circuit inputs with detailed logging
-      console.log("🔍 Preparing circuit inputs...");
-console.log("✅ Merkle树构建完成");
+      const { pathElements, pathIndices, root: merkleRoot } = merkle;
+      console.log("✅ Merkle树构建完成");
       console.log("Merkle根:", merkleRoot);
       console.log("路径元素数量:", pathElements.length);
       console.log("路径索引数量:", pathIndices.length);
@@ -162,46 +159,27 @@ console.log("✅ Merkle树构建完成");
       console.log("PathElements:", pathElements);
       console.log("PathIndices:", pathIndices);
       console.log("MerkleRoot:", merkleRoot);
-      
+
       // === 诊断日志：地址格式转换验证 ===
       console.log("🔍 Address conversion diagnostic:");
       console.log("Raw address:", address);
       console.log("Address type:", typeof address);
       console.log("Address length:", address?.length);
       console.log("Recipient address valid:", isValidRecipientAddress(address));
-      
-      let input;
-      try {
-        input = await buildWithdrawInputs(
-          secret,
-          depositAmount.toString(),
-          { pathElements, pathIndices, root: merkleRoot },
-          nullifierHash
-        );
-        
-        // === 诊断日志：输入对象验证 ===
-        console.log("🔍 Circuit input validation:");
-        console.log("Input keys:", Object.keys(input));
-        console.log("Input values types:", Object.fromEntries(
-          Object.entries(input).map(([k, v]) => [k, typeof v])
-        ));
-        console.log("✅ Circuit input prepared successfully:", {
-          // 将 BigInt 转换为字符串以便日志输出
-          secret: input.secret.toString(),
-          amount: input.amount.toString(),
-          pathElements: input.pathElements.map(el => el.toString()),
-          merkleRoot: input.merkleRoot.toString(),
-          nullifier: input.nullifier.toString(),
-        });
-      } catch (conversionError) {
-        console.error("❌ BigInt conversion error:", conversionError);
-        console.error("Secret value:", secret);
-        console.error("NullifierHash value:", nullifierHash);
-        console.error("PathElements:", pathElements);
-        console.error("MerkleRoot:", merkleRoot);
-        console.error("Address value:", address);
-        throw new Error(`BigInt conversion failed: ${conversionError.message}`);
-      }
+      // === 诊断日志：输入对象验证 ===
+      console.log("🔍 Circuit input validation:");
+      console.log("Input keys:", Object.keys(input));
+      console.log(
+        "Input values types:",
+        Object.fromEntries(Object.entries(input as any).map(([k, v]) => [k, typeof v]))
+      );
+      console.log("✅ Circuit input prepared successfully:", {
+        secret: (input as any).secret.toString(),
+        amount: (input as any).amount.toString(),
+        pathElements: (input as any).pathElements.map((el: any) => el.toString()),
+        merkleRoot: (input as any).merkleRoot.toString(),
+        nullifier: (input as any).nullifier.toString(),
+      });
 
       // 5. Generate ZK proof
       setFeedback({
@@ -258,18 +236,7 @@ console.log("✅ Merkle树构建完成");
     console.log("Nullifier Hash (来自信号):", nullifierFromSignal.toString());
     console.log("格式化后的 Nullifier Hash (bytes32):", nullifierBytes32);
 
-    // 2. 格式化 Groth16 证明 - 确保所有值都是字符串格式
-    const formattedProof = {
-      a: [proof.pi_a[0].toString(), proof.pi_a[1].toString()],
-      b: [
-        [proof.pi_b[0][0].toString(), proof.pi_b[0][1].toString()],
-        [proof.pi_b[1][0].toString(), proof.pi_b[1][1].toString()],
-      ],
-      c: [proof.pi_c[0].toString(), proof.pi_c[1].toString()],
-    };
     console.log("原始 Proof:", JSON.stringify(proof, null, 2));
-    console.log("格式化后的 Proof:", JSON.stringify(formattedProof, (key, value) =>
-        typeof value === 'bigint' ? value.toString() : value, 2));
 
     // 3. 准备其他参数
     const recipientAddress = address;
@@ -288,16 +255,13 @@ console.log("✅ Merkle树构建完成");
     console.log("Fee:", BigInt(0));
     console.log("Relayer:", ethers.ZeroAddress);
 
-    const finalArgs = [
-        formattedProof.a,
-        formattedProof.b,
-        formattedProof.c,
-        rootBytes32,
-        nullifierBytes32,
-        recipientAddress,
-        BigInt(0), // fee
-        ethers.ZeroAddress, // relayer
-    ];
+    const finalArgs = toWithdrawArgs(
+      proof,
+      publicSignals,
+      recipientAddress as `0x${string}`,
+      BigInt(0),
+      ethers.ZeroAddress as `0x${string}`
+    );
 
     console.log("--- 最终发送给 writeContract 的参数 ---");
     console.log("函数名: withdraw");

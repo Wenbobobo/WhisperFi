@@ -39,4 +39,14 @@ Notes
 - ZK assets are large; ensure paths point to the checked-in `.wasm` and `.zkey` files.
 - E2E tests assume local Hardhat network and configured Paymaster support.
 - Playwright specs are under `frontend/tests` and configured via `playwright.config.ts`.
- - Vitest: tests auto-cleanup via `vitest.setup.ts` (prevents duplicate renders). When asserting async UI updates, prefer `waitFor`.
+- Vitest: tests auto-cleanup via `vitest.setup.ts` (prevents duplicate renders). When asserting async UI updates, prefer `waitFor`.
+
+ZK On-chain Proof Tips
+
+- Before running with `ZK_ONCHAIN=1`, recompile circuits so the WASM/ZKey reflect the latest `circuits/withdraw.circom`:
+  - `npm run compile-circuits`
+  - Test looks for `circuits/build/withdraw/withdraw_js/withdraw.wasm` and `circuits/build/withdraw/withdraw_0001.zkey`.
+- Frontend uses `frontend/public/zk/withdraw.wasm` and `frontend/public/zk/withdraw.zkey`. Copy the build outputs there if you want the UI to use newly compiled artifacts.
+- If the ZKey is missing or outdated, generate it from the compiled R1CS and the bundled Powers of Tau file:
+  - `npm run zkey:withdraw`
+- Note (Windows): if you hit circom parse errors, consider using WSL or Docker for circuit compilation; the on-chain test will skip if artifacts are inconsistent.

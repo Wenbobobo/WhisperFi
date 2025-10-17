@@ -1,75 +1,46 @@
 pragma circom 2.0.0;
 
-include "circomlib/circuits/poseidon.circom";
-include "circomlib/circuits/comparators.circom";
+include "../node_modules/circomlib/circuits/poseidon.circom";
 
-template MerkleTreeChecker(levels) {
-    signal input leaf;
-    signal input root;
-    signal input pathElements[levels];
-    signal input pathIndices[levels];
-    signal input enabled;
-
-    component hashers[levels];
-    signal hashes[levels + 1];
-    hashes[0] <== leaf;
-    
-    for (var i = 0; i < levels; i++) {
-        hashers[i] = Poseidon(2);
-        hashers[i].inputs[0] <== hashes[i] + pathIndices[i] * (pathElements[i] - hashes[i]);
-        hashers[i].inputs[1] <== pathElements[i] + pathIndices[i] * (hashes[i] - pathElements[i]);
-        hashes[i + 1] <== hashers[i].out;
-    }
-    
-    component rootCheck = ForceEqualIfEnabled();
-    rootCheck.enabled <== enabled;
-    rootCheck.in[0] <== hashes[levels];
-    rootCheck.in[1] <== root;
-}
-
-
-// A simple withdrawal circuit for baseline testing
+// Withdrawal circuit aligned with on-chain contract (TREE_DEPTH=16)
 template Withdraw(levels) {
     // Private inputs
     signal input secret;
+    signal input amount; // fixed deposit amount (e.g., 0.1 ETH in wei)
     signal input pathElements[levels];
     signal input pathIndices[levels];
 
-    // Public inputs
-    signal input merkleRoot;
-    signal input nullifier;
-    
-    // Public output
+    // Single public output (hash of merkleRoot and nullifier)
     signal output publicInputsHash;
 
-    // 1. Calculate nullifier from secret
-    component nullifierHasher = Poseidon(1);
+    // 1. Calculate nullifier from secret using Poseidon(2) with zero padding to match on-chain hasher
+    component nullifierHasher = Poseidon(2);
     nullifierHasher.inputs[0] <== secret;
+    nullifierHasher.inputs[1] <== 0;
     signal calculatedNullifier <== nullifierHasher.out;
 
-    // 2. Constrain the public nullifier
-    nullifier === calculatedNullifier;
-
-    // 3. Calculate commitment from secret
-    component commitmentHasher = Poseidon(1);
+    // 2. Calculate commitment from secret and amount using Poseidon(2)
+    component commitmentHasher = Poseidon(2);
     commitmentHasher.inputs[0] <== secret;
+    commitmentHasher.inputs[1] <== amount;
     signal commitment <== commitmentHasher.out;
 
-    // 4. Verify Merkle proof
-    component merkleProof = MerkleTreeChecker(levels);
-    merkleProof.leaf <== commitment;
-    merkleProof.root <== merkleRoot;
+    // 3. Recompute Merkle root from path (circuit-compatible ordering)
+    signal currentHash <== commitment;
     for (var i = 0; i < levels; i++) {
-        merkleProof.pathElements[i] <== pathElements[i];
-        merkleProof.pathIndices[i] <== pathIndices[i];
+        component h = Poseidon(2);
+        // pathIndices[i] = 0 means current on left; 1 means current on right
+        h.inputs[0] <== currentHash + pathIndices[i] * (pathElements[i] - currentHash);
+        h.inputs[1] <== pathElements[i] + pathIndices[i] * (currentHash - pathElements[i]);
+        currentHash <== h.out;
     }
-    merkleProof.enabled <== 1;
-    
-    // 5. Calculate public inputs hash
+
+    // 4. Calculate public inputs hash = Poseidon(2)(merkleRootComputed, nullifier)
     component publicHasher = Poseidon(2);
-    publicHasher.inputs[0] <== merkleRoot;
+    publicHasher.inputs[0] <== currentHash;
     publicHasher.inputs[1] <== calculatedNullifier;
     publicInputsHash <== publicHasher.out;
 }
 
-component main = Withdraw(20);
+// Match the on-chain tree depth (16)
+component main = Withdraw(16);

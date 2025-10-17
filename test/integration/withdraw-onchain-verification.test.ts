@@ -9,8 +9,9 @@ import { buildPoseidon } from "circomlibjs";
 
 describe("Withdraw On-chain Verification (Groth16)", function () {
   const isEnabled = process.env.ZK_ONCHAIN === "1";
-  const wasmPath = path.join(process.cwd(), "circuits", "withdraw_js", "withdraw.wasm");
-  const zkeyPath = path.join(process.cwd(), "circuits", "withdraw_0001.zkey");
+  // Prefer build outputs to ensure they reflect latest circuit changes
+  const wasmPath = path.join(process.cwd(), "circuits", "build", "withdraw", "withdraw_js", "withdraw.wasm");
+  const zkeyPath = path.join(process.cwd(), "circuits", "build", "withdraw", "withdraw_0001.zkey");
 
   (isEnabled ? it : it.skip)("should verify proof on-chain", async function () {
     this.timeout(120_000);
@@ -48,10 +49,10 @@ describe("Withdraw On-chain Verification (Groth16)", function () {
 
     const poseidonJs = await buildPoseidon();
     const secret = BigInt("0x" + Buffer.from(ethers.randomBytes(31)).toString("hex"));
-    const commitment = poseidonJs([secret]);
-    const commitmentHex = "0x" + poseidonJs.F.toObject(commitment).toString(16).padStart(64, "0");
-
     const depositAmount = await pool.DEPOSIT_AMOUNT();
+    // Commitment uses Poseidon(2)(secret, amount)
+    const commitment = poseidonJs([secret, BigInt(depositAmount.toString())]);
+    const commitmentHex = "0x" + poseidonJs.F.toObject(commitment).toString(16).padStart(64, "0");
     await pool.deposit(commitmentHex as any, { value: depositAmount });
 
     const depositEvents = await pool.queryFilter(pool.filters.Deposit());
@@ -60,16 +61,51 @@ describe("Withdraw On-chain Verification (Groth16)", function () {
 
     const root = await pool.merkleRoot();
 
-    const nullifier = poseidonJs([secret]);
+    // Nullifier uses Poseidon(2)(secret, 0)
+    const nullifier = poseidonJs([secret, 0n]);
     const nullifierHex = "0x" + poseidonJs.F.toObject(nullifier).toString(16).padStart(64, "0");
+
+    // Build Merkle path consistent with on-chain tree (depth=16)
+    const TREE_DEPTH = 16;
+    // Reconstruct zeros sequence used by the contract
+    const SNARK_SCALAR_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+    const seed = Buffer.from("PrivacyPool-Zero");
+    const seedHashHex = ethers.keccak256(seed);
+    let currentZero = BigInt(seedHashHex) % SNARK_SCALAR_FIELD;
+    const zeros: bigint[] = [];
+    for (let i = 0; i < TREE_DEPTH; i++) {
+      zeros[i] = currentZero;
+      const h = poseidonJs([currentZero, currentZero]);
+      currentZero = BigInt(poseidonJs.F.toObject(h));
+    }
+
+    // Rebuild incremental tree root as the contract would
+    // and compute pathElements/pathIndices for our single-leaf case
+    let leafIndex = 0; // first deposit
+    const pathElements: bigint[] = [];
+    const pathIndices: number[] = [];
+    let levelIndex = leafIndex;
+    let running = BigInt(poseidonJs.F.toObject(commitment));
+    for (let level = 0; level < TREE_DEPTH; level++) {
+      const isLeft = levelIndex % 2 === 0;
+      const sibling = zeros[level];
+      pathElements.push(sibling);
+      pathIndices.push(isLeft ? 0 : 1);
+      const left = isLeft ? running : sibling;
+      const right = isLeft ? sibling : running;
+      const h = poseidonJs([left, right]);
+      running = BigInt(poseidonJs.F.toObject(h));
+      levelIndex = Math.floor(levelIndex / 2);
+    }
 
     const input = {
       secret: secret,
+      amount: BigInt(depositAmount.toString()),
       nullifier: BigInt(nullifierHex),
       merkleRoot: BigInt(root),
-      pathElements: Array(16).fill(0n),
-      pathIndices: Array(16).fill(0),
-    };
+      pathElements,
+      pathIndices,
+    } as any;
 
     try {
       const { proof } = await groth16.fullProve(input, wasmPath, zkeyPath);
@@ -97,4 +133,3 @@ describe("Withdraw On-chain Verification (Groth16)", function () {
     }
   });
 });
-

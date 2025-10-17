@@ -61,8 +61,11 @@
   - New: added Paymaster timestamp window test to validate `validAfter` handling.
 
 3) ZK Proof Alignment (Med-High)
-- Align `withdraw.circom` public inputs with `_calculatePublicInputsHash` and groth16 `publicSignals` packing.
-- Flip on `withdraw-onchain-verification.test.ts` when signals match and zk artifacts are consistent.
+- Updated `circuits/withdraw.circom` to TREE_DEPTH=16 and to compute:
+  - commitment = Poseidon(2)(secret, amount)
+  - nullifier = Poseidon(2)(secret, 0)
+  - publicInputsHash = Poseidon(2)(merkleRoot, nullifier)
+- Updated on-chain test scaffold to build a contract-compatible Merkle path and include `amount` in circuit inputs. Enable with `ZK_ONCHAIN=1` after re-compiling circuits and refreshing WASM/ZKey.
 
 4) Docs + CI (Med)
 - Continue moving minor docs to archive and link updates.

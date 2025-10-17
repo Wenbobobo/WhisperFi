@@ -10,6 +10,8 @@
     "test": "npx hardhat test",
     "compile": "npx hardhat compile",
     "compile-circuits": "cross-env NODE_PATH=node_modules/ circom circuits/deposit.circom --r1cs --wasm --output circuits/build/deposit && cross-env NODE_PATH=node_modules/ circom circuits/withdraw.circom --r1cs --wasm --output circuits/build/withdraw && cross-env NODE_PATH=node_modules/ circom circuits/trade.circom --r1cs --wasm --output circuits/build/trade",
+    "zkey:withdraw": "npx snarkjs groth16 setup circuits/build/withdraw/withdraw.r1cs circuits/powersOfTau28_hez_final_16.ptau circuits/build/withdraw/withdraw_0001.zkey",
+    "verifier:withdraw": "npx snarkjs zkey export solidityverifier circuits/build/withdraw/withdraw_0001.zkey contracts/Groth16Verifier.sol && npx prettier --write contracts/Groth16Verifier.sol || exit 0",
     "coverage": "npx hardhat coverage"
   },
   "keywords": [],
