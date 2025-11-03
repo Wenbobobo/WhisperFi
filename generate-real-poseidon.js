@@ -57,16 +57,16 @@ contract PoseidonHasher {
     
     /**
      * @notice 计算commitment哈希
-     * @param nullifier nullifier值
      * @param secret secret值
+     * @param amount 存款金额
      * @return commitment哈希
      */
-    function calculateCommitment(uint256 nullifier, uint256 secret) 
+    function calculateCommitment(uint256 secret, uint256 amount) 
         external 
         view 
         returns (uint256) 
     {
-        return poseidon(nullifier, secret);
+        return poseidon(secret, amount);
     }
 }`;
 
@@ -90,12 +90,12 @@ contract PoseidonHasher {
         inputs: [
           {
             internalType: "uint256",
-            name: "nullifier",
+            name: "secret",
             type: "uint256",
           },
           {
             internalType: "uint256",
-            name: "secret",
+            name: "amount",
             type: "uint256",
           },
         ],

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { IVerifier } from "./IVerifier.sol";
 import { SNARK_SCALAR_FIELD } from "./lib/Globals.sol";
 
@@ -21,7 +22,7 @@ interface IPoseidonHasher5 {
  * @dev This contract manages deposits, withdrawals, and the Merkle tree of commitments.
  * It now integrates all Merkle tree logic directly and relies on an external PoseidonHasher contract.
  */
-contract PrivacyPool is Ownable {
+contract PrivacyPool is Ownable, ReentrancyGuard {
     uint256 public constant DEPOSIT_AMOUNT = 0.1 ether;
     uint256 private constant TREE_DEPTH = 16;
     bytes32 private constant ZERO_VALUE = bytes32(uint256(keccak256("PrivacyPool-Zero")) % SNARK_SCALAR_FIELD);
@@ -73,9 +74,10 @@ contract PrivacyPool is Ownable {
         address payable _recipient,
         uint256 _fee, // Fee for the relayer
         address payable _relayer // Relayer address
-    ) external {
+    ) external nonReentrant {
         require(rootHistory[_proofRoot], "Invalid Merkle root");
         require(!nullifiers[_nullifier], "Nullifier has been used");
+        require(_fee <= DEPOSIT_AMOUNT, "Fee exceeds deposit");
 
         // The public signals for the withdrawal circuit are hashed into a single public input.
         // We must reconstruct the public hash input exactly as the circuit does.
@@ -88,9 +90,12 @@ contract PrivacyPool is Ownable {
         nullifiers[_nullifier] = true;
         
         // Transfer funds
-        _recipient.transfer(DEPOSIT_AMOUNT - _fee);
+        uint256 payout = DEPOSIT_AMOUNT - _fee;
+        (bool sentRecipient, ) = _recipient.call{value: payout}("");
+        require(sentRecipient, "Recipient transfer failed");
         if (_fee > 0) {
-            _relayer.transfer(_fee);
+            (bool sentRelayer, ) = _relayer.call{value: _fee}("");
+            require(sentRelayer, "Relayer transfer failed");
         }
 
         emit Withdrawal(_recipient, _nullifier);
@@ -121,7 +126,7 @@ contract PrivacyPool is Ownable {
         bytes32 _tradeDataHash,
         address _target,
         bytes calldata _callData
-    ) external {
+    ) external nonReentrant {
         // --- Checks ---
         _validateTradeInputs(_merkleRoot, _nullifier, _recipient, _tradeAmount, _tradeDataHash);
         
@@ -234,9 +239,9 @@ contract PrivacyPool is Ownable {
         return bytes32(poseidonHasher.poseidon([uint256(_left), uint256(_right)]));
     }
 
-    function calculateCommitment(uint256 _nullifier, uint256 _secret) public view returns (bytes32) {
-        // Use the uint256[2] function signature from circomlibjs
-        return bytes32(poseidonHasher.poseidon([_nullifier, _secret]));
+    function calculateCommitment(uint256 _secret, uint256 _amount) public view returns (bytes32) {
+        uint256[2] memory inputs = [_secret, _amount];
+        return bytes32(poseidonHasher.poseidon(inputs));
     }
 
     function _calculatePublicInputsHash(

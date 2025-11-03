@@ -72,170 +72,136 @@ export async function generateNullifierHash(secret: string): Promise<string> {
  * This implementation ensures perfect compatibility with the ZK circuit's MerkleTreeChecker template.
  */
 export class CircuitCompatibleMerkleTree {
-  private levels: number;
-  private zeroValue: string;
+  private readonly levels: number;
+  private readonly zeroValue: string;
+  private readonly leafCount: number;
+  private readonly pendingLeaves: string[];
   private poseidon: any;
-  private leaves: string[];
-  private tree: string[][];
-  private zeros: string[];
-  private filledSubTrees: string[];
-  private merkleRoot: string;
+  private zeros: bigint[] = [];
+  private levelNodes: Map<number, bigint>[] = [];
+  private nextIndex = 0;
+  private root: bigint = 0n;
 
   constructor(levels: number, leaves: string[], zeroValue: string = "0") {
     this.levels = levels;
     this.zeroValue = zeroValue;
-    this.leaves = [...leaves];
-    this.tree = [];
-    this.zeros = [];
-    this.filledSubTrees = [];
-    this.merkleRoot = "0x0000000000000000000000000000000000000000000000000000000000000000";
+    this.leafCount = leaves.length;
+    this.pendingLeaves = [...leaves];
   }
 
   /**
-   * Initialize the tree with Poseidon hasher.
-   * Must be called before using other methods.
+   * Initialise the Merkle tree using the same incremental hashing logic as the contract.
    */
   async initialize(): Promise<void> {
     this.poseidon = await buildPoseidon();
-    
-    // Initialize zeros and filledSubTrees arrays to match contract logic
-    let currentZero = this.zeroValue;
-    for (let i = 0; i < this.levels; i++) {
-      this.zeros[i] = currentZero;
-      this.filledSubTrees[i] = currentZero;
-      const hash = this.poseidon([BigInt(currentZero), BigInt(currentZero)]);
-      currentZero = "0x" + this.poseidon.F.toObject(hash).toString(16).padStart(64, "0");
-    }
-    this.merkleRoot = currentZero;
-    
-    // Insert all leaves incrementally to match contract logic
-    for (let i = 0; i < this.leaves.length; i++) {
-      await this._insertLeaf(this.leaves[i]);
-    }
-}
 
-/**
- * Insert a leaf into the tree using the same incremental algorithm as the contract
- * @param leaf The leaf to insert
- */
-private async _insertLeaf(leaf: string): Promise<void> {
-  let currentIndex = this.leaves.length; // This should be the next leaf index
-  let currentLevelHash = leaf;
+    this.zeros = new Array(this.levels);
+    this.levelNodes = Array.from(
+      { length: this.levels + 1 },
+      () => new Map<number, bigint>()
+    );
 
-  for (let i = 0; i < this.levels; i++) {
-    if (currentIndex % 2 === 0) { // Left node
-      this.filledSubTrees[i] = currentLevelHash;
-      const hash = this.poseidon([BigInt(currentLevelHash), BigInt(this.zeros[i])]);
-      currentLevelHash = "0x" + this.poseidon.F.toObject(hash).toString(16).padStart(64, "0");
-    } else { // Right node
-      const hash = this.poseidon([BigInt(this.filledSubTrees[i]), BigInt(currentLevelHash)]);
-      currentLevelHash = "0x" + this.poseidon.F.toObject(hash).toString(16).padStart(64, "0");
-    }
-    currentIndex = Math.floor(currentIndex / 2);
-  }
-
-  this.merkleRoot = currentLevelHash;
-}
-
-  /**
-   * Build the complete Merkle tree using circuit-compatible hashing.
-   */
-  private async buildTree(): Promise<void> {
-    // Initialize the tree with empty arrays for each level
-    this.tree = Array.from({ length: this.levels + 1 }, () => []);
-    
-    // Set leaves at level 0
-    this.tree[0] = [...this.leaves];
-    
-    // Pad leaves to the next power of 2 if needed
-    const maxLeaves = Math.pow(2, this.levels);
-    while (this.tree[0].length < maxLeaves) {
-      this.tree[0].push(this.zeroValue);
+    let currentZero = this.toBigInt(this.zeroValue);
+    for (let level = 0; level < this.levels; level++) {
+      this.zeros[level] = currentZero;
+      currentZero = this.hashPair(currentZero, currentZero);
     }
 
-    // Build tree bottom-up
-    for (let level = 1; level <= this.levels; level++) {
-      const currentLevel = this.tree[level];
-      const previousLevel = this.tree[level - 1];
-      
-      for (let i = 0; i < previousLevel.length; i += 2) {
-        const left = previousLevel[i];
-        const right = previousLevel[i + 1] || this.zeroValue;
-        
-        // Use the same hashing logic as the circuit: poseidon([left, right])
-        const hash = this.poseidon([BigInt(left), BigInt(right)]);
-        const hashStr = "0x" + this.poseidon.F.toObject(hash).toString(16).padStart(64, "0");
-        currentLevel.push(hashStr);
-      }
+    this.root = currentZero;
+
+    for (const leaf of this.pendingLeaves) {
+      this.insertLeaf(this.toBigInt(leaf));
     }
   }
 
-  /**
-   * Get the Merkle root (top of the tree).
-   */
   getRoot(): string {
-    return this.merkleRoot;
+    return this.toHex(this.root);
   }
 
-  /**
-   * Generate Merkle proof for a specific leaf, compatible with circuit format.
-   * Returns pathElements and pathIndices that match the circuit's expectations.
-   */
   generateProof(leafIndex: number): { pathElements: string[]; pathIndices: number[] } {
-    if (leafIndex >= this.leaves.length) {
+    if (leafIndex >= this.leafCount) {
       throw new Error(`Leaf index ${leafIndex} is out of bounds`);
     }
 
     const pathElements: string[] = [];
     const pathIndices: number[] = [];
-    let currentIndex = leafIndex;
+    let index = leafIndex;
 
-    // Generate path from leaf to root using the same logic as the contract
     for (let level = 0; level < this.levels; level++) {
-      const isLeft = currentIndex % 2 === 0;
-      
-      if (isLeft) {
-        // Left node: sibling is the right node (zeros[level] if it doesn't exist)
-        pathElements.push(this.zeros[level]);
-      } else {
-        // Right node: sibling is the left node (filledSubTrees[level])
-        pathElements.push(this.filledSubTrees[level]);
-      }
-      
-      // Path index: 0 = current node is left, 1 = current node is right
-      pathIndices.push(isLeft ? 0 : 1);
-      
-      // Move to parent index
-      currentIndex = Math.floor(currentIndex / 2);
+      const siblingIndex = index ^ 1;
+      const siblingValue =
+        this.levelNodes[level].get(siblingIndex) ?? this.zeros[level];
+      pathElements.push(this.toHex(siblingValue));
+      pathIndices.push(index % 2);
+      index = Math.floor(index / 2);
     }
 
     return { pathElements, pathIndices };
   }
 
-  /**
-   * Verify a Merkle proof manually (for testing).
-   * This uses the same logic as the circuit's MerkleTreeChecker.
-   */
   async verifyProof(
     leaf: string,
     pathElements: string[],
     pathIndices: number[],
     expectedRoot: string
   ): Promise<boolean> {
-    let currentHash = leaf;
-
-    for (let i = 0; i < pathElements.length; i++) {
-      const sibling = pathElements[i];
-      const isLeft = pathIndices[i] === 0;
-      
-      // Same logic as circuit: if pathIndices[i] = 0, current is left, sibling is right
-      const left = isLeft ? currentHash : sibling;
-      const right = isLeft ? sibling : currentHash;
-      
-      const hash = this.poseidon([BigInt(left), BigInt(right)]);
-      currentHash = "0x" + this.poseidon.F.toObject(hash).toString(16).padStart(64, "0");
+    if (!this.poseidon) {
+      this.poseidon = await buildPoseidon();
     }
 
-    return currentHash === expectedRoot;
+    let currentHash = this.toBigInt(leaf);
+
+    for (let i = 0; i < pathElements.length; i++) {
+      const sibling = this.toBigInt(pathElements[i]);
+      const isRight = pathIndices[i] === 1;
+      const left = isRight ? sibling : currentHash;
+      const right = isRight ? currentHash : sibling;
+      currentHash = this.hashPair(left, right);
+    }
+
+    return this.toHex(currentHash) === expectedRoot;
+  }
+
+  private hashPair(left: bigint, right: bigint): bigint {
+    const output = this.poseidon([left, right]);
+    return BigInt(this.poseidon.F.toObject(output));
+  }
+
+  private insertLeaf(leaf: bigint): void {
+    this.levelNodes[0].set(this.nextIndex, leaf);
+    let currentIndex = this.nextIndex;
+    let currentHash = leaf;
+
+    for (let level = 0; level < this.levels; level++) {
+      const isRightNode = currentIndex % 2 === 1;
+      const siblingIndex = isRightNode ? currentIndex - 1 : currentIndex + 1;
+      const siblingValue =
+        this.levelNodes[level].get(siblingIndex) ?? this.zeros[level];
+
+      const left = isRightNode ? siblingValue : currentHash;
+      const right = isRightNode ? currentHash : siblingValue;
+      currentHash = this.hashPair(left, right);
+
+      const parentIndex = Math.floor(currentIndex / 2);
+      this.levelNodes[level + 1].set(parentIndex, currentHash);
+      currentIndex = parentIndex;
+    }
+
+    this.root = currentHash;
+    this.nextIndex += 1;
+  }
+
+  private toBigInt(value: string | bigint): bigint {
+    if (typeof value === "bigint") {
+      return value;
+    }
+    if (value.startsWith("0x") || value.startsWith("0X")) {
+      return BigInt(value);
+    }
+    return BigInt(value);
+  }
+
+  private toHex(value: bigint): string {
+    return "0x" + value.toString(16).padStart(64, "0");
   }
 }

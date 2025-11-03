@@ -18,6 +18,7 @@ contract Paymaster is IPaymaster, Ownable {
     error UnsupportedTarget();
     error InvalidPaymasterAndDataLength();
     error InvalidTimestamp();
+    error CallerNotEntryPoint();
 
     // 🔍 DEBUG: 目标验证事件
     event TargetValidation(address indexed target, bool isSupported);
@@ -52,6 +53,8 @@ contract Paymaster is IPaymaster, Ownable {
         bytes32 /* userOpHash */,
         uint256 /* maxCost */
     ) external view override returns (bytes memory context, uint256 validationData) {
+        if (msg.sender != address(entryPoint)) revert CallerNotEntryPoint();
+
         // Extract paymaster fields from paymasterAndData
         (address paymaster, , ) = UserOperationLib.unpackPaymasterStaticFields(userOp.paymasterAndData);
 
