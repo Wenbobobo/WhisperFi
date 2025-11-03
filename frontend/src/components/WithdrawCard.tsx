@@ -27,6 +27,7 @@ const PRIVACY_POOL_ADDRESS = CONTRACTS.PRIVACY_POOL_ADDRESS as `0x${string}`;
 const PrivacyPoolAbi = PrivacyPoolArtifact.abi;
 const STEPS = ["Generate Proof", "Submit Transaction"];
 const DEPOSIT_AMOUNT = ethers.parseEther("0.1");
+const COMMITMENT_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 const Spinner = () => (
   <svg
@@ -82,6 +83,7 @@ export default function WithdrawCard() {
   const cacheLoader = useMemo(() => {
     const persistor = createLocalStoragePersistor({
       chainId: chain?.id ?? 0,
+      ttlMs: COMMITMENT_CACHE_TTL_MS,
     });
     return createResettableDepositLogLoader(persistor);
   }, [chain?.id]);

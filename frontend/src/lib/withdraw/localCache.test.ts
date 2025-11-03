@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createLocalStoragePersistor } from "./localCache";
 
 describe("createLocalStoragePersistor", () => {
@@ -54,5 +54,21 @@ describe("createLocalStoragePersistor", () => {
 
     persistor.clear?.(key);
     expect(persistor.load?.(key)).toBeUndefined();
+  });
+
+  it("drops stale entries when ttl has expired", () => {
+    const persistor = createLocalStoragePersistor({ chainId: 1, ttlMs: 1000 });
+    const key = "0xpool";
+
+    persistor.save?.(key, {
+      commitments: ["stale"],
+      lastBlock: 10n,
+    });
+
+    const nowSpy = vi.spyOn(Date, "now");
+    nowSpy.mockReturnValue(Date.now() + 2000);
+
+    expect(persistor.load?.(key)).toBeUndefined();
+    nowSpy.mockRestore();
   });
 });

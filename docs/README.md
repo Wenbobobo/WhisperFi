@@ -1,7 +1,5 @@
 # WhisperFi Documentation Index
 
-Updated: 2025-10-23
-
 ## Core References
 
 - `TECHNICAL_SPECIFICATION.md` — Canonical system overview covering architecture, Poseidon alignment, contract interfaces, and zk circuits.

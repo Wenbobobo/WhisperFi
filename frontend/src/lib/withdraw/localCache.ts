@@ -13,6 +13,7 @@ function buildKey(chainId: number, addressKey: string) {
 type PersistOptions = {
   chainId?: number;
   maxCommitments?: number;
+  ttlMs?: number;
 };
 
 export function createLocalStoragePersistor(
@@ -20,6 +21,7 @@ export function createLocalStoragePersistor(
 ): PersistHandlers & { clearAll: () => void } {
   const chainId = options.chainId ?? 0;
   const limit = options.maxCommitments ?? 2048;
+  const ttlMs = options.ttlMs;
 
   const load = (addressKey: string): CacheEntry | undefined => {
     if (!hasStorage()) return undefined;
@@ -30,6 +32,7 @@ export function createLocalStoragePersistor(
       const parsed = JSON.parse(raw) as {
         commitments?: string[];
         lastBlock?: string;
+        updatedAt?: number;
       };
       if (!Array.isArray(parsed.commitments)) {
         return undefined;
@@ -39,6 +42,12 @@ export function createLocalStoragePersistor(
         typeof parsed.lastBlock === "string"
           ? BigInt(parsed.lastBlock)
           : undefined;
+      if (ttlMs !== undefined) {
+        if (!parsed.updatedAt || Date.now() - parsed.updatedAt > ttlMs) {
+          window.localStorage.removeItem(storageKey);
+          return undefined;
+        }
+      }
       return {
         commitments: normalized,
         lastBlock,
