@@ -2,7 +2,6 @@
 pragma solidity ^0.8.28;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { IVerifier } from "./IVerifier.sol";
 import { SNARK_SCALAR_FIELD } from "./lib/Globals.sol";
 
@@ -22,7 +21,7 @@ interface IPoseidonHasher5 {
  * @dev This contract manages deposits, withdrawals, and the Merkle tree of commitments.
  * It now integrates all Merkle tree logic directly and relies on an external PoseidonHasher contract.
  */
-contract PrivacyPool is Ownable, ReentrancyGuard {
+contract PrivacyPool is Ownable {
     uint256 public constant DEPOSIT_AMOUNT = 0.1 ether;
     uint256 private constant TREE_DEPTH = 16;
     bytes32 private constant ZERO_VALUE = bytes32(uint256(keccak256("PrivacyPool-Zero")) % SNARK_SCALAR_FIELD);
@@ -39,6 +38,10 @@ contract PrivacyPool is Ownable, ReentrancyGuard {
     bytes32[TREE_DEPTH] private zeros;
     bytes32[TREE_DEPTH] private filledSubTrees;
 
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+    uint256 private _status = _NOT_ENTERED;
+
     event Deposit(bytes32 indexed commitment, uint32 leafIndex, uint256 timestamp);
     event Withdrawal(address to, bytes32 nullifier);
     event Trade(bytes32 indexed nullifier, bytes32 indexed newCommitment, address target, uint256 tradeAmount);
@@ -47,6 +50,7 @@ contract PrivacyPool is Ownable, ReentrancyGuard {
         verifier = IVerifier(_verifier);
         poseidonHasher = IPoseidonHasher(_poseidonHasher);
         poseidonHasher5 = IPoseidonHasher5(_poseidonHasher5);
+        _status = _NOT_ENTERED;
 
         // Initialize Merkle Tree
         bytes32 currentZero = ZERO_VALUE;
@@ -71,10 +75,10 @@ contract PrivacyPool is Ownable, ReentrancyGuard {
         uint[2] calldata _pC,
         bytes32 _proofRoot,
         bytes32 _nullifier,
-        address payable _recipient,
-        uint256 _fee, // Fee for the relayer
-        address payable _relayer // Relayer address
-    ) external nonReentrant {
+    address payable _recipient,
+    uint256 _fee, // Fee for the relayer
+    address payable _relayer // Relayer address
+) external nonReentrant {
         require(rootHistory[_proofRoot], "Invalid Merkle root");
         require(!nullifiers[_nullifier], "Nullifier has been used");
         require(_fee <= DEPOSIT_AMOUNT, "Fee exceeds deposit");
@@ -255,5 +259,12 @@ contract PrivacyPool is Ownable, ReentrancyGuard {
             uint256(_nullifier)
         ];
         return poseidonHasher.poseidon(inputs);
+    }
+
+    modifier nonReentrant() {
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+        _status = _ENTERED;
+        _;
+        _status = _NOT_ENTERED;
     }
 }
