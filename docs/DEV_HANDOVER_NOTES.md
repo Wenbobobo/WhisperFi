@@ -1,33 +1,21 @@
-# Developer Handover Notes (2025-10-16)
+# Developer Handover Notes (2025-10-23)
 
 ## Executive Summary
-- Trusted foundation is in place: unified Poseidon across domains, solid Hardhat testbed, and clear docs.
-- This iteration focused on: test organization + coverage, frontend refactor scaffolding, and a scaffold for on-chain Groth16 verification.
-- Next, keep pushing: component-level tests, AA/EntryPoint property tests, and full on-chain proof alignment.
+- Trusted foundation remains solid: cross-domain Poseidon, Hardhat/Vitest suites, and refreshed documentation.
+- Latest work focused on: withdraw flow modularization, commitment cache persistence, fee-bearing submission coverage, and deploy tooling hardening.
+- Next, keep pushing: Merkle snapshot strategies, withdraw fee/relayer integration tests, and long-term relayer/indexer alignment.
 
 ## What Changed This Iteration
-- Tests & Coverage
-  - Organized tests under `test/unit`, `test/integration`, `test/e2e` and moved legacy scripts out of Hardhat’s path.
-  - Added solidity-coverage; configured IR optimizer under coverage to avoid stack-too-deep.
-  - New unit tests:
-    - `test/unit/PrivacyPool.guards.test.ts` (deposit amount check, nullifier reuse)
-    - `test/unit/PrivacyPool.deposits.multiple.test.ts` (leaf index/root tracking)
-    - `test/unit/Withdraw.success.test.ts` (happy path with MockVerifier)
-  - Integration:
-    - `test/integration/zk-proof-generation.test.ts` heavy proof-gen test (auto-skips when `SOLIDITY_COVERAGE=1`).
-    - `test/integration/withdraw-onchain-verification.test.ts` scaffold (skipped by default, enable with `ZK_ONCHAIN=1`).
-  - Playwright tests moved to `frontend/tests` and configured via `playwright.config.ts`.
-
-- Frontend Refactor Kick-off
-  - Extracted proof utilities: `frontend/src/lib/zk/withdraw.ts` + tests.
-  - Added lightweight `WithdrawForm` (`frontend/src/components/WithdrawForm.tsx`) and integrated it into `WithdrawCard`.
-  - Vitest configured with jsdom + Testing Library; initial component tests added.
-  - Stabilized and un-skipped `WithdrawForm` proof-callback test; added cleanup in `vitest.setup.ts` to prevent duplicate renders.
-  - Fixed `WithdrawCard` bug where `generateProof` read a stale `note`; now takes a parameter to ensure correct note is used. Added `WithdrawCard` mocked flow test.
-
-- Cleanup
-  - Archived outdated docs into `docs/archive/` in batches.
-  - Removed root artifacts not used by build/tests (duplicate zk binaries, demo folders).
+- **Withdraw flow & caching**
+  - Added `createWithdrawFlow` and `createResettableDepositLogLoader`, centralising proof generation/submission logic.
+  - Implemented local-storage commitment cache with TTL, per-chain scoping, and “Reset Commitment Cache” UX.
+  - Component tests cover happy path, empty logs, and commitment-not-found guidance.
+- **Testing**
+  - Flow unit tests assert fee-bearing submissions and relayer parameters.
+  - `MerkleConsistency` and zk integration tests kept green; coverage extends to caching utilities.
+- **Deploy/tooling**
+  - Deploy scripts emit verified addresses; frontend config now validates all contract references.
+  - Docs updated (CODE_REVIEW, NEXT_DEV_NOTES, MASTER_TASK_TRACKING) to reflect completed remediation and new roadmap.
 
 ## Runbook (Dev Quick Start)
 - Contracts
@@ -50,26 +38,17 @@
 - Playwright: `frontend/tests/e2e.playwright.ts`
 
 ## Prioritized TODOs
-1) Frontend Refactor + Tests (High)
-- Split `WithdrawCard` into pure modules: proof builder, submitter, and UI.
-- Add component tests for combined flow using Testing Library (mock wagmi where needed). [Initial mocked flow test added]
-- Extract `TradeCard` logic into utils; add unit tests (feature remains on-hold).
-
-2) Contracts / AA / Coverage (High)
-- Expand EntryPoint/AA property tests (invalid signature path, timestamp windows, unsupported targets already covered; add more).
-- Add more PrivacyPool edge cases (near capacity, event indices, fee/non-zero relayer paths).
-  - New: added Paymaster timestamp window test to validate `validAfter` handling.
-
-3) ZK Proof Alignment (Med-High)
-- Updated `circuits/withdraw.circom` to TREE_DEPTH=16 and to compute:
-  - commitment = Poseidon(2)(secret, amount)
-  - nullifier = Poseidon(2)(secret, 0)
-  - publicInputsHash = Poseidon(2)(merkleRoot, nullifier)
-- Updated on-chain test scaffold to build a contract-compatible Merkle path and include `amount` in circuit inputs. Enable with `ZK_ONCHAIN=1` after re-compiling circuits and refreshing WASM/ZKey.
-
-4) Docs + CI (Med)
-- Continue moving minor docs to archive and link updates.
-- Optional: add a CI workflow later (contracts unit/integration, frontend tests, optional E2E).
+1) **Commitment cache evolutions (High)**
+   - Add visible TTL/last-sync indicators and expose manual reset in production UI.
+   - Evaluate background sync/subgraph options for cold starts.
+2) **Withdraw submission coverage (High)**
+   - Integrate fee/relayer path into end-to-end tests and (optional) relayer pipeline once ready.
+   - Add relayer payout verification tests (fee > 0).
+3) **Trade / Relayer track (Med)**
+   - Keep trade path disabled; plan dedicated design + risk review before reactivation.
+4) **Docs & Ops (Med)**
+   - Capture deployment smoke tests in CI when pipeline arrives.
+   - Continue pruning/archiving stale docs and keep CODE_REVIEW log current.
 
 ## Known Gotchas
 - Coverage runs: `SOLIDITY_COVERAGE=1` enables viaIR; heavy zk tests are skipped to keep coverage fast.

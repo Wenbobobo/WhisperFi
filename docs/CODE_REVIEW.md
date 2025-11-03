@@ -6,41 +6,40 @@
 - Goal: identify correctness, security, maintainability, performance and process risks ahead of commercialization; prioritize findings for TDD-guided remediation.
 
 ## 2. Critical Issues (Blockers)
-| ID | Location | Finding | Impact | Recommendation |
-| --- | --- | --- | --- | --- |
-| C1 | frontend/src/utils/crypto.ts:112–148 | `CircuitCompatibleMerkleTree._insertLeaf` seeds `currentIndex = this.leaves.length`, so every insertion hashes as a right sibling (`H(zero, leaf)`), and the tree never mirrors on-chain state. Proofs built from this tree will fail verification once real deposits exist. | Breaks withdraw correctness; end users cannot exit funds. | Track the real insertion index (loop index / explicit `nextLeafIndex`) and persist `filledSubTrees` like the contract; add regression comparing computed root with `PrivacyPool.merkleRoot`. |
-| C2 | contracts/PrivacyPool.sol:91–94 | Withdrawals use `address.transfer`, enforcing the 2300 gas stipend. Any smart wallet, paymaster redirect, or compliance intermediary causes a revert despite valid proofs. | Funds become locked when recipients are contracts; DoS vector. | Replace with `call{value: amount}()` pattern (with revert handling) and consider `ReentrancyGuard`. |
-| C3 | scripts/deploy.js:63–83 + frontend/src/config/contracts.ts | Deployment script hardcodes `ENTRYPOINT_ADDRESS = 0x...0001`, writes it into the frontend config, and leaves Paymaster/Factory pointed to a non-existent EntryPoint. | Breaks AA flows out-of-the-box; invalid addresses propagate to UI. | Deploy EntryPoint (or accept via env), thread the real address into Paymaster/Factory/front-end artefacts; add sanity check in script. |
+
+All previously identified blockers have been remediated:
+
+| ID | Status | Notes |
+| --- | --- | --- |
+| C1 | ✅ Fixed in `frontend/src/utils/crypto.ts` + `test/unit/MerkleConsistency.test.ts` | Merkle helper mirrors the on-chain incremental tree; test coverage guards regressions. |
+| C2 | ✅ Fixed in `contracts/PrivacyPool.sol` + `test/unit/PrivacyPool.withdraw.payout.test.ts` | Withdraw now uses `call`-based payouts with fee cap and custom non-reentrancy guard. |
+| C3 | ✅ Fixed in `scripts/deploy.(ts|js)` and `frontend/src/config/contracts.ts` | Deploy scripts emit real EntryPoint/Paymaster addresses with validation; frontend has richer config & smoke tests. |
 
 ## 3. High Severity Issues
 | ID | Location | Finding | Impact | Recommendation |
 | --- | --- | --- | --- | --- |
-| H1 | test/integration/withdraw-onchain-verification.test.ts:82–118 | Re-declares `leafIndex` inside the Merkle path loop (`let leafIndex = 0`), causing a redeclaration error when ZK_ONCHAIN=1; test never exercises the scaffold. | On-chain proof alignment remains untested; potential drift unseen. | Rename the loop counter (e.g. `levelIndex`) and actually reuse the real deposit index. |
-| H2 | contracts/PrivacyPool.sol:237 | `calculateCommitment` exposes `Poseidon(_nullifier, _secret)` which contradicts production logic (`Poseidon(secret, amount)`). | Misleads integrators and obfuscates bugs when reused. | Align helper with canonical commitment formula or remove until trade commitments are finalized. |
-| H3 | contracts/Paymaster.sol:38 | `validatePaymasterUserOp` lacks `require(msg.sender == address(entryPoint))`. Any actor can probe validation outcomes or grief via crafted calldata. | Security gap; violates ERC-4337 expectations. | Add caller check and test for revert. |
+| H1 | ✅ test/integration/withdraw-onchain-verification.test.ts:82–118 | Loop variable corrected (`levelIndex`) and test now reflects the live commitment shape; still guarded behind `ZK_ONCHAIN`. |
+| H2 | ✅ contracts/PrivacyPool.sol:242 | `calculateCommitment` now emits `Poseidon(secret, amount)`; helper matches circuit/front-end usage. |
+| H3 | ✅ contracts/Paymaster.sol:56 | Added `CallerNotEntryPoint` guard with coverage in `test/unit/Paymaster.test.ts`. |
 
 ## 4. Medium Severity / Structural Risks
 | ID | Location | Finding | Impact | Recommendation |
 | --- | --- | --- | --- | --- |
-| M1 | test/integration/zk-proof-generation.test.ts:39–66 | Merkle tree built with depth 20 and zero seed `"0"`, diverging from contract’s depth 16 + `ZERO_VALUE`. | False positives; proof generation “passes” without matching canonical tree. | Reuse the constant `ZERO_VALUE` and depth 16; assert root equality vs contract. |
-| M2 | frontend/src/components/WithdrawCard.tsx:39–260 | UI component mixes heavy data fetching, Merkle construction, proof generation, submission, and UI state. | Hard to test; regressions likely; violates planned decomposition. | Follow Next steps plan: extract proof builder, submission handler, error mappers into hooks/services. |
-| M3 | frontend/src/utils/crypto.ts:95–110 | `CircuitCompatibleMerkleTree` copies initial leaves but never updates `this.leaves` when inserting; the tree state drifts after mutations. | Hard to reason about incremental updates once tree fix lands. | Consider storing commitments in class during insert or build tree once and return static proof helper. |
+| M1 | ✅ test/integration/zk-proof-generation.test.ts:42 | Tree depth/zero constant aligned with contract; test asserts root equality before proof generation. |
+| M2 | frontend/src/components/WithdrawCard.tsx | Withdraw UI now delegates to `createWithdrawFlow`, isolating proof generation/submission logic; component tests rely on flow mocks. |
+| M3 | ✅ frontend/src/utils/crypto.ts:74 | Tree helper tracks inserted leaves via level maps; regression tests in `test/unit/MerkleConsistency.test.ts`. |
 | M4 | relayer/index.js & processor.js | Relayer signs Flashbots bundles but depends on simplified `generateTradeDataHash`; not exercised, lacks tests, and may diverge from eventual Solidity trade function. | Hidden integration debt; risk when trade path reactivated. | Document as “experimental”; add integration tests once trade circuit revived. |
 | M5 | scripts/deploy.ts | Mixes custom provider wallet with Hardhat’s global `ethers`; deployPoseidon uses default signer, risking inconsistent chain contexts. | Flaky deployments when run outside Hardhat CLI. | Thread signer/provider into helpers; or rely solely on Hardhat runtime. |
 
 ## 5. Process & Testing Gaps
-- **Withdraw proof TDD**: add contract-specific regression once Merkle bug fixed (`expect(frontendTreeRoot).eq(onchainRoot)` via Hardhat fixture).
-- **Paymaster caller guard**: unit test should cover `InvalidCaller` revert plus happy path with EntryPoint.
+- **Withdraw proof TDD**: regression in `test/unit/MerkleConsistency.test.ts` covers on-chain parity; continue adding contract/flow integration specs as logic evolves.
 - **Trade path**: no tests cover `PrivacyPool.trade`; leave feature flagged until circuit + relayer are ready.
 - **Coverage**: solidity-coverage skips zk-heavy tests; once correctness is restored, run normal suite in CI and capture artifacts per DEV_HANDOVER_NOTES checklist.
 
 ## 6. Architectural & Flow Observations
-1. **Data flow**: WithdrawCard currently recovers all Deposit logs from genesis for every proof. For production scale, consider:
-   - Persisting a local Merkle snapshot / incremental sync service.
-   - Introducing a relayer API that returns commitment indices + Merkle paths.
-   - Leveraging The Graph or custom indexer to bound RPC load.
-2. **Module boundaries**: Consolidate proof-generation logic under `frontend/src/lib/zk/` with pure functions; React components should orchestrate, not compute.
-3. **AA integration**: ensure deploy scripts and frontend share a single source of truth for EntryPoint/Paymaster addresses (possibly via JSON consumed by both Hardhat & Next.js).
+1. **Data flow**: Withdraw flow now uses `createDepositLogLoader` with local-storage persistence to cache commitments and only poll new blocks. Next improvement: add TTL/invalidations and evaluate backend snapshots for cold starts.
+2. **Module boundaries**: Proof generation resides in `frontend/src/lib/withdraw/flow.ts`; UI consumes via memoized flow instance. Future work: move WASM fetching & note validation into dedicated hooks for better SSR compatibility.
+3. **AA integration**: Deploy scripts and frontend share a validated config; consider emitting JSON artifacts for CI and bundling with Next build to avoid stale contract addresses.
 4. **Security posture**:
    - Add reentrancy guard on withdraw/trade after adopting `call`.
    - Consider emitting fee/relayer events for audit trails.
@@ -53,16 +52,14 @@
 - **Contract storage**: `rootHistory` grows unbounded; consider ring buffer or epoch pruning (documented in roadmap but worth scheduling).
 
 ## 8. Next Steps (TDD-aligned)
-1. Patch Merkle tree helper → add Hardhat regression ensuring frontend helper root == contract root.
-2. Update withdraw payout mechanics (call + reentrancy guard) → extend unit tests to cover contract recipients.
-3. Fix deploy script EntryPoint handling → add smoke test that runs `npm run compile && node scripts/deploy.js` under Hardhat network.
-4. Restore on-chain verification test (rename counters) and align depth constants.
-5. Harden Paymaster caller guard → add new test under `test/unit/Paymaster.*`.
-6. Evaluate and document trade/relayer status before enabling in production.
+1. Evaluate persistent Merkle snapshot storage (local cache or backend indexer) on top of the new incremental loader.
+2. Extend withdraw flow tests to cover fee-bearing submissions and relayer payouts.
+3. Keep trade/relayer code gated; add integration scaffolding once feature re-enters roadmap.
+4. Capture deployment smoke test outputs in CI (compile + deploy script + contracts config validation).
 
 ## 9. Open Questions
 - Do we intend to keep `PoseidonHasher5`? It is wired into constructor but unused; removing it reduces deployment complexity if multi-ary hashing is not required.
-- What’s the target SLA for withdrawal latency? Guides caching/indexing priorities.
+- What’s the target SLA for withdrawal latency? Helps prioritise snapshot persistence and background syncing.
 - Will trades remain paused for MVP? If yes, consider gating the Solidity `trade` function with feature flag to avoid dead code paths.
 
 ## 10. Appendix

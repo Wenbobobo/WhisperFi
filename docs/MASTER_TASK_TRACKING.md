@@ -6,22 +6,21 @@
 
 ---
 
-更新（2025-10-16）
+更新（2025-10-23）
 
 - 测试与覆盖率
-  - 完成测试目录重构；接入 solidity-coverage（覆盖率模式下启用 viaIR）。
-  - 新增单测：PrivacyPool 守卫用例与多存款、Withdraw 成功路径、SmartAccountFactory 预测地址等。
-  - ZK 重型集成测试在覆盖率模式下自动跳过；新增 on-chain Groth16 校验脚手架（默认跳过，`ZK_ONCHAIN=1` 可启用）。
+  - withdraw flow 单测已覆盖 fee/relayer 提交路径；组件测试覆盖缓存重置提示与成功反馈。
+  - Merkle 一致性回归 (`test/unit/MerkleConsistency.test.ts`) 与 on-chain scaffold 保持绿灯。
 - 前端重构
-  - 提取 zk 证明工具（`frontend/src/lib/zk/withdraw.ts`）；新增 `WithdrawForm` 并集成至 `WithdrawCard`；
-  - 配置 Vitest + Testing Library，补充工具与组件测试（一个生成回调测试暂跳过，后续稳定单实例渲染后恢复）。
-  - 修复 `WithdrawCard` 生成证明读取 note 的状态时序问题；补充 `WithdrawCard` 组件组合流程测试（mock wagmi）。
-- 文档与清理
-  - 过时文档归档至 `docs/archive/`；移除根目录冗余二进制与演示文件；新增 `docs/DEV_HANDOVER_NOTES.md`。
+  - `WithdrawCard` 逻辑下沉至 `createWithdrawFlow`，并新增可复用的 `createResettableDepositLogLoader`。
+  - 引入本地 commitment cache（localStorage + TTL），支持一键“Reset Commitment Cache”操作与错误提示引导。
+- 工具与脚本
+  - 部署脚本与前端配置保持单一事实来源，运行时验证所有关键地址。
+  - Paymaster caller guard、生效的 `calculateCommitment(secret, amount)` 等风险项均已修复。
 - 下一步
-  1) 继续拆分 WithdrawCard 并补充组合流程测试；提炼 TradeCard 逻辑与单测（功能仍搁置）。
-  2) 扩展 EntryPoint/AA 与 PrivacyPool 边界用例，提升覆盖率与鲁棒性。（已新增 Paymaster 时间窗校验单测）
-  3) 对齐 withdraw.circom 公共输入与合约哈希，打通 on-chain Groth16 验证。
+  1) 规划 commitment cache 持久化策略的下一阶段：多标签协同、TTL 可视化、后端快照/relayer 接口。
+  2) 扩展 withdraw 提交流程测试（带手续费、relayer address）至集成层；后续考虑 relayer 真实路径。
+  3) Trade/Relayer 功能继续保持“实验性”标记，阻止误用；准备后续设计文档。
 
 ## 📋 执行摘要
 
