@@ -37,6 +37,28 @@ describe("Paymaster", function () {
   });
 
   describe("Sponsorship Logic", function () {
+    it("should revert when validatePaymasterUserOp is called by non-EntryPoint", async function () {
+      const target = await privacyPool.getAddress();
+      const smartAccountAddress = await owner.getAddress();
+
+      const executeInterface = new ethers.Interface([
+        "function execute(address,uint256,bytes)",
+      ]);
+      const callData = executeInterface.encodeFunctionData("execute", [
+        target,
+        0,
+        "0x",
+      ]);
+
+      const userOp = await generateUserOp(env, smartAccountAddress, callData);
+
+      await expect(
+        paymaster
+          .connect(owner)
+          .validatePaymasterUserOp(userOp, ethers.randomBytes(32), 0)
+      ).to.be.revertedWithCustomError(paymaster, "CallerNotEntryPoint");
+    });
+
     it("should reject UserOp for an unsupported target", async function () {
       const unsupportedTarget = await notOwner.getAddress();
       const smartAccountAddress = await owner.getAddress(); // Using owner as the mock SA

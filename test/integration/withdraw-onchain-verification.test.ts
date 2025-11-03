@@ -81,7 +81,6 @@ describe("Withdraw On-chain Verification (Groth16)", function () {
 
     // Rebuild incremental tree root as the contract would
     // and compute pathElements/pathIndices for our single-leaf case
-    let leafIndex = 0; // first deposit
     const pathElements: bigint[] = [];
     const pathIndices: number[] = [];
     let levelIndex = leafIndex;

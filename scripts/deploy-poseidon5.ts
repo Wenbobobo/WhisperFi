@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+import { Signer } from "ethers";
 const { poseidonContract } = require("circomlibjs");
 
 /**
@@ -6,7 +7,7 @@ const { poseidonContract } = require("circomlibjs");
  * @notice 使用 circomlibjs 生成并部署支持5个输入的 Poseidon 哈希合约
  * @dev 这个脚本生成支持 5 个输入的 Poseidon 哈希函数合约，用于公共输入哈希计算
  */
-async function main() {
+async function main(signer?: Signer) {
     console.log("🚀 开始部署 Poseidon5 哈希合约...");
 
     try {
@@ -19,10 +20,11 @@ async function main() {
 
         // 2. 使用 ethers 创建合约工厂
         console.log("🏭 正在创建合约工厂...");
+        const deployer = signer ?? (await ethers.getSigners())[0];
         const Poseidon5Factory = new ethers.ContractFactory(
             poseidon5ABI,
             poseidon5Bytecode,
-            (await ethers.getSigners())[0]
+            deployer
         );
 
         // 3. 部署合约

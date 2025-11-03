@@ -6,97 +6,93 @@ import { deployPoseidon } from "./deploy-poseidon";
 import { deployPoseidon5 } from "./deploy-poseidon5";
 
 async function main() {
-  // 连接到本地 Hardhat 网络节点
-  const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
-  const deployer = new ethers.Wallet(
-    "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", // Hardhat 默认的第一个账户私钥
-    provider
-  );
-  
-  console.log("Deploying contracts with the account:", deployer.address);
+  const [deployer] = await ethers.getSigners();
+  const deployerAddress = await deployer.getAddress();
+  console.log("Deploying contracts with the account:", deployerAddress);
 
-  // Deploy Poseidon Hasher first using the new official implementation
-  console.log("\n🔧 Deploying official Poseidon hasher...");
-  const poseidonResult = await deployPoseidon();
+  const poseidonResult = await deployPoseidon(deployer);
   const poseidonHasherAddress = poseidonResult.address;
-  console.log("✅ Official PoseidonHasher deployed to:", poseidonHasherAddress);
+  console.log("✅ PoseidonHasher deployed to:", poseidonHasherAddress);
 
-  // Deploy Poseidon5 Hasher for public inputs hashing
-  console.log("\n🔧 Deploying Poseidon5 hasher for public inputs...");
-  const poseidon5Result = await deployPoseidon5();
+  const poseidon5Result = await deployPoseidon5(deployer);
   const poseidonHasher5Address = poseidon5Result.address;
   console.log("✅ PoseidonHasher5 deployed to:", poseidonHasher5Address);
 
-  // Deploy Verifier
-  const verifier = await ethers.deployContract("Verifier");
+  const verifierFactory = await ethers.getContractFactory("Verifier", deployer);
+  const verifier = await verifierFactory.deploy();
   await verifier.waitForDeployment();
   const verifierAddress = await verifier.getAddress();
   console.log("Verifier deployed to:", verifierAddress);
 
-  // Deploy Executor
-  const executor = await ethers.deployContract("Executor", [deployer.address]);
+  const executorFactory = await ethers.getContractFactory("Executor", deployer);
+  const executor = await executorFactory.deploy(deployerAddress);
   await executor.waitForDeployment();
   const executorAddress = await executor.getAddress();
   console.log("Executor deployed to:", executorAddress);
 
-  // Deploy SmartAccountFactory
-  const entryPoint = await ethers.deployContract("EntryPoint");
+  const entryPointFactory = await ethers.getContractFactory("EntryPoint", deployer);
+  const entryPoint = await entryPointFactory.deploy();
   await entryPoint.waitForDeployment();
   const entryPointAddress = await entryPoint.getAddress();
-  const factory = await ethers.deployContract("SmartAccountFactory", [
-    entryPointAddress,
-  ]);
+  console.log("EntryPoint deployed to:", entryPointAddress);
+
+  const factoryFactory = await ethers.getContractFactory("SmartAccountFactory", deployer);
+  const factory = await factoryFactory.deploy(entryPointAddress);
   await factory.waitForDeployment();
   const factoryAddress = await factory.getAddress();
   console.log("SmartAccountFactory deployed to:", factoryAddress);
 
-  // Deploy Paymaster
-  const paymaster = await ethers.deployContract("Paymaster", [
-    entryPointAddress,
-    deployer.address,
-  ]);
+  const paymasterFactory = await ethers.getContractFactory("Paymaster", deployer);
+  const paymaster = await paymasterFactory.deploy(entryPointAddress, deployerAddress);
   await paymaster.waitForDeployment();
   const paymasterAddress = await paymaster.getAddress();
   console.log("Paymaster deployed to:", paymasterAddress);
 
-  // Deploy PrivacyPool with the official Poseidon hasher
-  console.log("\n🏊 Deploying PrivacyPool with official Poseidon hasher...");
-  const privacyPool = await ethers.deployContract("PrivacyPool", [
+  console.log("\n🏊 Deploying PrivacyPool with official Poseidon hashers...");
+  const privacyPoolFactory = await ethers.getContractFactory("PrivacyPool", deployer);
+  const privacyPool = await privacyPoolFactory.deploy(
     verifierAddress,
     poseidonHasherAddress,
     poseidonHasher5Address,
-    deployer.address,
-  ]);
+    deployerAddress
+  );
   await privacyPool.waitForDeployment();
   const privacyPoolAddress = await privacyPool.getAddress();
   console.log("✅ PrivacyPool deployed to:", privacyPoolAddress);
 
-  // --- Automatic Frontend Configuration ---
+  const contractsConfig = {
+    PRIVACY_POOL_ADDRESS: privacyPoolAddress,
+    PAYMASTER_ADDRESS: paymasterAddress,
+    SMART_ACCOUNT_FACTORY_ADDRESS: factoryAddress,
+    EXECUTOR_ADDRESS: executorAddress,
+    VERIFIER_ADDRESS: verifierAddress,
+    ENTRYPOINT_ADDRESS: entryPointAddress,
+    POSEIDON_HASHER_ADDRESS: poseidonHasherAddress,
+    POSEIDON_HASHER5_ADDRESS: poseidonHasher5Address,
+  } as const;
+
+  Object.entries(contractsConfig).forEach(([label, value]) => {
+    if (!ethers.isAddress(value) || value === ethers.ZeroAddress) {
+      throw new Error(`Invalid address generated for ${label}: ${value}`);
+    }
+  });
+
   console.log("\nUpdating frontend configuration...");
   const configDir = path.join(__dirname, "..", "frontend", "src", "config");
   if (!fs.existsSync(configDir)) {
-    fs.mkdirSync(configDir);
+    fs.mkdirSync(configDir, { recursive: true });
   }
   const configPath = path.join(configDir, "contracts.ts");
-  const configContent = `// This file is auto-generated by the deployment script.
+  const configContent = `// This file is auto-generated by scripts/deploy.ts.
 // Do not edit this file manually.
 
-export const CONTRACTS = {
-  PRIVACY_POOL_ADDRESS: "${privacyPoolAddress}",
-  PAYMASTER_ADDRESS: "${paymasterAddress}",
-  SMART_ACCOUNT_FACTORY_ADDRESS: "${factoryAddress}",
-  EXECUTOR_ADDRESS: "${executorAddress}",
-  VERIFIER_ADDRESS: "${verifierAddress}",
-  ENTRYPOINT_ADDRESS: "${entryPointAddress}",
-  POSEIDON_HASHER_ADDRESS: "${poseidonHasherAddress}",
-  POSEIDON_HASHER5_ADDRESS: "${poseidonHasher5Address}",
-} as const;
+export const CONTRACTS = ${JSON.stringify(contractsConfig, null, 2)} as const;
 `;
 
   fs.writeFileSync(configPath, configContent);
   console.log(`Frontend configuration updated at ${configPath}`);
-  
-  console.log("\n🎉 All contracts deployed successfully with official Poseidon hasher!");
+
+  console.log("\n🎉 All contracts deployed successfully!");
 }
 
 main()
