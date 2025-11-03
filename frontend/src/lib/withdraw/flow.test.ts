@@ -90,15 +90,17 @@ describe("withdraw flow helpers", () => {
     writeContract.mockResolvedValue({ hash: "0xhash" });
 
     const flow = setup();
+    const fee = 5n;
+    const relayer = "0x5678123412341234123412341234123412341234" as const;
     const response = await flow.submitWithdrawal({
       proof: {},
       publicSignals: [],
       recipient: "0x1234",
-      fee: 0n,
-      relayer: "0x5678",
+      fee,
+      relayer,
     });
 
-    expect(toArgs).toHaveBeenCalled();
+    expect(toArgs).toHaveBeenCalledWith({}, [], "0x1234", fee, relayer);
     expect(writeContract).toHaveBeenCalledWith(
       expect.objectContaining({
         address: CONTRACT_ADDRESS,

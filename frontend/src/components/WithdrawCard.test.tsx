@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within, fireEvent, waitFor } from "@testing-library/react";
 
 const flowMocks = {
@@ -10,10 +10,13 @@ const flowMocks = {
   submitWithdrawal: vi.fn().mockResolvedValue({ hash: "0xhash" }),
 };
 
+const loadCommitmentsMock = vi.fn();
+const clearCommitmentMock = vi.fn();
+
 vi.mock("wagmi", () => ({
   useAccount: () => ({
     address: "0x1111111111111111111111111111111111111111",
-    chain: { blockExplorers: { default: { url: "https://explorer" } } },
+    chain: { id: 1, blockExplorers: { default: { url: "https://explorer" } } },
   }),
   usePublicClient: () => ({ getLogs: vi.fn() }),
   useWriteContract: () => ({
@@ -26,6 +29,22 @@ vi.mock("wagmi", () => ({
     isLoading: false,
     isSuccess: false,
     error: undefined,
+  }),
+}));
+
+vi.mock("../lib/withdraw/logSource", () => ({
+  createResettableDepositLogLoader: () => ({
+    loadCommitments: loadCommitmentsMock,
+    clear: clearCommitmentMock,
+  }),
+}));
+
+vi.mock("../lib/withdraw/localCache", () => ({
+  createLocalStoragePersistor: () => ({
+    load: vi.fn(),
+    save: vi.fn(),
+    clear: vi.fn(),
+    clearAll: vi.fn(),
   }),
 }));
 
@@ -42,20 +61,35 @@ vi.mock("../utils/crypto", () => ({
 import WithdrawCard from "./WithdrawCard";
 
 describe("WithdrawCard", () => {
-  it("generates a proof and shows success feedback", async () => {
+  beforeEach(() => {
+    flowMocks.generateProof.mockClear();
+    flowMocks.submitWithdrawal.mockClear();
+    loadCommitmentsMock.mockReset();
+    clearCommitmentMock.mockReset();
+  });
+
+  it("generates a proof, allows cache reset, and shows feedback messages", async () => {
     render(<WithdrawCard />);
-    // Find the embedded form
     const form = screen.getByTestId("withdraw-form");
     const input = within(form).getByLabelText(/Private Note/i) as HTMLInputElement;
     fireEvent.change(input, { target: { value: "private-defi-a-b-v1" } });
-    const genBtn = within(form).getByText(/Generate Proof/i);
-    genBtn.click();
-    // Expect success message after mocked proof generation
+    fireEvent.click(within(form).getByText(/Generate Proof/i));
+
     await waitFor(() =>
       expect(
         screen.getByText(/Proof generated successfully/i)
       ).toBeInTheDocument()
     );
     expect(flowMocks.generateProof).toHaveBeenCalledWith("private-defi-a-b-v1");
+
+    const resetButton = screen.getByRole("button", { name: /reset commitment cache/i });
+    fireEvent.click(resetButton);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Commitment cache cleared/i)
+      ).toBeInTheDocument()
+    );
+    expect(clearCommitmentMock).toHaveBeenCalled();
   });
 });

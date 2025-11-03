@@ -25,9 +25,15 @@ type LoadOptions = {
   toBlock?: BlockTag;
 };
 
-type CacheEntry = {
+export type CacheEntry = {
   commitments: string[];
   lastBlock?: bigint;
+};
+
+export type PersistHandlers = {
+  load?: (key: string) => Promise<CacheEntry | undefined> | CacheEntry | undefined;
+  save?: (key: string, entry: CacheEntry) => Promise<void> | void;
+  clear?: (key: string) => Promise<void> | void;
 };
 
 export type LoadResult = {
@@ -36,16 +42,42 @@ export type LoadResult = {
 
 const defaultToBlock: BlockTag = "latest";
 
-export function createDepositLogLoader() {
+export function createDepositLogLoader(persist?: PersistHandlers) {
   const cache = new Map<string, CacheEntry>();
+
+  async function readEntry(key: string): Promise<CacheEntry | undefined> {
+    if (cache.has(key)) {
+      return cache.get(key);
+    }
+
+    if (persist?.load) {
+      const persisted = await persist.load(key);
+      if (persisted) {
+        cache.set(key, {
+          commitments: [...persisted.commitments],
+          lastBlock: persisted.lastBlock,
+        });
+        return cache.get(key);
+      }
+    }
+
+    return undefined;
+  }
+
+  async function storeEntry(key: string, entry: CacheEntry) {
+    cache.set(key, entry);
+    if (persist?.save) {
+      await persist.save(key, entry);
+    }
+  }
 
   return async function loadCommitments(options: LoadOptions): Promise<LoadResult> {
     const cacheKey = options.address.toLowerCase();
-    const entry = cache.get(cacheKey);
+    const existing = await readEntry(cacheKey);
 
     let fromBlock: BlockTag | undefined = options.fromBlock ?? "earliest";
-    if (entry?.lastBlock !== undefined) {
-      fromBlock = entry.lastBlock + 1n;
+    if (existing?.lastBlock !== undefined) {
+      fromBlock = existing.lastBlock + 1n;
     }
 
     const logs = await options.publicClient.getLogs({
@@ -56,7 +88,7 @@ export function createDepositLogLoader() {
     });
 
     const newCommitments: string[] = [];
-    let lastBlock = entry?.lastBlock;
+    let lastBlock = existing?.lastBlock;
 
     for (const log of logs) {
       const commitment = log.args.commitment;
@@ -70,19 +102,29 @@ export function createDepositLogLoader() {
       }
     }
 
-    const commitments = entry
-      ? entry.commitments.concat(newCommitments)
+    const mergedCommitments = existing
+      ? existing.commitments.concat(newCommitments)
       : newCommitments;
 
-    cache.set(cacheKey, { commitments, lastBlock });
+    const updatedEntry: CacheEntry = {
+      commitments: mergedCommitments,
+      lastBlock,
+    };
 
-    return { commitments };
+    await storeEntry(cacheKey, updatedEntry);
+
+    return { commitments: mergedCommitments };
   };
 }
 
-export function createResettableDepositLogLoader() {
-  const loader = createDepositLogLoader();
+export function createResettableDepositLogLoader(persist?: PersistHandlers) {
+  const loader = createDepositLogLoader(persist);
   return {
     loadCommitments: loader,
+    clear: async (address: string) => {
+      if (persist?.clear) {
+        await persist.clear(address.toLowerCase());
+      }
+    },
   };
 }

@@ -85,4 +85,31 @@ describe("createDepositLogLoader", () => {
       expect.objectContaining({ fromBlock: 3n })
     );
   });
+  it("loads persisted entry before fetching new logs", async () => {
+    const persisted = { commitments: ["0xpersist"], lastBlock: 12n };
+    const loadPersisted = vi.fn().mockResolvedValue(persisted);
+    const savePersisted = vi.fn();
+    const getLogs = vi.fn().mockResolvedValue([]);
+
+    const load = createDepositLogLoader({
+      load: loadPersisted,
+      save: savePersisted,
+    });
+
+    const result = await load({
+      publicClient: { getLogs } as any,
+      address: "0xPool",
+      event: depositEvent,
+    });
+
+    expect(loadPersisted).toHaveBeenCalledWith("0xpool");
+    expect(getLogs).toHaveBeenCalledWith(
+      expect.objectContaining({ fromBlock: 13n })
+    );
+    expect(savePersisted).toHaveBeenCalledWith("0xpool", {
+      commitments: ["0xpersist"],
+      lastBlock: 12n,
+    });
+    expect(result.commitments).toEqual(["0xpersist"]);
+  });
 });

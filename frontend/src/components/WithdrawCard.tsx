@@ -15,6 +15,8 @@ import { CONTRACTS } from "../config/contracts";
 import { isValidRecipientAddress } from "../utils/validation";
 import { parseNote, generateCommitment, generateNullifierHash } from "../utils/crypto";
 import { createWithdrawFlow } from "../lib/withdraw/flow";
+import { createResettableDepositLogLoader } from "../lib/withdraw/logSource";
+import { createLocalStoragePersistor } from "../lib/withdraw/localCache";
 import { buildWithdrawCircuitInputs } from "../lib/zk/builder";
 import { generateWithdrawProof } from "../lib/zk/withdraw";
 import { toWithdrawArgs } from "../lib/zk/submit";
@@ -60,6 +62,7 @@ export default function WithdrawCard() {
     message: "",
   });
   const [isComplianceModalOpen, setIsComplianceModalOpen] = useState(false);
+  const [isClearingCache, setIsClearingCache] = useState(false);
 
   const { chain, address } = useAccount();
   const publicClient = usePublicClient();
@@ -75,6 +78,16 @@ export default function WithdrawCard() {
     isSuccess: isConfirmed,
     error: receiptError,
   } = useWaitForTransactionReceipt({ hash });
+
+  const cacheLoader = useMemo(() => {
+    const persistor = createLocalStoragePersistor({
+      chainId: chain?.id ?? 0,
+    });
+    return createResettableDepositLogLoader(persistor);
+  }, [chain?.id]);
+
+  const loadCommitments = cacheLoader.loadCommitments;
+  const clearCommitmentCache = cacheLoader.clear;
 
   const withdrawFlow = useMemo(() => {
     if (!publicClient) return null;
@@ -93,6 +106,11 @@ export default function WithdrawCard() {
       depositAmountWei: DEPOSIT_AMOUNT,
       treeDepth: 16,
       fromBlock: "earliest",
+      loadCommitments: (args) =>
+        loadCommitments({
+          ...args,
+          publicClient,
+        }),
       writeContract: async (config) => {
         const txHash = await writeContract({
           ...config,
@@ -102,7 +120,7 @@ export default function WithdrawCard() {
         return { hash: txHash as string };
       },
     });
-  }, [publicClient, writeContract, chain, address]);
+  }, [publicClient, writeContract, chain, address, loadCommitments]);
 
   const generateProof = async (overrideNote?: string) => {
     if (!address || !withdrawFlow) {
@@ -143,8 +161,11 @@ export default function WithdrawCard() {
         message: "Proof generated successfully! You can now submit the withdrawal.",
       });
     } catch (err) {
-      const message =
+      let message =
         err instanceof Error ? err.message : "Proof generation failed. Please retry.";
+      if (/commitment was not found/i.test(message) || /No deposit events found/i.test(message)) {
+        message = `${message} Try resetting the commitment cache and generating the proof again.`;
+      }
       setFeedback({ type: "error", message });
       setProof(null);
       setPublicSignals(null);
@@ -196,6 +217,26 @@ export default function WithdrawCard() {
 
   const handleComplianceReport = () => setIsComplianceModalOpen(true);
   const closeComplianceModal = () => setIsComplianceModalOpen(false);
+
+  const handleResetCache = async () => {
+    try {
+      setIsClearingCache(true);
+      await clearCommitmentCache?.(PRIVACY_POOL_ADDRESS);
+      setProof(null);
+      setPublicSignals(null);
+      setActiveStep(0);
+      setFeedback({
+        type: "success",
+        message: "Commitment cache cleared. Please generate the proof again.",
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to clear commitment cache.";
+      setFeedback({ type: "error", message });
+    } finally {
+      setIsClearingCache(false);
+    }
+  };
 
   const finalError = writeError || receiptError;
 
@@ -253,6 +294,13 @@ export default function WithdrawCard() {
             className="w-full flex items-center justify-center bg-gray-600 hover:bg-gray-700 disabled:bg-gray-500 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 disabled:scale-100"
           >
             Generate Compliance Report
+          </button>
+          <button
+            onClick={handleResetCache}
+            disabled={isProving || isPending || isConfirming || isClearingCache}
+            className="w-full flex items-center justify-center bg-gray-700 hover:bg-gray-800 disabled:bg-gray-500 text-white font-bold py-2.5 px-4 rounded-lg transition-all duration-300 ease-in-out"
+          >
+            {isClearingCache ? "Clearing Cache..." : "Reset Commitment Cache"}
           </button>
         </div>
       </div>
