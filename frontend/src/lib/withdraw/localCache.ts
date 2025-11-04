@@ -42,15 +42,23 @@ export function createLocalStoragePersistor(
         typeof parsed.lastBlock === "string"
           ? BigInt(parsed.lastBlock)
           : undefined;
+
       if (ttlMs !== undefined) {
         if (!parsed.updatedAt || Date.now() - parsed.updatedAt > ttlMs) {
           window.localStorage.removeItem(storageKey);
           return undefined;
         }
+        return {
+          commitments: normalized,
+          lastBlock,
+          expiresAt: parsed.updatedAt + ttlMs,
+          lastSyncedAt: parsed.updatedAt,
+        };
       }
       return {
         commitments: normalized,
         lastBlock,
+        lastSyncedAt: parsed.updatedAt,
       };
     } catch {
       return undefined;
@@ -60,11 +68,12 @@ export function createLocalStoragePersistor(
   const save = (addressKey: string, entry: CacheEntry) => {
     if (!hasStorage()) return;
     const storageKey = buildKey(chainId, addressKey);
+    const updatedAt = Date.now();
     const serialized = JSON.stringify({
       commitments: entry.commitments.slice(-limit),
       lastBlock:
         entry.lastBlock !== undefined ? entry.lastBlock.toString() : undefined,
-      updatedAt: Date.now(),
+      updatedAt,
     });
     window.localStorage.setItem(storageKey, serialized);
   };
@@ -90,5 +99,5 @@ export function createLocalStoragePersistor(
     }
   };
 
-  return { load, save, clear, clearAll };
+  return { load, save, clear, clearAll, ttlMs, chainId };
 }

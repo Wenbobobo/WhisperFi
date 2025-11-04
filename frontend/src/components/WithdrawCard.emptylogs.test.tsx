@@ -9,6 +9,12 @@ const flowMocks = {
 
 const loadCommitmentsMock = vi.fn();
 const clearCommitmentMock = vi.fn();
+const getStatusMock = vi.fn();
+const syncMock = {
+  publish: vi.fn(),
+  subscribe: vi.fn().mockReturnValue(() => {}),
+  getSourceId: () => "test",
+};
 
 vi.mock("wagmi", () => ({
   useAccount: () => ({
@@ -33,7 +39,12 @@ vi.mock("../lib/withdraw/logSource", () => ({
   createResettableDepositLogLoader: () => ({
     loadCommitments: loadCommitmentsMock,
     clear: clearCommitmentMock,
+    getStatus: getStatusMock,
   }),
+}));
+
+vi.mock("../lib/withdraw/cacheSync", () => ({
+  getCacheSync: () => syncMock,
 }));
 
 vi.mock("../lib/withdraw/localCache", () => ({
@@ -62,6 +73,9 @@ describe("WithdrawCard negative states - empty logs", () => {
     flowMocks.generateProof.mockClear();
     loadCommitmentsMock.mockReset();
     clearCommitmentMock.mockReset();
+    getStatusMock.mockReset();
+    syncMock.publish.mockClear();
+    syncMock.subscribe.mockClear();
   });
 
   it("shows guidance to reset cache when no deposit events are found", async () => {

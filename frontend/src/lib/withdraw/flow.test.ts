@@ -42,8 +42,12 @@ describe("withdraw flow helpers", () => {
     const commitment = "0xccc";
     generateCommitment.mockResolvedValue(commitment);
     generateNullifierHash.mockResolvedValue("0xnnn");
+    const mockTime = 1_725_000_000_000;
     loadCommitments.mockResolvedValue({
       commitments: [commitment, "0xother"],
+      commitmentCount: 2,
+      lastSyncedAt: mockTime,
+      expiresAt: mockTime + 1_800_000,
     });
     buildInputs.mockResolvedValue({
       input: { secret: 1n },
@@ -70,13 +74,22 @@ describe("withdraw flow helpers", () => {
       publicSignals: expect.any(Array),
       merkle: expect.any(Object),
       nullifierHex: "0xnnn",
+      cacheInfo: {
+        lastSyncedAt: mockTime,
+        expiresAt: mockTime + 1_800_000,
+        commitmentCount: 2,
+      },
     });
   });
 
   it("throws when commitment not found in logs", async () => {
     parseNote.mockReturnValue({ secret: "0x123", nullifier: "0x456" });
     generateCommitment.mockResolvedValue("0xccc");
-    loadCommitments.mockResolvedValue({ commitments: ["0xddd"] });
+    loadCommitments.mockResolvedValue({
+      commitments: ["0xddd"],
+      commitmentCount: 1,
+      lastSyncedAt: Date.now(),
+    });
 
     const flow = setup();
 

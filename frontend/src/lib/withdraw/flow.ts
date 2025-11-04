@@ -65,7 +65,13 @@ type WithdrawFlowDeps = {
       inputs: Array<{ type: string; name: string; indexed?: boolean }>;
     };
     fromBlock?: bigint | number | string;
-  }) => Promise<{ commitments: string[] }>;
+  }) => Promise<{
+    commitments: string[];
+    lastBlock?: bigint;
+    lastSyncedAt?: number;
+    expiresAt?: number;
+    commitmentCount: number;
+  }>;
 };
 
 const DEFAULT_DEPOSIT = BigInt("100000000000000000"); // 0.1 ETH
@@ -101,7 +107,12 @@ export function createWithdrawFlow(deps: WithdrawFlowDeps) {
     await deps.generateNullifierHash(secret);
 
     const loader = deps.loadCommitments ?? defaultDepositLoader;
-    const { commitments } = await loader({
+    const {
+      commitments,
+      lastSyncedAt,
+      expiresAt,
+      commitmentCount,
+    } = await loader({
       publicClient: deps.publicClient,
       address: contractAddress,
       event: depositEvent,
@@ -137,6 +148,13 @@ export function createWithdrawFlow(deps: WithdrawFlowDeps) {
       nullifierHex,
       commitment,
       leafIndex,
+      cacheInfo: lastSyncedAt
+        ? {
+            lastSyncedAt,
+            expiresAt,
+            commitmentCount: commitmentCount ?? commitments.length,
+          }
+        : undefined,
     };
   }
 

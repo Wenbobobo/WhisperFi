@@ -11,6 +11,12 @@ const flowMocks = {
 
 const loadCommitmentsMock = vi.fn();
 const clearCommitmentMock = vi.fn();
+const getStatusMock = vi.fn();
+const syncMock = {
+  publish: vi.fn(),
+  subscribe: vi.fn().mockReturnValue(() => {}),
+  getSourceId: () => "test",
+};
 
 vi.mock("wagmi", () => ({
   useAccount: () => ({
@@ -35,7 +41,12 @@ vi.mock("../lib/withdraw/logSource", () => ({
   createResettableDepositLogLoader: () => ({
     loadCommitments: loadCommitmentsMock,
     clear: clearCommitmentMock,
+    getStatus: getStatusMock,
   }),
+}));
+
+vi.mock("../lib/withdraw/cacheSync", () => ({
+  getCacheSync: () => syncMock,
 }));
 
 vi.mock("../lib/withdraw/localCache", () => ({
@@ -64,6 +75,9 @@ describe("WithdrawCard negative states - commitment not found", () => {
     flowMocks.generateProof.mockClear();
     clearCommitmentMock.mockReset();
     loadCommitmentsMock.mockReset();
+    getStatusMock.mockReset();
+    syncMock.publish.mockClear();
+    syncMock.subscribe.mockClear();
   });
 
   it("suggests resetting cache when commitment is missing", async () => {

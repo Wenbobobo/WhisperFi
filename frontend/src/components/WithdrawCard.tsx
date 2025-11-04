@@ -1,7 +1,7 @@
 // src/components/WithdrawCard.tsx
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   useWriteContract,
   useWaitForTransactionReceipt,
@@ -17,6 +17,7 @@ import { parseNote, generateCommitment, generateNullifierHash } from "../utils/c
 import { createWithdrawFlow } from "../lib/withdraw/flow";
 import { createResettableDepositLogLoader } from "../lib/withdraw/logSource";
 import { createLocalStoragePersistor } from "../lib/withdraw/localCache";
+import { getCacheSync } from "../lib/withdraw/cacheSync";
 import { buildWithdrawCircuitInputs } from "../lib/zk/builder";
 import { generateWithdrawProof } from "../lib/zk/withdraw";
 import { toWithdrawArgs } from "../lib/zk/submit";
@@ -24,10 +25,16 @@ import PrivacyPoolArtifact from "../abi/PrivacyPool.json";
 import WithdrawForm from "./WithdrawForm";
 
 const PRIVACY_POOL_ADDRESS = CONTRACTS.PRIVACY_POOL_ADDRESS as `0x${string}`;
+const PRIVACY_POOL_ADDRESS_KEY = PRIVACY_POOL_ADDRESS.toLowerCase();
 const PrivacyPoolAbi = PrivacyPoolArtifact.abi;
 const STEPS = ["Generate Proof", "Submit Transaction"];
 const DEPOSIT_AMOUNT = ethers.parseEther("0.1");
 const COMMITMENT_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+type CacheStatus = {
+  lastSyncedAt: number;
+  expiresAt?: number;
+  commitmentCount: number;
+};
 
 const Spinner = () => (
   <svg
@@ -64,6 +71,7 @@ export default function WithdrawCard() {
   });
   const [isComplianceModalOpen, setIsComplianceModalOpen] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
+  const [cacheStatus, setCacheStatus] = useState<CacheStatus | undefined>();
 
   const { chain, address } = useAccount();
   const publicClient = usePublicClient();
@@ -80,16 +88,62 @@ export default function WithdrawCard() {
     error: receiptError,
   } = useWaitForTransactionReceipt({ hash });
 
+  const cacheSync = useMemo(() => getCacheSync(), []);
+
   const cacheLoader = useMemo(() => {
     const persistor = createLocalStoragePersistor({
       chainId: chain?.id ?? 0,
       ttlMs: COMMITMENT_CACHE_TTL_MS,
     });
-    return createResettableDepositLogLoader(persistor);
-  }, [chain?.id]);
+    return createResettableDepositLogLoader(persistor, cacheSync);
+  }, [chain?.id, cacheSync]);
 
   const loadCommitments = cacheLoader.loadCommitments;
   const clearCommitmentCache = cacheLoader.clear;
+  const getCacheStatus = cacheLoader.getStatus;
+
+  useEffect(() => {
+    if (!getCacheStatus) {
+      setCacheStatus(undefined);
+      return;
+    }
+    const status = getCacheStatus(PRIVACY_POOL_ADDRESS);
+    setCacheStatus(
+      status
+        ? {
+            lastSyncedAt: status.lastSyncedAt,
+            expiresAt: status.expiresAt,
+            commitmentCount: status.commitmentCount,
+          }
+        : undefined
+    );
+  }, [getCacheStatus, chain?.id]);
+
+  useEffect(() => {
+    if (!getCacheStatus) return;
+    const chainIdValue = chain?.id ?? 0;
+    const unsubscribe = cacheSync.subscribe((event) => {
+      if (event.chainId !== chainIdValue) return;
+      if (event.address !== PRIVACY_POOL_ADDRESS_KEY) return;
+      if (event.action === "clear") {
+        setCacheStatus(undefined);
+        return;
+      }
+      if (event.action === "refresh") {
+        const status = getCacheStatus(PRIVACY_POOL_ADDRESS);
+        setCacheStatus(
+          status
+            ? {
+                lastSyncedAt: status.lastSyncedAt,
+                expiresAt: status.expiresAt,
+                commitmentCount: status.commitmentCount,
+              }
+            : undefined
+        );
+      }
+    });
+    return unsubscribe;
+  }, [cacheSync, getCacheStatus, chain?.id]);
 
   const withdrawFlow = useMemo(() => {
     if (!publicClient) return null;
@@ -152,8 +206,16 @@ export default function WithdrawCard() {
         message: "Fetching deposit events to build Merkle tree...",
       });
 
-      const { proof: generatedProof, publicSignals: signals } =
+      const { proof: generatedProof, publicSignals: signals, cacheInfo } =
         await withdrawFlow.generateProof(noteToUse);
+
+      if (cacheInfo?.lastSyncedAt) {
+        setCacheStatus((prev) => ({
+          lastSyncedAt: cacheInfo.lastSyncedAt,
+          expiresAt: cacheInfo.expiresAt,
+          commitmentCount: cacheInfo.commitmentCount ?? prev?.commitmentCount ?? 0,
+        }));
+      }
 
       setProof(generatedProof);
       setPublicSignals(signals);
@@ -231,6 +293,7 @@ export default function WithdrawCard() {
         type: "success",
         message: "Commitment cache cleared. Please generate the proof again.",
       });
+      setCacheStatus(undefined);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to clear commitment cache.";
@@ -305,6 +368,28 @@ export default function WithdrawCard() {
             {isClearingCache ? "Clearing Cache..." : "Reset Commitment Cache"}
           </button>
         </div>
+
+        {cacheStatus && (
+          <div className="mt-4 bg-gray-900/40 border border-gray-700 rounded-lg p-3 text-xs text-gray-300 space-y-1">
+            <p>
+              Cache last synced at{" "}
+              {new Date(cacheStatus.lastSyncedAt).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
+            {cacheStatus.expiresAt && (
+              <p>
+                Expires around{" "}
+                {new Date(cacheStatus.expiresAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+            )}
+            <p>{cacheStatus.commitmentCount} commitments cached</p>
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
