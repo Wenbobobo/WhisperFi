@@ -17,6 +17,9 @@ declare global {
       enableAutoConnect?: () => void;
       disableAutoConnect?: () => void;
       setPoolAddress?: (address: string) => void;
+      forceConnected?: boolean;
+      forceConnect?: () => void;
+      clearForcedConnection?: () => void;
     };
   }
 }

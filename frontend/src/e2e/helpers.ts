@@ -22,6 +22,10 @@ const ensureNamespace = () => {
 if (typeof window !== "undefined") {
   ensureNamespace();
 
+  if (typeof globalAny.__e2e__.forceConnected === "undefined") {
+    globalAny.__e2e__.forceConnected = false;
+  }
+
   globalAny.__e2e__.seedCommitments = ({ commitments, lastBlock, chainId }: SeedCommitmentsParams) => {
     const resolvedChainId = chainId ?? CHAIN_ID;
     const poolAddress = (globalAny.__e2e__?.poolAddress ?? '').toLowerCase();
@@ -60,11 +64,23 @@ if (typeof window !== "undefined") {
   globalAny.__e2e__.enableAutoConnect = () => {
     ensureNamespace();
     globalAny.__e2e__.autoConnect = true;
+    globalAny.__e2e__.forceConnected = true;
   };
 
   globalAny.__e2e__.disableAutoConnect = () => {
     ensureNamespace();
     globalAny.__e2e__.autoConnect = false;
+    globalAny.__e2e__.forceConnected = false;
+  };
+
+  globalAny.__e2e__.forceConnect = () => {
+    ensureNamespace();
+    globalAny.__e2e__.forceConnected = true;
+  };
+
+  globalAny.__e2e__.clearForcedConnection = () => {
+    ensureNamespace();
+    globalAny.__e2e__.forceConnected = false;
   };
 }
 

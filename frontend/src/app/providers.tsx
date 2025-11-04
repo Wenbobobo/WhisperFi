@@ -32,6 +32,9 @@ const darkTheme = createTheme({
 export function Providers({ children }: { children: React.ReactNode }) {
   if (typeof window !== "undefined" && window.__e2e__) {
     window.__e2e__.setPoolAddress(CONTRACTS.PRIVACY_POOL_ADDRESS);
+    if (window.__e2e__.autoConnect) {
+      window.__e2e__.forceConnected = true;
+    }
   }
 
   return (

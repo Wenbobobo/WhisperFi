@@ -32,21 +32,36 @@ function ConnectWalletButton() {
 
   const shouldAutoConnect =
     typeof window !== "undefined" && Boolean(window.__e2e__?.autoConnect);
+  const forcedConnected =
+    typeof window !== "undefined" && Boolean(window.__e2e__?.forceConnected);
 
   useEffect(() => {
-    if (mounted && shouldAutoConnect && !isConnected && !autoConnectAttempted) {
+    if (
+      mounted &&
+      shouldAutoConnect &&
+      !isConnected &&
+      !forcedConnected &&
+      !autoConnectAttempted
+    ) {
       setAutoConnectAttempted(true);
       connect({ connector: injected() }).catch(() => {
         setAutoConnectAttempted(false);
       });
     }
-  }, [mounted, shouldAutoConnect, isConnected, autoConnectAttempted, connect]);
+  }, [
+    mounted,
+    shouldAutoConnect,
+    isConnected,
+    forcedConnected,
+    autoConnectAttempted,
+    connect,
+  ]);
 
   useEffect(() => {
-    if (!shouldAutoConnect && autoConnectAttempted) {
+    if ((!shouldAutoConnect || forcedConnected) && autoConnectAttempted) {
       setAutoConnectAttempted(false);
     }
-  }, [shouldAutoConnect, autoConnectAttempted]);
+  }, [shouldAutoConnect, forcedConnected, autoConnectAttempted]);
 
   if (!mounted) {
     return (
@@ -56,7 +71,7 @@ function ConnectWalletButton() {
     );
   }
 
-  if (isConnected) {
+  if (forcedConnected || isConnected) {
     return (
       <Button color="inherit" onClick={() => disconnect()}>
         Disconnect
@@ -99,6 +114,10 @@ export default function Home() {
     setTabValue(newValue);
   };
 
+  const forcedConnected =
+    typeof window !== "undefined" && Boolean(window.__e2e__?.forceConnected);
+  const effectiveConnected = isConnected || forcedConnected;
+
   // 避免 SSR/客户端不匹配问题
   if (!mounted) {
     return (
@@ -138,7 +157,7 @@ export default function Home() {
           Welcome to the Next Generation of Private Finance
         </Typography>
 
-        {isConnected ? (
+        {effectiveConnected ? (
           <Box sx={{ width: "100%" }}>
             <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
               <Tabs value={tabValue} onChange={handleTabChange} centered>

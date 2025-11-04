@@ -47,14 +47,15 @@ const ethereumStub = `
 })();
 `;
 
-test.describe.skip("Commitment cache sync across tabs (pending harness)", () => {
+test.describe("Commitment cache sync across tabs", () => {
 
   test("propagates cache reset between contexts", async ({ browser }) => {
     const context = await browser.newContext();
     await context.addInitScript({ path: path.resolve(__dirname, "utils/walletMock.js") });
     await context.addInitScript(() => {
       window.__e2e__ = window.__e2e__ || {};
-      window.__e2e__.autoConnect = true;
+      window.__e2e__.enableAutoConnect?.();
+      window.__e2e__.forceConnect?.();
     });
     await context.addInitScript({ source: ethereumStub });
 
@@ -62,6 +63,15 @@ test.describe.skip("Commitment cache sync across tabs (pending harness)", () => 
     const pageB = await context.newPage();
 
     await Promise.all([pageA.goto("/"), pageB.goto("/")]);
+
+    await pageA.evaluate(() => {
+      window.__e2e__?.enableAutoConnect?.();
+      window.__e2e__?.forceConnect?.();
+    });
+    await pageB.evaluate(() => {
+      window.__e2e__?.enableAutoConnect?.();
+      window.__e2e__?.forceConnect?.();
+    });
 
     const connectButtonA = pageA.locator('button:has-text("Connect Wallet")');
     if (await connectButtonA.isVisible().catch(() => false)) {
@@ -122,3 +132,4 @@ test.describe.skip("Commitment cache sync across tabs (pending harness)", () => 
     await context.close();
   });
 });
+
