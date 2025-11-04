@@ -111,6 +111,8 @@ describe("withdraw flow helpers", () => {
       recipient: "0x1234",
       fee,
       relayer,
+      account: "0xabc",
+      chain: { id: 1 },
     });
 
     expect(toArgs).toHaveBeenCalledWith({}, [], "0x1234", fee, relayer);
@@ -119,6 +121,8 @@ describe("withdraw flow helpers", () => {
         address: CONTRACT_ADDRESS,
         functionName: "withdraw",
         args: ["args"],
+        account: "0xabc",
+        chain: { id: 1 },
       })
     );
     expect(response.hash).toBe("0xhash");
