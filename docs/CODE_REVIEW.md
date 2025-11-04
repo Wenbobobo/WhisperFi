@@ -21,6 +21,8 @@ All previously identified blockers have been remediated:
 | H1 | ✅ test/integration/withdraw-onchain-verification.test.ts:82–118 | Loop variable corrected (`levelIndex`) and test now reflects the live commitment shape; still guarded behind `ZK_ONCHAIN`. |
 | H2 | ✅ contracts/PrivacyPool.sol:242 | `calculateCommitment` now emits `Poseidon(secret, amount)`; helper matches circuit/front-end usage. |
 | H3 | ✅ contracts/Paymaster.sol:56 | Added `CallerNotEntryPoint` guard with coverage in `test/unit/Paymaster.test.ts`. |
+| H4 | ✅ frontend/src/lib/withdraw/logSource.ts:46 | `createResettableDepositLogLoader.clear` now flushes the in-memory map via `clearCache` before invoking the persistor; regression locked by `logSource.test.ts` (“clears both persisted and in-memory cache”). |
+| H5 | ✅ frontend/src/lib/withdraw/logSource.ts:26 | Cache entries now carry `expiresAt`; on each access expired entries trigger eviction + persistor clear, and `createLocalStoragePersistor` propagates TTL metadata. Verified with `logSource.test.ts` (“evicts expired cache entries when ttl elapses”). |
 
 ## 4. Medium Severity / Structural Risks
 | ID | Location | Finding | Impact | Recommendation |
@@ -37,7 +39,7 @@ All previously identified blockers have been remediated:
 - **Coverage**: solidity-coverage skips zk-heavy tests; once correctness is restored, run normal suite in CI and capture artifacts per DEV_HANDOVER_NOTES checklist.
 
 ## 6. Architectural & Flow Observations
-1. **Data flow**: Withdraw flow now uses `createDepositLogLoader` with local-storage persistence to cache commitments and only poll new blocks. Next improvement: add TTL/invalidations and evaluate backend snapshots for cold starts.
+1. **Data flow**: Withdraw flow now uses `createDepositLogLoader` with local-storage persistence to cache commitments and only poll new blocks; TTL/expiry is surfaced in the UI, and BroadcastChannel/storage sync keeps tabs aligned. Next improvement: validate the cross-tab path via Playwright and continue evaluating backend snapshots for cold starts.
 2. **Module boundaries**: Proof generation resides in `frontend/src/lib/withdraw/flow.ts`; UI consumes via memoized flow instance. Future work: move WASM fetching & note validation into dedicated hooks for better SSR compatibility.
 3. **AA integration**: Deploy scripts and frontend share a validated config; consider emitting JSON artifacts for CI and bundling with Next build to avoid stale contract addresses.
 4. **Security posture**:
@@ -53,7 +55,7 @@ All previously identified blockers have been remediated:
 
 ## 8. Next Steps (TDD-aligned)
 1. Evaluate persistent Merkle snapshot storage (local cache or backend indexer) on top of the new incremental loader.
-2. Extend withdraw flow tests to cover fee-bearing submissions and relayer payouts.
+2. Extend withdraw path beyond unit mocks: Hardhat integration now covers fee-bearing payouts (`test/integration/withdraw-relayer-fee.test.ts`); Vitest asserts submit args pass relayer metadata. Next expand to frontend E2E (Playwright dual-tab + fee entry) so cache refresh and UI states are exercised end-to-end.
 3. Keep trade/relayer code gated; add integration scaffolding once feature re-enters roadmap.
 4. Capture deployment smoke test outputs in CI (compile + deploy script + contracts config validation).
 

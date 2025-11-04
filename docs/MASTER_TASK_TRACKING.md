@@ -6,6 +6,27 @@
 
 ---
 
+更新（2025-11-03）
+
+- 文档与知识库
+  - `docs/README.md` 现作为索引；遗留材料均迁至 `docs/archive/`，掌握历史信息前可先阅读 `CODE_REVIEW.md`、`DEV_HANDOVER_NOTES.md`。
+  - `MASTER_TASK_TRACKING.md`、`NEXT_DEV_NOTES.md` 和 `DEV_HANDOVER_NOTES.md` 已按当前迭代同步，请继续以这三份文档对齐状态与计划。
+- Withdraw 流程与缓存
+  - 前端 `createLocalStoragePersistor` 已加入 30 分钟 TTL；UI 现展示“最近同步时间 / 预计过期时间”，但多标签同步仍未落地；跟进项记录在 `frontend/src/components/WithdrawCard.tsx` 与 `docs/NEXT_DEV_NOTES.md`。
+  - `frontend/src/lib/withdraw/flow.test.ts` 覆盖 fee/relayer 参数，但缺少端到端验证；需在 integration/E2E 层补充真是链路（包括 relayer payout）。
+  - BroadcastChannel + storage event 双通道同步已完成（Vitest 覆盖 `logSource.test.ts` 多标签场景），仍需补充 Playwright 跨标签验证。
+  - `test/integration/withdraw-relayer-fee.test.ts` 新增集成测试，验证非零 relayer fee 下的资金分配；下一步继续 1) Playwright 双标签场景（完成钱包自动连接 stub + `window.__e2e__` seed helper后再启用）；2) UI 端 fee 流程 E2E（需 Hardhat note seeding + 证明 mock）。
+- UI 反馈
+  - `WithdrawCard` 现已展示 commitment cache 最近同步时间、到期时间及缓存条目总数，辅助用户判断是否需要刷新。
+- 测试与性能
+  - `test/integration/withdraw-onchain-verification.test.ts` 仍依赖 scaffold；计划将真实 `pathElements`/`pathIndices` 接入并以 Hardhat 执行。
+  - TTL 与缓存刷新逻辑强化后，需要回归性能测试，确认不会频繁触发全量事件扫描。
+- 后端与运营
+  - 后端 Merkle 快照 / indexer 尚处探索阶段，参考 `docs/NEXT_DEV_NOTES.md` 与 `docs/CODE_REVIEW.md` 的分层方案规划。
+  - 部署脚本输出已校验；下一步是在 CI 中固化 smoke test，落地到 `tasks/test_all.py` 或新增脚本。
+
+---
+
 更新（2025-10-23）
 
 - 测试与覆盖率

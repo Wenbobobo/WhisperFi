@@ -5,14 +5,24 @@
 - Latest work focused on: withdraw flow modularization, commitment cache persistence, fee-bearing submission coverage, and deploy tooling hardening.
 - Next, keep pushing: Merkle snapshot strategies, withdraw fee/relayer integration tests, and long-term relayer/indexer alignment.
 
+### Context Refresh — 2025-11-03
+- Documentation has been consolidated under `docs/README.md`; legacy plans live in `docs/archive/`. Start with `CODE_REVIEW.md`, `MASTER_TASK_TRACKING.md`, and `NEXT_DEV_NOTES.md` for the operative picture.
+- Commitment cache now expires after 30 minutes via `createLocalStoragePersistor`; withdraw UI surfaces last-sync / expiry metadata, and multi-tab sync broadcasts are live (E2E verification still pending).
+- Withdraw flow tests cover relayer parameters at the service layer; integration/E2E coverage for fee-paying withdrawals and relayer payouts remains outstanding.
+- Backend Merkle snapshot/indexer work is still exploratory; keep interim mitigations (manual cache reset, scaffolded on-chain test) in mind when planning releases.
+
 ## What Changed This Iteration
 - **Withdraw flow & caching**
   - Added `createWithdrawFlow` and `createResettableDepositLogLoader`, centralising proof generation/submission logic.
   - Implemented local-storage commitment cache with TTL, per-chain scoping, and “Reset Commitment Cache” UX.
+  - Added BroadcastChannel + `storage` fallback sync; loader broadcasts `refresh`/`clear` events and UI reacts (multi-tab Playwright smoke still pending).
+  - `frontend/src/e2e/helpers.ts` introduces `window.__e2e__` hooks for test seeding; Playwright harness still needs wallet auto-connect stub before enabling dual-context test.
   - Component tests cover happy path, empty logs, and commitment-not-found guidance.
 - **Testing**
   - Flow unit tests assert fee-bearing submissions and relayer parameters.
   - `MerkleConsistency` and zk integration tests kept green; coverage extends to caching utilities.
+  - Added Hardhat integration coverage for fee-bearing withdrawals (`test/integration/withdraw-relayer-fee.test.ts` via `npx hardhat test test/integration/withdraw-relayer-fee.test.ts`).
+  - Latest spot checks: `npx hardhat test test/integration/withdraw-relayer-fee.test.ts`, `npm run test -- logSource`, `npm run test -- flow`.
 - **Deploy/tooling**
   - Deploy scripts emit verified addresses; frontend config now validates all contract references.
   - Docs updated (CODE_REVIEW, NEXT_DEV_NOTES, MASTER_TASK_TRACKING) to reflect completed remediation and new roadmap.
@@ -39,7 +49,7 @@
 
 ## Prioritized TODOs
 1) **Commitment cache evolutions (High)**
-   - Add visible TTL/last-sync indicators and expose manual reset in production UI.
+   - Multi-tab sync now broadcasts via BroadcastChannel/storage; add Playwright cross-tab smoke (two contexts) + document manual steps.
    - Evaluate background sync/subgraph options for cold starts.
 2) **Withdraw submission coverage (High)**
    - Integrate fee/relayer path into end-to-end tests and (optional) relayer pipeline once ready.

@@ -15,6 +15,10 @@ Directory Layout
 - `test/utils` – test helpers
 - `test/legacy` – ad-hoc scripts retained for reference
 
+Recent additions
+
+- `test/integration/withdraw-relayer-fee.test.ts` — validates fee-bearing withdrawals split funds between recipient and relayer using the mock verifier fixture.
+
 Commands
 
 - Contracts (all): `npx hardhat test`
@@ -38,6 +42,7 @@ Notes
 - Poseidon consistency is validated against circomlibjs-generated contracts via `scripts/deploy-poseidon*.ts`.
 - ZK assets are large; ensure paths point to the checked-in `.wasm` and `.zkey` files.
 - E2E tests assume local Hardhat network and configured Paymaster support.
+- Playwright harness may leverage `frontend/src/e2e/helpers.ts` and `frontend/tests/utils/walletMock.js` for auto-connect and cache seeding when the dual-tab scenario is enabled.
 - Playwright specs are under `frontend/tests` and configured via `playwright.config.ts`.
 - Vitest: tests auto-cleanup via `vitest.setup.ts` (prevents duplicate renders). When asserting async UI updates, prefer `waitFor`.
 
