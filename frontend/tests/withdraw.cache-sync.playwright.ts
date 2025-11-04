@@ -1,10 +1,10 @@
 import { test, expect } from "@playwright/test";
+import path from "path";
 import { CONTRACTS } from "../src/config/contracts";
 
 const WITHDRAW_TAB = 'button:has-text("Withdraw")';
 const CACHE_STATUS = /Cache last synced/i;
 const RESET_BUTTON = 'button:has-text("Reset Commitment Cache")';
-const CONNECT_BUTTON = 'button:has-text("Connect Wallet")';
 
 const CHAIN_ID = 31337;
 const CHAIN_ID_HEX = "0x7a69";
@@ -51,6 +51,11 @@ test.describe.skip("Commitment cache sync across tabs (pending harness)", () => 
 
   test("propagates cache reset between contexts", async ({ browser }) => {
     const context = await browser.newContext();
+    await context.addInitScript({ path: path.resolve(__dirname, "utils/walletMock.js") });
+    await context.addInitScript(() => {
+      window.__e2e__ = window.__e2e__ || {};
+      window.__e2e__.autoConnect = true;
+    });
     await context.addInitScript({ source: ethereumStub });
 
     const pageA = await context.newPage();
@@ -58,49 +63,40 @@ test.describe.skip("Commitment cache sync across tabs (pending harness)", () => 
 
     await Promise.all([pageA.goto("/"), pageB.goto("/")]);
 
-    // Connect wallet in both tabs (stubbed) so Withdraw tab renders.
-    await pageA.locator(CONNECT_BUTTON).click();
-    await pageB.locator(CONNECT_BUTTON).click();
-    await pageA.waitForSelector(WITHDRAW_TAB);
-    await pageB.waitForSelector(WITHDRAW_TAB);
+    const connectButtonA = pageA.locator('button:has-text("Connect Wallet")');
+    if (await connectButtonA.isVisible().catch(() => false)) {
+      await connectButtonA.click();
+    }
+    const connectButtonB = pageB.locator('button:has-text("Connect Wallet")');
+    if (await connectButtonB.isVisible().catch(() => false)) {
+      await connectButtonB.click();
+    }
+
+    await pageA.waitForSelector(WITHDRAW_TAB, { timeout: 10000 });
+    await pageB.waitForSelector(WITHDRAW_TAB, { timeout: 10000 });
 
     await pageA.locator(WITHDRAW_TAB).click();
     await pageB.locator(WITHDRAW_TAB).click();
 
-    // Seed commitments into shared localStorage (context-level) and broadcast refresh.
-    await pageA.goto("/");
-
-    await pageA.locator(CONNECT_BUTTON).click();
-    await pageA.waitForSelector(WITHDRAW_TAB);
-    await pageA.locator(WITHDRAW_TAB).click();
-
-    await pageA.evaluate(
-      ([commitmentKey, syncPrefix]) => {
-        const payload = {
-          commitments: ["0xabc123"],
-          lastBlock: "5",
-          updatedAt: Date.now(),
-        };
-        localStorage.setItem(commitmentKey, JSON.stringify(payload));
-        localStorage.setItem(
-          `${syncPrefix}:${Date.now()}`,
-          JSON.stringify({
-            chainId: 31337,
-            address: "0x2279b7a0a67db372996a5fab50d91eaa73d2ebe6",
-            action: "refresh",
-            updatedAt: payload.updatedAt,
-            sourceId: "playwright-seed",
-          })
-        );
-      },
-      [COMMITMENT_KEY, SYNC_KEY_PREFIX]
-    );
+    await pageA.evaluate(() => {
+      window.__e2e__?.seedCommitments({
+        commitments: ["0xabc123"],
+        lastBlock: 5n,
+      });
+    });
 
     await pageA.reload();
     await pageB.reload();
 
-    await pageA.locator(CONNECT_BUTTON).click();
-    await pageB.locator(CONNECT_BUTTON).click();
+    const connectButtonA2 = pageA.locator('button:has-text("Connect Wallet")');
+    if (await connectButtonA2.isVisible().catch(() => false)) {
+      await connectButtonA2.click();
+    }
+    const connectButtonB2 = pageB.locator('button:has-text("Connect Wallet")');
+    if (await connectButtonB2.isVisible().catch(() => false)) {
+      await connectButtonB2.click();
+    }
+
     await Promise.all([
       pageA.locator(WITHDRAW_TAB).click(),
       pageB.locator(WITHDRAW_TAB).click(),
