@@ -22,7 +22,7 @@ import TradeCard from "../components/TradeCard";
 function ConnectWalletButton() {
   const [mounted, setMounted] = useState(false);
   const [autoConnectAttempted, setAutoConnectAttempted] = useState(false);
-  const { isConnected } = useAccount();
+  const { isConnected, chain } = useAccount();
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
 
@@ -40,7 +40,6 @@ function ConnectWalletButton() {
       mounted &&
       shouldAutoConnect &&
       !isConnected &&
-      !forcedConnected &&
       !autoConnectAttempted
     ) {
       setAutoConnectAttempted(true);
@@ -52,16 +51,24 @@ function ConnectWalletButton() {
     mounted,
     shouldAutoConnect,
     isConnected,
-    forcedConnected,
     autoConnectAttempted,
     connect,
   ]);
 
   useEffect(() => {
-    if ((!shouldAutoConnect || forcedConnected) && autoConnectAttempted) {
+    if (!shouldAutoConnect && autoConnectAttempted) {
       setAutoConnectAttempted(false);
     }
-  }, [shouldAutoConnect, forcedConnected, autoConnectAttempted]);
+  }, [shouldAutoConnect, autoConnectAttempted]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.__e2e__) {
+      window.__e2e__.updateConnectionState?.({
+        isConnected,
+        chainId: chain?.id ?? null,
+      });
+    }
+  }, [isConnected, chain?.id]);
 
   if (!mounted) {
     return (

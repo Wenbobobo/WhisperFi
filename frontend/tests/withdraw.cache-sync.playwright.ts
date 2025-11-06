@@ -55,7 +55,6 @@ test.describe("Commitment cache sync across tabs", () => {
     await context.addInitScript(() => {
       window.__e2e__ = window.__e2e__ || {};
       window.__e2e__.enableAutoConnect?.();
-      window.__e2e__.forceConnect?.();
     });
     await context.addInitScript({ source: ethereumStub });
 
@@ -66,21 +65,36 @@ test.describe("Commitment cache sync across tabs", () => {
 
     await pageA.evaluate(() => {
       window.__e2e__?.enableAutoConnect?.();
-      window.__e2e__?.forceConnect?.();
     });
     await pageB.evaluate(() => {
       window.__e2e__?.enableAutoConnect?.();
-      window.__e2e__?.forceConnect?.();
     });
 
-    const connectButtonA = pageA.locator('button:has-text("Connect Wallet")');
-    if (await connectButtonA.isVisible().catch(() => false)) {
-      await connectButtonA.click();
-    }
-    const connectButtonB = pageB.locator('button:has-text("Connect Wallet")');
-    if (await connectButtonB.isVisible().catch(() => false)) {
-      await connectButtonB.click();
-    }
+    const waitForAutoConnect = async (page) => {
+      await page.waitForFunction(
+        (expectedChainId) => {
+          const state = window.__e2e__?.connectionState;
+          return Boolean(state?.isConnected) && state?.chainId === expectedChainId;
+        },
+        CHAIN_ID,
+        { timeout: 10_000 }
+      );
+      const connectButton = page.locator('button:has-text("Connect Wallet")');
+      if (await connectButton.isVisible().catch(() => false)) {
+        await connectButton.click();
+      }
+      await page.waitForFunction(
+        (expectedChainId) => {
+          const state = window.__e2e__?.connectionState;
+          return Boolean(state?.isConnected) && state?.chainId === expectedChainId;
+        },
+        CHAIN_ID,
+        { timeout: 10_000 }
+      );
+    };
+
+    await waitForAutoConnect(pageA);
+    await waitForAutoConnect(pageB);
 
     await pageA.waitForSelector(WITHDRAW_TAB, { timeout: 10000 });
     await pageB.waitForSelector(WITHDRAW_TAB, { timeout: 10000 });
@@ -98,14 +112,8 @@ test.describe("Commitment cache sync across tabs", () => {
     await pageA.reload();
     await pageB.reload();
 
-    const connectButtonA2 = pageA.locator('button:has-text("Connect Wallet")');
-    if (await connectButtonA2.isVisible().catch(() => false)) {
-      await connectButtonA2.click();
-    }
-    const connectButtonB2 = pageB.locator('button:has-text("Connect Wallet")');
-    if (await connectButtonB2.isVisible().catch(() => false)) {
-      await connectButtonB2.click();
-    }
+    await waitForAutoConnect(pageA);
+    await waitForAutoConnect(pageB);
 
     await Promise.all([
       pageA.locator(WITHDRAW_TAB).click(),

@@ -20,6 +20,14 @@ declare global {
       forceConnected?: boolean;
       forceConnect?: () => void;
       clearForcedConnection?: () => void;
+      connectionState?: {
+        isConnected: boolean;
+        chainId: number | null;
+      };
+      updateConnectionState?: (state: {
+        isConnected: boolean;
+        chainId: number | null;
+      }) => void;
     };
   }
 }
