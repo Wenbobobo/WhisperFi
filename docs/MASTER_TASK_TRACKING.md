@@ -6,6 +6,12 @@
 
 ---
 
+更新（2025-11-06）
+
+- Playwright 双标签缓存用例依旧被阻塞：当前 `frontend/tests/utils/walletMock.js` 只设置 `window.__e2e__.forceConnected` 并预写 `wagmi.store`，但没有真正触发 `wagmi` 的 `connect()`，因此 `useAccount()` 仍返回未连接状态（`chain.id`=0）。`createLocalStoragePersistor` 于是把缓存写在 `whisperfi:commitments:0:*`，而测试脚本预置的是 Hardhat `31337` 键，导致状态面板永远不出现。需要让 mock 连接器主动连接或在 init script 中调用 `injected().connect()`，并在 Vitest/Playwright 中验证 `chain.id`。
+- 在问题解决之前，`npx playwright test` 会在 `withdraw.cache-sync.playwright.ts` 上卡到全局超时（本地默认120s且多次重试）。建议本地用外部 watchdog（如 `Start-Process` + 超时）或暂时跳过该 spec，以免反复卡住。
+- 缓存 TTL / 上次同步信息已经在 UI 生效；手动 Reset 会触发 BroadcastChannel + storage event，远端标签能收到清理信号。
+
 更新（2025-11-03）
 
 - 文档与知识库

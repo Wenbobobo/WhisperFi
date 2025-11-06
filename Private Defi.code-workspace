@@ -5,6 +5,7 @@
 		}
 	],
 	"settings": {
-		"commentTranslate.source": "Bing"
+		"commentTranslate.source": "Bing",
+		"python.defaultInterpreterPath": "d:\\zWenbo\\AI\\Private Defi\\.venv\\Scripts\\python.exe"
 	}
 }

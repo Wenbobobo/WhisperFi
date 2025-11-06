@@ -23,6 +23,7 @@ Short plan (TDD-first)
         2. Add a lightweight helper on `window.__e2e__` (e.g. `seedCommitments({ commitments, lastBlock, chainId })`) so tests can seed cache without raw script injection; export from a dedicated E2E module (`frontend/src/e2e/helpers.ts`) and register in `_app`/`Providers`.
         3. Assert that Tab B’s status panel transitions visible → hidden → visible after a manual refresh, and validate localStorage keys are purged; ensure tests wait for broadcast events rather than relying on timeouts.
         4. Document manual verification steps (dual-context instructions) in `TESTING_GUIDE.md` once the harness is stable.
+        5. Make the mock wallet flip wagmi’s internal state so `useAccount` exposes the Hardhat `chain.id`; at the moment the UI hides the connect button via `forceConnected`, but `createLocalStoragePersistor` still receives `chainId = 0`, so seeded cache entries under `31337` never hydrate.
   - Add submit-path assertions (fee-bearing withdrawals, relayer payout) on top of existing mocked tests.
   - Integration backlog:
     - [x] Extend Hardhat integration (`test/integration/withdraw-relayer-fee.test.ts`) to execute `withdraw` with non-zero fee + relayer, asserting emitted events and balance splits via the mock verifier.
@@ -62,3 +63,4 @@ Gotchas
 - Coverage skips heavy ZK tests automatically; use normal runs for ZK integration.
 - Ensure `.wasm`/`.zkey` assets exist at canonical paths before enabling on-chain verification tests.
 - Testing-library needs cleanup between tests (already enabled in `frontend/vitest.setup.ts`).
+- `npx playwright test` currently hangs on `withdraw.cache-sync` until the auto-connect harness reports a connected account; expect timeouts unless TODO (5) above is addressed or the spec is temporarily skipped.

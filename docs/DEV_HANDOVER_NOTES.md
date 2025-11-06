@@ -11,6 +11,11 @@
 - Withdraw flow tests cover relayer parameters at the service layer; integration/E2E coverage for fee-paying withdrawals and relayer payouts remains outstanding.
 - Backend Merkle snapshot/indexer work is still exploratory; keep interim mitigations (manual cache reset, scaffolded on-chain test) in mind when planning releases.
 
+### Context Refresh — 2025-11-06
+- Playwright dual-tab spec still blocked: the injected wallet stub only toggles the `forceConnected` UI flag, so wagmi keeps `useAccount()` disconnected (`chain.id` resolves to `0`). As a result the cache loader seeds `whisperfi:commitments:0:*`, while the tests seed `31337`, and the status panel never appears. Extend the mock connector (or invoke `connect`) so wagmi reports the Hardhat chain before re-enabling the test.
+- Until the harness reports a connected account, `npx playwright test` will sit on `withdraw.cache-sync` until timeout; wrap the call with an external watchdog or skip the spec during CI.
+- TTL/last-sync metadata now renders correctly in `WithdrawCard`; manual reset clears both BroadcastChannel subscribers and persisted storage.
+
 ## What Changed This Iteration
 - **Withdraw flow & caching**
   - Added `createWithdrawFlow` and `createResettableDepositLogLoader`, centralising proof generation/submission logic.
