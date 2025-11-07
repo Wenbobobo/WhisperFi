@@ -1,7 +1,7 @@
 // src/components/WithdrawCard.tsx
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   useWriteContract,
   useWaitForTransactionReceipt,
@@ -30,6 +30,7 @@ const PrivacyPoolAbi = PrivacyPoolArtifact.abi;
 const STEPS = ["Generate Proof", "Submit Transaction"];
 const DEPOSIT_AMOUNT = ethers.parseEther("0.1");
 const COMMITMENT_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const E2E_CHAIN_ID_FALLBACK = 31337;
 type CacheStatus = {
   lastSyncedAt: number;
   expiresAt?: number;
@@ -69,9 +70,28 @@ export default function WithdrawCard() {
     type: "",
     message: "",
   });
+  const [recipient, setRecipient] = useState<string>("");
+  const [relayer, setRelayer] = useState<string>(ethers.ZeroAddress);
+  const [feeInput, setFeeInput] = useState<string>("0");
   const [isComplianceModalOpen, setIsComplianceModalOpen] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [cacheStatus, setCacheStatus] = useState<CacheStatus | undefined>();
+  const [simulatedChainId, setSimulatedChainId] = useState<number | undefined>(() => {
+    if (typeof window === "undefined") return undefined;
+    const connection = window.__e2e__?.connectionState;
+    if (typeof connection?.chainId === "number") {
+      return connection.chainId;
+    }
+    if (window.__e2e__?.forceConnected) {
+      return E2E_CHAIN_ID_FALLBACK;
+    }
+    return undefined;
+  });
+  const [simulatedAccount, setSimulatedAccount] = useState<string | undefined>(() => {
+    if (typeof window === "undefined") return undefined;
+    const candidate = window.__e2e__?.mockAccount;
+    return typeof candidate === "string" ? candidate : undefined;
+  });
 
   const { chain, address } = useAccount();
   const publicClient = usePublicClient();
@@ -88,40 +108,139 @@ export default function WithdrawCard() {
     error: receiptError,
   } = useWaitForTransactionReceipt({ hash });
 
-  const cacheSync = useMemo(() => getCacheSync(), []);
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.__e2e__ = window.__e2e__ || {};
+    window.__e2e__.withdrawHydrated = true;
+    try {
+      window.dispatchEvent(new Event("e2e:withdraw-hydrated"));
+    } catch {
+      // ignore event dispatch failures in non-browser contexts
+    }
+    return () => {
+      if (window.__e2e__) {
+        window.__e2e__.withdrawHydrated = false;
+      }
+    };
+  }, []);
 
-  const cacheLoader = useMemo(() => {
-    const persistor = createLocalStoragePersistor({
-      chainId: chain?.id ?? 0,
-      ttlMs: COMMITMENT_CACHE_TTL_MS,
-    });
-    return createResettableDepositLogLoader(persistor, cacheSync);
-  }, [chain?.id, cacheSync]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyMockAccount = (value?: unknown) => {
+      if (typeof value === "string") {
+        setSimulatedAccount(value);
+        return;
+      }
+      const candidate = window.__e2e__?.mockAccount;
+      setSimulatedAccount(typeof candidate === "string" ? candidate : undefined);
+    };
+    applyMockAccount();
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<string>).detail;
+      applyMockAccount(detail);
+    };
+    window.addEventListener("e2e:mock-account", handler);
+    return () => {
+      window.removeEventListener("e2e:mock-account", handler);
+    };
+  }, []);
+
+  const cacheSync = useMemo(() => getCacheSync(), []);
+  const activeAccount = address ?? simulatedAccount;
+  const effectiveChainId = chain?.id ?? simulatedChainId ?? 0;
+
+  const persistor = useMemo(
+    () =>
+      createLocalStoragePersistor({
+        chainId: effectiveChainId,
+        ttlMs: COMMITMENT_CACHE_TTL_MS,
+      }),
+    [effectiveChainId]
+  );
+
+  useEffect(() => {
+    if (activeAccount && !recipient) {
+      setRecipient(activeAccount);
+    }
+  }, [activeAccount, recipient]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = () => {
+      const connection = window.__e2e__?.connectionState;
+      const mockAccount = window.__e2e__?.mockAccount;
+      setSimulatedAccount(typeof mockAccount === "string" ? mockAccount : undefined);
+      if (typeof connection?.chainId === "number") {
+        setSimulatedChainId(connection.chainId);
+        return;
+      }
+      if (window.__e2e__?.forceConnected) {
+        setSimulatedChainId(E2E_CHAIN_ID_FALLBACK);
+        return;
+      }
+      setSimulatedChainId(undefined);
+    };
+    handler();
+    window.addEventListener("e2e:connection-state", handler as EventListener);
+    return () => {
+      window.removeEventListener("e2e:connection-state", handler as EventListener);
+    };
+  }, []);
+
+  const cacheLoader = useMemo(
+    () => createResettableDepositLogLoader(persistor, cacheSync),
+    [persistor, cacheSync]
+  );
 
   const loadCommitments = cacheLoader.loadCommitments;
   const clearCommitmentCache = cacheLoader.clear;
   const getCacheStatus = cacheLoader.getStatus;
 
+  const readPersistedCacheStatus = useCallback((): CacheStatus | undefined => {
+    if (!persistor?.load) return undefined;
+    try {
+      const entry = persistor.load(PRIVACY_POOL_ADDRESS_KEY);
+      if (!entry || !entry.lastSyncedAt) {
+        return undefined;
+      }
+      const commitmentCount =
+        entry.commitmentCount ??
+        (Array.isArray(entry.commitments) ? entry.commitments.length : 0);
+      if (commitmentCount === 0) {
+        return undefined;
+      }
+      return {
+        lastSyncedAt: entry.lastSyncedAt,
+        expiresAt: entry.expiresAt,
+        commitmentCount,
+      };
+    } catch {
+      return undefined;
+    }
+  }, [persistor]);
+
   useEffect(() => {
     if (!getCacheStatus) {
-      setCacheStatus(undefined);
+      setCacheStatus(readPersistedCacheStatus());
       return;
     }
     const status = getCacheStatus(PRIVACY_POOL_ADDRESS);
-    setCacheStatus(
-      status
-        ? {
-            lastSyncedAt: status.lastSyncedAt,
-            expiresAt: status.expiresAt,
-            commitmentCount: status.commitmentCount,
-          }
-        : undefined
-    );
-  }, [getCacheStatus, chain?.id]);
+    if (status) {
+      setCacheStatus({
+        lastSyncedAt: status.lastSyncedAt,
+        expiresAt: status.expiresAt,
+        commitmentCount: status.commitmentCount,
+      });
+      return;
+    }
+    setCacheStatus(readPersistedCacheStatus());
+  }, [getCacheStatus, effectiveChainId, readPersistedCacheStatus]);
 
   useEffect(() => {
     if (!getCacheStatus) return;
-    const chainIdValue = chain?.id ?? 0;
+    const chainIdValue = effectiveChainId;
     const unsubscribe = cacheSync.subscribe((event) => {
       if (event.chainId !== chainIdValue) return;
       if (event.address !== PRIVACY_POOL_ADDRESS_KEY) return;
@@ -131,19 +250,19 @@ export default function WithdrawCard() {
       }
       if (event.action === "refresh") {
         const status = getCacheStatus(PRIVACY_POOL_ADDRESS);
-        setCacheStatus(
-          status
-            ? {
-                lastSyncedAt: status.lastSyncedAt,
-                expiresAt: status.expiresAt,
-                commitmentCount: status.commitmentCount,
-              }
-            : undefined
-        );
+        if (status) {
+          setCacheStatus({
+            lastSyncedAt: status.lastSyncedAt,
+            expiresAt: status.expiresAt,
+            commitmentCount: status.commitmentCount,
+          });
+          return;
+        }
+        setCacheStatus(readPersistedCacheStatus());
       }
     });
     return unsubscribe;
-  }, [cacheSync, getCacheStatus, chain?.id]);
+  }, [cacheSync, getCacheStatus, effectiveChainId, readPersistedCacheStatus]);
 
   const withdrawFlow = useMemo(() => {
     if (!publicClient) return null;
@@ -171,15 +290,15 @@ export default function WithdrawCard() {
         const txHash = await writeContract({
           ...config,
           chain,
-          account: address,
+          account: activeAccount,
         } as any);
         return { hash: txHash as string };
       },
     });
-  }, [publicClient, writeContract, chain, address, loadCommitments]);
+  }, [publicClient, writeContract, chain, activeAccount, loadCommitments]);
 
   const generateProof = async (overrideNote?: string) => {
-    if (!address || !withdrawFlow) {
+    if (!activeAccount || !withdrawFlow) {
       setFeedback({
         type: "error",
         message: "Please connect your wallet first.",
@@ -201,10 +320,33 @@ export default function WithdrawCard() {
     });
 
     try {
+      const mockGenerate = typeof window !== "undefined" ? window.__e2e__?.mockGenerateProof : undefined;
       setFeedback({
         type: "info",
         message: "Fetching deposit events to build Merkle tree...",
       });
+
+      if (mockGenerate) {
+        const mocked = await mockGenerate(noteToUse);
+        if (mocked) {
+          const { proof: mockedProof, publicSignals: mockedSignals, cacheInfo } = mocked;
+          if (cacheInfo?.lastSyncedAt) {
+            setCacheStatus({
+              lastSyncedAt: cacheInfo.lastSyncedAt,
+              expiresAt: cacheInfo.expiresAt,
+              commitmentCount: cacheInfo.commitmentCount ?? 0,
+            });
+          }
+          setProof(mockedProof);
+          setPublicSignals(mockedSignals);
+          setActiveStep(1);
+          setFeedback({
+            type: "success",
+            message: "Proof generated successfully! You can now submit the withdrawal.",
+          });
+          return;
+        }
+      }
 
       const { proof: generatedProof, publicSignals: signals, cacheInfo } =
         await withdrawFlow.generateProof(noteToUse);
@@ -239,7 +381,10 @@ export default function WithdrawCard() {
   };
 
   const handleWithdraw = async () => {
-    if (!proof || !publicSignals || !address || !chain || !withdrawFlow) {
+    const override =
+      typeof window !== "undefined" ? window.__e2e__?.submitWithdrawalOverride : undefined;
+    const hasChainContext = Boolean(chain) || Boolean(override);
+    if (!proof || !publicSignals || !activeAccount || !withdrawFlow || !hasChainContext) {
       setFeedback({
         type: "error",
         message: "Proof, public signals, or wallet connection is missing.",
@@ -247,7 +392,7 @@ export default function WithdrawCard() {
       return;
     }
 
-    if (!isValidRecipientAddress(address)) {
+    if (!isValidRecipientAddress(recipient)) {
       setFeedback({
         type: "error",
         message: "Recipient address is invalid.",
@@ -255,16 +400,52 @@ export default function WithdrawCard() {
       return;
     }
 
+    if (!isValidRecipientAddress(relayer)) {
+      setFeedback({
+        type: "error",
+        message: "Relayer address is invalid.",
+      });
+      return;
+    }
+
+    let feeWei: bigint;
     try {
-      await withdrawFlow.submitWithdrawal({
+      const trimmed = feeInput.trim();
+      feeWei =
+        trimmed.length === 0
+          ? 0n
+          : ethers.parseEther(trimmed);
+      if (feeWei < 0n) {
+        throw new Error("Fee must be non-negative.");
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to parse relayer fee.";
+      setFeedback({ type: "error", message });
+      return;
+    }
+
+    try {
+      const submission = {
         proof,
         publicSignals,
-        recipient: address as `0x${string}`,
-        fee: 0n,
-        relayer: ethers.ZeroAddress as `0x${string}`,
-        account: address as `0x${string}`,
-        chain,
-      });
+        recipient: recipient as `0x${string}`,
+        fee: feeWei,
+        relayer: relayer as `0x${string}`,
+        account: activeAccount as `0x${string}`,
+        chain: chain ?? ({ id: simulatedChainId ?? E2E_CHAIN_ID_FALLBACK } as typeof chain),
+      };
+
+      if (override) {
+        const result = await override(submission);
+        if (typeof window !== "undefined") {
+          window.__e2e__ = window.__e2e__ || {};
+          window.__e2e__.lastSubmission = submission;
+          window.__e2e__.lastSubmissionResult = result;
+        }
+      } else {
+        await withdrawFlow.submitWithdrawal(submission);
+      }
       setActiveStep(1);
       setFeedback({
         type: "info",
@@ -351,6 +532,14 @@ export default function WithdrawCard() {
             onSubmit={async () => handleWithdraw()}
             loading={isProving || isConfirming}
             disabled={isPending || isConfirming}
+            note={note}
+            onNoteChange={setNote}
+            recipient={recipient}
+            onRecipientChange={setRecipient}
+            relayer={relayer}
+            onRelayerChange={setRelayer}
+            fee={feeInput}
+            onFeeChange={setFeeInput}
           />
 
           <button

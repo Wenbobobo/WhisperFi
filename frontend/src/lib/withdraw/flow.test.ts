@@ -98,6 +98,42 @@ describe("withdraw flow helpers", () => {
     );
   });
 
+  it("uses mocked proof when __e2e__ supplies one", async () => {
+    parseNote.mockReturnValue({ secret: "0x123", nullifier: "0x456" });
+    const commitment = "0xccc";
+    generateCommitment.mockResolvedValue(commitment);
+    generateNullifierHash.mockResolvedValue("0xnnn");
+    loadCommitments.mockResolvedValue({
+      commitments: [commitment],
+      commitmentCount: 1,
+      lastSyncedAt: Date.now(),
+    });
+    buildInputs.mockResolvedValue({
+      input: { secret: 1n },
+      merkle: { root: "0xroot" },
+      nullifierHex: "0xnnn",
+    });
+    generateProof.mockResolvedValue({
+      proof: { shouldNot: "be used" },
+      publicSignals: ["1", "2"],
+    });
+
+    (window as any).__e2e__ = {
+      mockProof: {
+        proof: { stub: true },
+        publicSignals: ["stubbed"],
+      },
+    };
+
+    const flow = setup();
+    const result = await flow.generateProof("note-stubbed");
+
+    expect(result.proof).toEqual({ stub: true });
+    expect(result.publicSignals).toEqual(["stubbed"]);
+    expect(generateProof).not.toHaveBeenCalled();
+    delete (window as any).__e2e__;
+  });
+
   it("submits withdrawal using prepared proof arguments", async () => {
     toArgs.mockReturnValue(["args"]);
     writeContract.mockResolvedValue({ hash: "0xhash" });

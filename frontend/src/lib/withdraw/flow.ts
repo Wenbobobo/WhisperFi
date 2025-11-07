@@ -1,4 +1,5 @@
 import { CONTRACTS } from "../../config/contracts";
+import { getMockedProof } from "../../e2e/helpers";
 import { createDepositLogLoader } from "./logSource";
 
 type PublicClient = {
@@ -139,7 +140,10 @@ export function createWithdrawFlow(deps: WithdrawFlowDeps) {
       treeDepth
     );
 
-    const { proof, publicSignals } = await deps.generateWithdrawProof(input);
+    const mocked = getMockedProof();
+    const { proof, publicSignals } = mocked
+      ? mocked
+      : await deps.generateWithdrawProof(input);
 
     return {
       proof,
