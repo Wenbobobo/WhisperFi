@@ -18,6 +18,8 @@ Directory Layout
 Recent additions
 
 - `test/integration/withdraw-relayer-fee.test.ts` — validates fee-bearing withdrawals split funds between recipient and relayer using the mock verifier fixture.
+- `frontend/tests/withdraw.cache-sync.playwright.ts` — dual-tab cache propagation harness using `/e2e/withdraw`, BroadcastChannel, and the wallet mock.
+- `frontend/tests/withdraw.fee-flow.playwright.ts` — mocked proof + submit override covering recipient/relayer/fee capture in the withdraw UI.
 
 Commands
 
@@ -27,8 +29,14 @@ Commands
   - `npx hardhat test "test/integration/**/*.ts"`
   - `npx hardhat test "test/e2e/**/*.ts"`
 - Frontend: `cd frontend && npm run test`
-- Playwright UI E2E: `npx playwright test`
- - Optional on-chain ZK proof: `ZK_ONCHAIN=1 npx hardhat test test/integration/withdraw-onchain-verification.test.ts`
+- Playwright UI E2E:
+  - `./tools/scripts/timeout-wrapper.ps1 -Command 'npx playwright test frontend/tests/withdraw.cache-sync.playwright.ts' -TimeoutSeconds 240`
+  - `./tools/scripts/timeout-wrapper.ps1 -Command 'npx playwright test frontend/tests/withdraw.fee-flow.playwright.ts' -TimeoutSeconds 240`
+  - Use `frontend/tests/e2e.playwright.ts` similarly when running the broader suite.
+  - The cache-sync spec opens two Chromium contexts and waits for the cache status panel to surface; expect ~90 seconds per run on a typical dev laptop.
+  - The fee-flow spec automatically spins up a Hardhat node on port 8545, redeploys contracts with `USE_MOCK_VERIFIER=true`, seeds a deposit via `scripts/seed-playwright-withdraw.ts`, and executes the withdrawal on-chain before asserting relayer/recipient balances. Ensure port 8545 is free before running.
+- Optional on-chain ZK proof: `ZK_ONCHAIN=1 npx hardhat test test/integration/withdraw-onchain-verification.test.ts`
+- Withdraw cache spec (`frontend/tests/withdraw.cache-sync.playwright.ts`) uses the dedicated `/e2e/withdraw` route plus `window.__e2e__` helpers to seed and clear localStorage; always run via the timeout wrapper to avoid hung dev servers.
 
 Windows + uv
 
@@ -42,7 +50,7 @@ Notes
 - Poseidon consistency is validated against circomlibjs-generated contracts via `scripts/deploy-poseidon*.ts`.
 - ZK assets are large; ensure paths point to the checked-in `.wasm` and `.zkey` files.
 - E2E tests assume local Hardhat network and configured Paymaster support.
-- Playwright harness may leverage `frontend/src/e2e/helpers.ts` and `frontend/tests/utils/walletMock.js` for auto-connect and cache seeding when the dual-tab scenario is enabled.
+- Playwright harness leverages `frontend/src/e2e/helpers.ts` and `frontend/tests/utils/walletMock.js` for auto-connect, cache seeding, and fee-flow mocks (proof overrides plus `mockAccount` broadcasting); the fee-flow override now hands the submission to a Node helper that signs/sends the transaction through Hardhat.
 - Playwright specs are under `frontend/tests` and configured via `playwright.config.ts`.
 - Vitest: tests auto-cleanup via `vitest.setup.ts` (prevents duplicate renders). When asserting async UI updates, prefer `waitFor`.
 

@@ -45,6 +45,8 @@ dist/
 cache/
 .nyc_output/
 coverage/
+playwright-report/
+test-results/
 
 # Logs
 *.log
@@ -67,3 +69,4 @@ docs/pics
 error.txt
 docs/DEMO_SETUP_GUIDE.md
 codex.txt
+playwright-report/

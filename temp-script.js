@@ -1,0 +1,1 @@
+const { HDNodeWallet } = require('ethers');\nconst mnemonic = 'test test test test test test test test test test test junk';\nfor (let i = 0; i < 3; i++) {\n  const wallet = HDNodeWallet.fromPhrase(mnemonic, undefined, m/44'/60'/0'/0/);\n  console.log(i, wallet.address, wallet.privateKey);\n}\n

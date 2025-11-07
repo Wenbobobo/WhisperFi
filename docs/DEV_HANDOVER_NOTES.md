@@ -12,20 +12,25 @@
 - Backend Merkle snapshot/indexer work is still exploratory; keep interim mitigations (manual cache reset, scaffolded on-chain test) in mind when planning releases.
 
 ### Context Refresh — 2025-11-06
-- Playwright dual-tab spec still blocked: the injected wallet stub only toggles the `forceConnected` UI flag, so wagmi keeps `useAccount()` disconnected (`chain.id` resolves to `0`). As a result the cache loader seeds `whisperfi:commitments:0:*`, while the tests seed `31337`, and the status panel never appears. Extend the mock connector (or invoke `connect`) so wagmi reports the Hardhat chain before re-enabling the test.
-- Until the harness reports a connected account, `npx playwright test` will sit on `withdraw.cache-sync` until timeout; wrap the call with an external watchdog or skip the spec during CI.
-- TTL/last-sync metadata now renders correctly in `WithdrawCard`; manual reset clears both BroadcastChannel subscribers and persisted storage.
+- Playwright dual-tab cache spec is now green: wallet mock + `window.__e2e__` helpers expose chain `31337`, synthetic seeding/clearing paths drive localStorage and BroadcastChannel, and the test uses a dedicated `/e2e/withdraw` route. Keep `tools/scripts/timeout-wrapper.ps1` around when running locally to avoid hung Playwright jobs.
+- TTL/last-sync metadata renders correctly in `WithdrawCard`; manual reset clears both BroadcastChannel subscribers and persisted storage.
+
+### Context Refresh — 2025-11-07
+- Playwright relayer-fee flow (`frontend/tests/withdraw.fee-flow.playwright.ts`) now passes end-to-end via mocked proof generation and submission overrides. The harness seeds `wagmi.store`, forces `window.__e2e__.mockAccount`, and guards hydration via `e2e:withdraw-hydrated` events. Use `tools/scripts/timeout-wrapper.ps1` (e.g., 240s) to keep the run bounded; the test completes in ~50 s locally.
+- `WithdrawCard` now honors mocked accounts when no real wallet is present, keeping the form auto-filled and validating recipients/relayers/fees fully client-side.
+- Commitment cache status hydrates from persisted localStorage on reload, so the UI (and dual-tab Playwright spec) can display “Cache last synced…” immediately after seeding without re-running proof generation.
+- The fee-flow spec now spins up a local Hardhat node, deploys with `USE_MOCK_VERIFIER=true`, seeds a real deposit via `scripts/seed-playwright-withdraw.ts`, and executes the withdrawal through wagmi’s override by calling the deployed `PrivacyPool` contract. Post-transaction, the test asserts relayer and recipient balances on the Hardhat chain.
 
 ## What Changed This Iteration
 - **Withdraw flow & caching**
   - Added `createWithdrawFlow` and `createResettableDepositLogLoader`, centralising proof generation/submission logic.
   - Implemented local-storage commitment cache with TTL, per-chain scoping, and “Reset Commitment Cache” UX.
-  - Added BroadcastChannel + `storage` fallback sync; loader broadcasts `refresh`/`clear` events and UI reacts. Playwright dual-tab test remains skipped pending auto-connect harness.
+  - Added BroadcastChannel + `storage` fallback sync; loader broadcasts `refresh`/`clear` events and UI reacts. Playwright dual-tab test now runs end-to-end via the `/e2e/withdraw` harness.
   - `frontend/src/e2e/helpers.ts` introduces `window.__e2e__` hooks for test seeding and proof stubbing.
 - **Testing**
   - Flow unit tests assert fee-bearing submissions and relayer parameters.
   - Hardhat integration coverage now includes relayer payouts (`test/integration/withdraw-relayer-fee.test.ts`).
-  - Pending: Playwright cache-sync verification and UI relayer-fee E2E once harness stabilises.
+  - Playwright cache-sync and relayer-fee flows now execute deterministically. Fee-flow uses mocked proof + submit override, ensuring recipient/relayer/fee data propagate correctly.
 - **Deploy/tooling**
   - Deploy scripts emit verified addresses; frontend config validates contract references.
   - Existing docs (`CODE_REVIEW.md`, `NEXT_DEV_NOTES.md`, `MASTER_TASK_TRACKING.md`) are up to date with current roadmap.
@@ -48,15 +53,15 @@
 - Integration (contracts): hash consistency, zk proof generation (heavy), withdraw relayer fee
 - E2E (AA flow): `test/e2e/AA-E2E.test.ts`
 - Frontend (Vitest): crypto utils, zk util, validation, WithdrawForm
-- Playwright: `frontend/tests/e2e.playwright.ts`; cache-sync test exists but currently skipped pending harness
+- Playwright: `frontend/tests/e2e.playwright.ts`, `frontend/tests/withdraw.cache-sync.playwright.ts`, `frontend/tests/withdraw.fee-flow.playwright.ts`
 
 ## Prioritized TODOs
 1) **Commitment cache evolutions (High)**
-   - Finalise Playwright dual-tab harness (wallet auto-connect stub, `window.__e2e__` seeding) and enable the test.
-   - Evaluate background sync/subgraph options for cold starts once cache UI stabilises.
+   - Evaluate background sync/subgraph options for cold starts now that dual-tab + fee specs are green.
+   - Consider surfacing TTL/last-sync data in a shared status panel for broader UX visibility.
 2) **Withdraw submission coverage (High)**
-   - Integrate fee/relayer path into end-to-end UI tests and optionally relayer pipeline.
-   - Add relayer payout verification tests (fee > 0).
+   - Connect fee-bearing Playwright scenario to relayer payout assertions (e.g., Hardhat JSON-RPC calls) once proof mocks are replaced with live nodes.
+   - Add component/unit coverage for fee validation edge cases (negative, > deposit, etc.).
 3) **Trade / Relayer track (Med)**
    - Keep trade path disabled; plan design + risk review before reactivation.
 4) **Docs & Ops (Med)**
@@ -66,7 +71,7 @@
 ## Known Gotchas
 - Coverage runs: `SOLIDITY_COVERAGE=1` enables viaIR; heavy zk tests are skipped to keep coverage fast.
 - zk assets: canonical paths at `circuits/withdraw_js/withdraw.wasm` and `circuits/withdraw_0001.zkey`.
-- Playwright cache-sync remains skipped pending harness; running it now will hang without timeout logic.
+- Playwright specs rely on `tools/scripts/timeout-wrapper.ps1`; run with `-TimeoutSeconds 240` to avoid hung browsers.
 
 ## Context Compression (Pointers)
 - Core design & specs: `docs/TECHNICAL_SPECIFICATION.md`
@@ -75,7 +80,10 @@
 - Contracts: `contracts/PrivacyPool.sol`, `contracts/Paymaster.sol`
 - Frontend key files: `frontend/src/app/page.tsx`, `frontend/src/components/WithdrawCard.tsx`
 
+## Utilities
+- `tools/scripts/timeout-wrapper.ps1` runs arbitrary PowerShell commands with a wall-clock guard (`-TimeoutSeconds`, default 600). Use it to wrap long Playwright runs so they terminate automatically instead of hanging.
+
 ## Final Thoughts for Successors
 - Preserve Poseidon alignment; hash consistency tests are the safety net.
-- Finish the Playwright auto-connect harness before re-enabling the dual-tab test.
+- Keep leveraging the Playwright harness for regression coverage; the dual-tab + fee specs are fast enough when wrapped with the timeout script.
 - Build small, test-first PRs with coverage updates alongside implementation.

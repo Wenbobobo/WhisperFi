@@ -6,11 +6,21 @@
 
 ---
 
+更新（2025-11-07）
+
+- Playwright 双标签缓存用例保持绿灯，且新增 `frontend/tests/withdraw.fee-flow.playwright.ts`，利用钱包 mock + `window.__e2e__` 提供的 `mockAccount`、`mockGenerateProof`、`submitWithdrawalOverride`，验证收款人/relayer/fee 在 UI → flow → submit 之间的传递。该 spec 约 50s 完成，务必使用 `tools/scripts/timeout-wrapper.ps1 -TimeoutSeconds 240 -Command 'npx playwright test …'` 控制超时。
+- `WithdrawCard` 在无真实钱包时会回退到模拟账户（来源于 `window.__e2e__.mockAccount`），Playwright 可以在不注入 wagmi connector 的情况下完成自动填充与校验；后续若要验证 relayer 余额，需要替换为 Hardhat RPC 断言。
+- 缓存 TTL / 上次同步信息继续显示，`seedCommitments/clearCommitments` + BroadcastChannel 同步流程已经在双标签 spec 中覆盖。
+- 新增本地缓存水合逻辑：组件会在加载时直接读取 localStorage 中的缓存元数据（甚至在内存缓存尚未构建前），因此刷新即可看到 “Cache last synced …” 面板，Playwright 双标签测试对 UI 文本的断言现已稳定。
+- `tools/scripts/timeout-wrapper.ps1` 已成为默认入口，建议所有 Playwright 命令都通过该脚本触发，避免再次出现长时间挂死。
+- Fee 流程 E2E 现会在测试内启动 Hardhat 节点、以 `USE_MOCK_VERIFIER=true` 重新部署、调用 `scripts/seed-playwright-withdraw.ts` 生成真实存款，并通过 `submitWithdrawalOverride` 在 Node 侧签名/发送交易后校验 relayer 与 recipient 的余额增量。无需人工运行 Hardhat，但务必保证本地 8545 端口空闲。
+
 更新（2025-11-06）
 
-- Playwright 双标签缓存用例依旧被阻塞：当前 `frontend/tests/utils/walletMock.js` 只设置 `window.__e2e__.forceConnected` 并预写 `wagmi.store`，但没有真正触发 `wagmi` 的 `connect()`，因此 `useAccount()` 仍返回未连接状态（`chain.id`=0）。`createLocalStoragePersistor` 于是把缓存写在 `whisperfi:commitments:0:*`，而测试脚本预置的是 Hardhat `31337` 键，导致状态面板永远不出现。需要让 mock 连接器主动连接或在 init script 中调用 `injected().connect()`，并在 Vitest/Playwright 中验证 `chain.id`。
-- 在问题解决之前，`npx playwright test` 会在 `withdraw.cache-sync.playwright.ts` 上卡到全局超时（本地默认120s且多次重试）。建议本地用外部 watchdog（如 `Start-Process` + 超时）或暂时跳过该 spec，以免反复卡住。
-- 缓存 TTL / 上次同步信息已经在 UI 生效；手动 Reset 会触发 BroadcastChannel + storage event，远端标签能收到清理信号。
+- Playwright 双标签缓存用例已恢复：`frontend/tests/utils/walletMock.js` 配合 `frontend/src/e2e/helpers.ts` 会更新 `window.__e2e__.connectionState` 并强制注入 `poolAddress`，Playwright 通过 `/e2e/withdraw` 路由运行完整流程（本地种子、清理、BroadcastChannel 同步）。
+- `npx playwright test frontend/tests/withdraw.cache-sync.playwright.ts` 仍建议通过 `tools/scripts/timeout-wrapper.ps1` 包裹以防开发机卡住；默认 180s 会强制杀掉进程。
+- 缓存 TTL / 上次同步信息在 UI 正常渲染；测试通过 `window.__e2e__.seedCommitments/clearCommitments` 模拟多标签刷新与清理。
+- 新增 `tools/scripts/timeout-wrapper.ps1`，可用于给 `npx playwright test` 等命令添加超时，避免长时间无响应。另一辅助脚本无需保留在仓库输出目录（Playwright 报告/`test-results/` 已在流程结束时清理）。
 
 更新（2025-11-03）
 
@@ -18,10 +28,10 @@
   - `docs/README.md` 现作为索引；遗留材料均迁至 `docs/archive/`，掌握历史信息前可先阅读 `CODE_REVIEW.md`、`DEV_HANDOVER_NOTES.md`。
   - `MASTER_TASK_TRACKING.md`、`NEXT_DEV_NOTES.md` 和 `DEV_HANDOVER_NOTES.md` 已按当前迭代同步，请继续以这三份文档对齐状态与计划。
 - Withdraw 流程与缓存
-  - 前端 `createLocalStoragePersistor` 已加入 30 分钟 TTL；UI 现展示“最近同步时间 / 预计过期时间”，但多标签同步仍未落地；跟进项记录在 `frontend/src/components/WithdrawCard.tsx` 与 `docs/NEXT_DEV_NOTES.md`。
-  - `frontend/src/lib/withdraw/flow.test.ts` 覆盖 fee/relayer 参数，但缺少端到端验证；需在 integration/E2E 层补充真是链路（包括 relayer payout）。
-  - BroadcastChannel + storage event 双通道同步已完成（Vitest 覆盖 `logSource.test.ts` 多标签场景），仍需补充 Playwright 跨标签验证。
-  - `test/integration/withdraw-relayer-fee.test.ts` 新增集成测试，验证非零 relayer fee 下的资金分配；下一步继续 1) Playwright 双标签场景（完成钱包自动连接 stub + `window.__e2e__` seed helper后再启用）；2) UI 端 fee 流程 E2E（需 Hardhat note seeding + 证明 mock）。
+  - 前端 `createLocalStoragePersistor` 已加入 30 分钟 TTL；UI 现展示“最近同步时间 / 预计过期时间”，多标签同步通过 BroadcastChannel + storage 事件配合 Playwright spec 验证，状态记录在 `frontend/src/components/WithdrawCard.tsx` 与 `docs/NEXT_DEV_NOTES.md`。
+  - `frontend/src/lib/withdraw/flow.test.ts` 覆盖 fee/relayer 参数；Playwright fee-flow 覆盖 UI→flow→submit 之间的数据链路，下一步是在 integration/E2E 层补足真实 relayer payout 校验。
+  - BroadcastChannel + storage event 双通道同步已完成；Playwright 跨标签验证 (`frontend/tests/withdraw.cache-sync.playwright.ts`) 现作为回归用例，继续丰富可视化断言。
+  - `test/integration/withdraw-relayer-fee.test.ts` 新增集成测试，验证非零 relayer fee 下的资金分配；下一步聚焦 UI 端 fee 流程与 Hardhat relayer 贯通（当前 Playwright 仍使用 submit override）。
 - UI 反馈
   - `WithdrawCard` 现已展示 commitment cache 最近同步时间、到期时间及缓存条目总数，辅助用户判断是否需要刷新。
 - 测试与性能
