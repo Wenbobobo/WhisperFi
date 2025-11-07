@@ -18,7 +18,9 @@ async function main() {
   const poseidonHasher5Address = poseidon5Result.address;
   console.log("✅ PoseidonHasher5 deployed to:", poseidonHasher5Address);
 
-  const verifierFactory = await ethers.getContractFactory("Verifier", deployer);
+  const verifierName = process.env.USE_MOCK_VERIFIER === "true" ? "MockVerifier" : "Verifier";
+  console.log(`Deploying ${verifierName}...`);
+  const verifierFactory = await ethers.getContractFactory(verifierName, deployer);
   const verifier = await verifierFactory.deploy();
   await verifier.waitForDeployment();
   const verifierAddress = await verifier.getAddress();
