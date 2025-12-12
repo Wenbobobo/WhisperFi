@@ -8,16 +8,14 @@ import { groth16 } from "snarkjs";
 import { buildPoseidon } from "circomlibjs";
 
 describe("Withdraw On-chain Verification (Groth16)", function () {
-  const isEnabled = process.env.ZK_ONCHAIN === "1";
   // Prefer build outputs to ensure they reflect latest circuit changes
   const wasmPath = path.join(process.cwd(), "circuits", "build", "withdraw", "withdraw_js", "withdraw.wasm");
   const zkeyPath = path.join(process.cwd(), "circuits", "build", "withdraw", "withdraw_0001.zkey");
 
-  (isEnabled ? it : it.skip)("should verify proof on-chain", async function () {
+  it("should verify proof on-chain", async function () {
     this.timeout(120_000);
-    if (!fs.existsSync(wasmPath) || !fs.existsSync(zkeyPath)) {
-      this.skip();
-    }
+    expect(fs.existsSync(wasmPath), "withdraw.wasm missing").to.be.true;
+    expect(fs.existsSync(zkeyPath), "withdraw_0001.zkey missing").to.be.true;
 
     const [owner] = await ethers.getSigners();
 
@@ -59,15 +57,8 @@ describe("Withdraw On-chain Verification (Groth16)", function () {
     const leafIndex = depositEvents.findIndex((e) => e.args.commitment === commitmentHex);
     expect(leafIndex).to.not.equal(-1);
 
-    const root = await pool.merkleRoot();
-
-    // Nullifier uses Poseidon(2)(secret, 0)
-    const nullifier = poseidonJs([secret, 0n]);
-    const nullifierHex = "0x" + poseidonJs.F.toObject(nullifier).toString(16).padStart(64, "0");
-
     // Build Merkle path consistent with on-chain tree (depth=16)
     const TREE_DEPTH = 16;
-    // Reconstruct zeros sequence used by the contract
     const SNARK_SCALAR_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
     const seed = Buffer.from("PrivacyPool-Zero");
     const seedHashHex = ethers.keccak256(seed);
@@ -79,8 +70,6 @@ describe("Withdraw On-chain Verification (Groth16)", function () {
       currentZero = BigInt(poseidonJs.F.toObject(h));
     }
 
-    // Rebuild incremental tree root as the contract would
-    // and compute pathElements/pathIndices for our single-leaf case
     const pathElements: bigint[] = [];
     const pathIndices: number[] = [];
     let levelIndex = leafIndex;
@@ -97,38 +86,55 @@ describe("Withdraw On-chain Verification (Groth16)", function () {
       levelIndex = Math.floor(levelIndex / 2);
     }
 
+    const computedRoot = running;
+    // Nullifier uses Poseidon(2)(secret, 0)
+    const nullifier = poseidonJs([secret, 0n]);
+    const nullifierHex = "0x" + poseidonJs.F.toObject(nullifier).toString(16).padStart(64, "0");
+
     const input = {
       secret: secret,
       amount: BigInt(depositAmount.toString()),
-      nullifier: BigInt(nullifierHex),
-      merkleRoot: BigInt(root),
       pathElements,
       pathIndices,
     } as any;
 
-    try {
-      const { proof } = await groth16.fullProve(input, wasmPath, zkeyPath);
-      const a: [string, string] = [proof.pi_a[0].toString(), proof.pi_a[1].toString()];
-      const b: [[string, string], [string, string]] = [
-        [proof.pi_b[0][0].toString(), proof.pi_b[0][1].toString()],
-        [proof.pi_b[1][0].toString(), proof.pi_b[1][1].toString()],
-      ];
-      const c: [string, string] = [proof.pi_c[0].toString(), proof.pi_c[1].toString()];
+    const rootBytes32 = ethers.toBeHex(computedRoot, 32);
 
-      await expect(
-        pool.withdraw(
-          a,
-          b,
-          c,
-          root,
-          nullifierHex,
-          await owner.getAddress(),
-          0,
-          await owner.getAddress()
-        )
-      ).to.not.be.reverted;
-    } catch (err) {
-      this.skip();
-    }
+    const { proof, publicSignals } = await groth16.fullProve(input, wasmPath, zkeyPath);
+    const circuitHash = BigInt(publicSignals[0]);
+    const expectedHash = BigInt(poseidonJs.F.toObject(poseidonJs([computedRoot, BigInt(nullifierHex)])));
+    expect(circuitHash, "publicInputsHash mismatch").to.equal(expectedHash);
+    // Cross-check with on-chain Poseidon contract to ensure hashing parity
+    const contractHash = await poseidon2["poseidon(uint256[2])"]([BigInt(rootBytes32), BigInt(nullifierHex)]);
+    expect(BigInt(contractHash.toString()), "poseidon(sol) vs circuit mismatch").to.equal(expectedHash);
+
+    // Use snarkjs calldata export to avoid coordinate ordering mistakes
+    const callData = await groth16.exportSolidityCallData(proof, publicSignals);
+    const raw = callData
+      .replace(/["[\]\s]/g, "")
+      .split(",")
+      .map((x: string) => x.trim());
+
+    const a: [string, string] = [raw[0], raw[1]];
+    const b: [[string, string], [string, string]] = [
+      [raw[2], raw[3]],
+      [raw[4], raw[5]],
+    ];
+    const c: [string, string] = [raw[6], raw[7]];
+    const exportedInputs = raw.slice(8).map((x) => BigInt(x));
+    expect(exportedInputs[0], "exported public input mismatch").to.equal(expectedHash);
+
+    await expect(
+      pool.withdraw(
+        a,
+        b,
+        c,
+        rootBytes32,
+        nullifierHex,
+        await owner.getAddress(),
+        0,
+        await owner.getAddress()
+      )
+    ).to.not.be.reverted;
   });
 });

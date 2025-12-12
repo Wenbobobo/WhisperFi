@@ -70,3 +70,5 @@ error.txt
 docs/DEMO_SETUP_GUIDE.md
 codex.txt
 playwright-report/
+*.zkey
+withdraw.wasm

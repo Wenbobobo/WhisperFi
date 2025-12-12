@@ -1,6 +1,6 @@
 // test/Paymaster.test.ts - Unit tests for the Paymaster contract.
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { Signer } from "ethers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import {
@@ -62,6 +62,9 @@ describe("Paymaster", function () {
     it("should reject UserOp for an unsupported target", async function () {
       const unsupportedTarget = await notOwner.getAddress();
       const smartAccountAddress = await owner.getAddress(); // Using owner as the mock SA
+      const entryPointAddr = await entryPoint.getAddress();
+      await network.provider.send("hardhat_impersonateAccount", [entryPointAddr]);
+      const entryPointSigner = await ethers.getSigner(entryPointAddr);
 
       // Create calldata for a generic execute function
       const executeInterface = new ethers.Interface([
@@ -76,13 +79,20 @@ describe("Paymaster", function () {
       const userOp = await generateUserOp(env, smartAccountAddress, callData);
 
       await expect(
-        paymaster.validatePaymasterUserOp(userOp, ethers.randomBytes(32), 0)
+        paymaster
+          .connect(entryPointSigner)
+          .validatePaymasterUserOp(userOp, ethers.randomBytes(32), 0)
       ).to.be.revertedWithCustomError(paymaster, "UnsupportedTarget");
+
+      await network.provider.send("hardhat_stopImpersonatingAccount", [entryPointAddr]);
     });
 
     it("should validate UserOp for a supported target", async function () {
       const supportedTarget = await privacyPool.getAddress();
       const smartAccountAddress = await owner.getAddress(); // Using owner as the mock SA
+      const entryPointAddr = await entryPoint.getAddress();
+      await network.provider.send("hardhat_impersonateAccount", [entryPointAddr]);
+      const entryPointSigner = await ethers.getSigner(entryPointAddr);
 
       // Create calldata for a generic execute function
       const executeInterface = new ethers.Interface([
@@ -96,14 +106,14 @@ describe("Paymaster", function () {
 
       const userOp = await generateUserOp(env, smartAccountAddress, callData);
 
-      const [context, validationData] = await paymaster.validatePaymasterUserOp(
-        userOp,
-        ethers.randomBytes(32),
-        0
-      );
+      const [context, validationData] = await paymaster
+        .connect(entryPointSigner)
+        .validatePaymasterUserOp(userOp, ethers.randomBytes(32), 0);
 
       expect(context).to.equal("0x");
       expect(validationData).to.not.equal(1); // Should not be SIG_VALIDATION_FAILED
+
+      await network.provider.send("hardhat_stopImpersonatingAccount", [entryPointAddr]);
     });
   });
 

@@ -42,7 +42,7 @@ describe("ZK Proof Generation", function () {
   (isCoverage ? it.skip : it)("should generate a valid proof for a simple withdrawal", async function () {
     // 1. Create a note and deposit
     const note = generateNote();
-    const { secret, nullifier } = parseNote(note);
+    const { secret } = parseNote(note);
     const depositAmount = await privacyPool.DEPOSIT_AMOUNT();
     const commitmentHex = await generateCommitment(secret, depositAmount.toString());
 
@@ -64,14 +64,10 @@ describe("ZK Proof Generation", function () {
     expect(leafIndex).to.not.equal(-1);
     const merkleProof = tree.generateProof(leafIndex);
 
-    // 4. Prepare inputs for the circuit
-    const nullifierHash = await generateNullifierHash(secret);
-
+    // 4. Prepare inputs for the circuit (circuit derives nullifier/root internally)
     const input = {
       secret: BigInt(secret),
       amount: BigInt(depositAmount.toString()),
-      nullifier: BigInt(nullifierHash),
-      merkleRoot: BigInt(tree.getRoot()),
       pathElements: merkleProof.pathElements.map((el) => BigInt(el)),
       pathIndices: merkleProof.pathIndices,
     };
@@ -86,7 +82,7 @@ describe("ZK Proof Generation", function () {
         wasmPath,
         zkeyPath
       );
-      
+
       expect(proof).to.not.be.null;
       expect(publicSignals).to.not.be.null;
     } catch (error) {
