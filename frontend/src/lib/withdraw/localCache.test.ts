@@ -21,10 +21,11 @@ describe("createLocalStoragePersistor", () => {
     persistor.save?.(key, entry);
 
     const restored = persistor.load?.(key);
-    expect(restored).toEqual({
+    expect(restored).toMatchObject({
       commitments: ["0x1", "0x2"],
       lastBlock: 123n,
     });
+    expect(restored?.lastSyncedAt).toBeTypeOf("number");
   });
 
   it("enforces commitment limit when saving", () => {
