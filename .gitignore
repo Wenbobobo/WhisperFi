@@ -67,8 +67,9 @@ scripts/copy_libs.py
 research
 docs/pics
 error.txt
-docs/DEMO_SETUP_GUIDE.md
+docs/
 codex.txt
 playwright-report/
 *.zkey
-withdraw.wasm
+circuits/build/withdraw/
+withdraw.*

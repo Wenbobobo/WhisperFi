@@ -33,5 +33,53 @@ describe("EntryPoint signature validation", function () {
       entryPoint.connect(bundler).handleOps([userOp], await bundler.getAddress())
     ).to.be.reverted; // different ERC-4337 versions emit different custom errors; generic revert is acceptable here
   });
-});
 
+  it("rejects UserOperation when gas fields overflow AA94", async function () {
+    const { factory, user, owner, entryPoint, privacyPool, bundler } = env;
+    const userAddress = await user.getAddress();
+    await factory.createAccount(userAddress, 0);
+    const smartAccountAddress = await factory.getAccountAddress(userAddress, 0);
+    const smartAccount = await getSmartAccountClient(smartAccountAddress, user);
+
+    await owner.sendTransaction({ to: smartAccountAddress, value: ethers.parseEther("1") });
+
+    const commitment = ethers.randomBytes(32);
+    const depositAmount = await privacyPool.DEPOSIT_AMOUNT();
+    const depositCallData = privacyPool.interface.encodeFunctionData("deposit", [commitment]);
+    const execCallData = smartAccount.interface.encodeFunctionData("execute", [await privacyPool.getAddress(), depositAmount, depositCallData]);
+
+    // preVerificationGas above 2^121 should trigger AA94 gas values overflow
+    const userOp = await generateUserOp(env, smartAccountAddress, execCallData, {
+      preVerificationGas: 2n ** 125n,
+    });
+
+    await expect(
+      entryPoint.connect(bundler).handleOps([userOp], await bundler.getAddress())
+    ).to.be.reverted; // different EntryPoint impls may emit FailedOp; any revert suffices for overflow guard
+  });
+
+  it("rejects malformed paymasterAndData (AA93)", async function () {
+    const { factory, user, owner, entryPoint, privacyPool, bundler } = env;
+    const userAddress = await user.getAddress();
+    await factory.createAccount(userAddress, 0);
+    const smartAccountAddress = await factory.getAccountAddress(userAddress, 0);
+    const smartAccount = await getSmartAccountClient(smartAccountAddress, user);
+
+    await owner.sendTransaction({ to: smartAccountAddress, value: ethers.parseEther("1") });
+
+    const commitment = ethers.randomBytes(32);
+    const depositAmount = await privacyPool.DEPOSIT_AMOUNT();
+    const depositCallData = privacyPool.interface.encodeFunctionData("deposit", [commitment]);
+    const execCallData = smartAccount.interface.encodeFunctionData("execute", [await privacyPool.getAddress(), depositAmount, depositCallData]);
+
+    // paymasterAndData too short to contain static fields
+    const malformedPaymasterAndData = "0xdeadbeef";
+    const userOp = await generateUserOp(env, smartAccountAddress, execCallData, {
+      paymasterAndData: malformedPaymasterAndData,
+    });
+
+    await expect(
+      entryPoint.connect(bundler).handleOps([userOp], await bundler.getAddress())
+    ).to.be.revertedWith("AA93 invalid paymasterAndData");
+  });
+});
