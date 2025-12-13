@@ -1,27 +1,19 @@
 # WhisperFi Documentation Index
 
-## Core References
+## 1) Active, Single Sources of Truth
+- `MILESTONES.md` — 唯一的里程碑/任务树，含可并行提示与时间目标。
+- `MASTER_TASK_TRACKING.md` — 每次迭代的完成记录（简短变更日志），指向 `MILESTONES.md`。
+- `TECHNICAL_SPECIFICATION.md` — 架构与接口权威说明（合约、ZK、电路、前端契约）。
+- `CODE_REVIEW.md` — 风险与整改清单。
+- `RUNBOOK.md` — 最近交接与日常操作（取代 DEV_HANDOVER_NOTES/NEXT_DEV_NOTES）。
+- `TESTING_GUIDE.md` — 测试矩阵与命令。
+- `OPERATIONS_GUIDE.md` — 部署/WSL/ZK/演示的综合操作指南。
 
-- `TECHNICAL_SPECIFICATION.md` — Canonical system overview covering architecture, Poseidon alignment, contract interfaces, and zk circuits.
-- `MASTER_TASK_TRACKING.md` — Project progress log and major milestones; updated after each iteration.
-- `CODE_REVIEW.md` — Current engineering review log, risk register, and remediation status.
-- `DEV_HANDOVER_NOTES.md` — Latest handover summary plus runbook for new maintainers.
-- `NEXT_DEV_NOTES.md` — Short-term iteration plan and exploratory backlog.
-- `TESTING_GUIDE.md` — Testing strategy, command matrix, and zk/on-chain tips.
-- `DEMO_SETUP_GUIDE.md` — Demo configuration steps (prices, contracts, walkthrough).
-- `LOCAL_DEPLOYMENT_GUIDE_zh.md` — Local Hardhat + frontend setup in Chinese.
+## 2) Archived / Low-Priority
+- `docs/archive/` 及子目录（含老的 roadmap、PPT 腹稿、aa/zk 入门等）；保留查阅，不再更新。
+- 旧的插图/视频在 `docs/pics/`，非必须可不下载。
 
-## Archived & Legacy Material
-
-Older planning, roadmap, and handover notes have been moved to `docs/archive/` for historical reference:
-
-- `HANDOVER_DOCUMENT.md`, `PROJECT_HANDOVER_v3.0.md`, `ROADMAP.md`, `TECHNICAL_PLANNING_REPORT.md`
-- `任务跟踪_v2.md`, `_ARCHIVE_PLAN.md`
-
-The content from these files has been captured in the current specification, progress, and handover documents above.
-
-## Contributing Notes
-
-- Update `MASTER_TASK_TRACKING.md` and `NEXT_DEV_NOTES.md` when closing or opening major workstreams.
-- Keep `CODE_REVIEW.md` aligned with the latest audit findings before handover.
-- When new docs are created, add them here and retire superseded files to `docs/archive/` with a short note or link.
+## 3) 维护约定
+- 新增文档前先评估是否可补充到上述文件，避免再造多个计划源。
+- 关闭或新增任务时：更新 `MILESTONES.md` → 简记到 `MASTER_TASK_TRACKING.md`。
+- 如废弃文档，请移入 `docs/archive/` 并在此处删除引用。
