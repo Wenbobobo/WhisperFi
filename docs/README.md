@@ -1,6 +1,7 @@
 # WhisperFi Documentation Index
 
 ## 1) Active, Single Sources of Truth
+- `../AGENTS.md` — **开发规约与工程原则**（项目结构、TDD、代码风格、AI Agent 指南）。
 - `MILESTONES.md` — 唯一的里程碑/任务树，含可并行提示与时间目标。
 - `MASTER_TASK_TRACKING.md` — 每次迭代的完成记录（简短变更日志），指向 `MILESTONES.md`。
 - `TECHNICAL_SPECIFICATION.md` — 架构与接口权威说明（合约、ZK、电路、前端契约）。

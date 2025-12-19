@@ -59,7 +59,6 @@ log.txt
 .coverage
 *.tar
 
-
 account-abstraction
 temp_circom
 reference
@@ -67,9 +66,9 @@ scripts/copy_libs.py
 research
 docs/pics
 error.txt
-docs/
 codex.txt
 playwright-report/
 *.zkey
 circuits/build/withdraw/
 withdraw.*
+docs/archive
