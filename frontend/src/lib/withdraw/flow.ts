@@ -42,7 +42,9 @@ type WithdrawFlowDeps = {
     publicSignals: (string | bigint)[],
     recipient: `0x${string}`,
     fee: bigint,
-    relayer: `0x${string}`
+    relayer: `0x${string}`,
+    merkleRoot?: string | bigint,
+    nullifierHash?: string | bigint
   ) => readonly unknown[];
   writeContract: (config: {
     address: string;
@@ -170,13 +172,17 @@ export function createWithdrawFlow(deps: WithdrawFlowDeps) {
     relayer: `0x${string}`;
     account?: `0x${string}`;
     chain?: unknown;
+    merkleRoot?: string | bigint;
+    nullifierHash?: string | bigint;
   }) {
     const contractArgs = deps.toWithdrawArgs(
       args.proof,
       args.publicSignals,
       args.recipient,
       args.fee,
-      args.relayer
+      args.relayer,
+      args.merkleRoot,
+      args.nullifierHash
     );
 
     return deps.writeContract({

@@ -72,3 +72,5 @@ playwright-report/
 circuits/build/withdraw/
 withdraw.*
 docs/archive
+config/wallet.env
+*.txt

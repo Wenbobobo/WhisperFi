@@ -66,6 +66,8 @@ export default function WithdrawCard() {
   const [isProving, setIsProving] = useState(false);
   const [proof, setProof] = useState<any>(null);
   const [publicSignals, setPublicSignals] = useState<any>(null);
+  const [merkleRoot, setMerkleRoot] = useState<string | null>(null);
+  const [nullifierHash, setNullifierHash] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ type: string; message: string }>({
     type: "",
     message: "",
@@ -348,7 +350,7 @@ export default function WithdrawCard() {
         }
       }
 
-      const { proof: generatedProof, publicSignals: signals, cacheInfo } =
+      const { proof: generatedProof, publicSignals: signals, merkle, nullifierHex, cacheInfo } =
         await withdrawFlow.generateProof(noteToUse);
 
       if (cacheInfo?.lastSyncedAt) {
@@ -361,6 +363,8 @@ export default function WithdrawCard() {
 
       setProof(generatedProof);
       setPublicSignals(signals);
+      setMerkleRoot(merkle?.root as string);
+      setNullifierHash(nullifierHex as string);
       setActiveStep(1);
       setFeedback({
         type: "success",
@@ -375,6 +379,8 @@ export default function WithdrawCard() {
       setFeedback({ type: "error", message });
       setProof(null);
       setPublicSignals(null);
+      setMerkleRoot(null);
+      setNullifierHash(null);
     } finally {
       setIsProving(false);
     }
@@ -434,6 +440,8 @@ export default function WithdrawCard() {
         relayer: relayer as `0x${string}`,
         account: activeAccount as `0x${string}`,
         chain: chain ?? ({ id: simulatedChainId ?? E2E_CHAIN_ID_FALLBACK } as typeof chain),
+        merkleRoot,
+        nullifierHash,
       };
 
       if (override) {
@@ -469,6 +477,8 @@ export default function WithdrawCard() {
       await clearCommitmentCache?.(PRIVACY_POOL_ADDRESS);
       setProof(null);
       setPublicSignals(null);
+      setMerkleRoot(null);
+      setNullifierHash(null);
       setActiveStep(0);
       setFeedback({
         type: "success",
