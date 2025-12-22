@@ -25,19 +25,28 @@ template Withdraw(levels) {
     commitmentHasher.inputs[1] <== amount;
     signal commitment <== commitmentHasher.out;
 
-    // 3. Recompute Merkle root from path (circuit-compatible ordering)
-    signal currentHash <== commitment;
+    // 3. Declare Merkle tree hashers outside loop
+    component merkleHashers[levels];
     for (var i = 0; i < levels; i++) {
-        component h = Poseidon(2);
-        // pathIndices[i] = 0 means current on left; 1 means current on right
-        h.inputs[0] <== currentHash + pathIndices[i] * (pathElements[i] - currentHash);
-        h.inputs[1] <== pathElements[i] + pathIndices[i] * (currentHash - pathElements[i]);
-        currentHash <== h.out;
+        merkleHashers[i] = Poseidon(2);
     }
 
-    // 4. Calculate public inputs hash = Poseidon(2)(merkleRootComputed, nullifier)
+    // 4. Recompute Merkle root from path
+    signal hashes[levels + 1];
+    hashes[0] <== commitment;
+
+    for (var i = 0; i < levels; i++) {
+        // pathIndices[i] = 0 means current on left; 1 means current on right
+        merkleHashers[i].inputs[0] <== hashes[i] + pathIndices[i] * (pathElements[i] - hashes[i]);
+        merkleHashers[i].inputs[1] <== pathElements[i] + pathIndices[i] * (hashes[i] - pathElements[i]);
+        hashes[i + 1] <== merkleHashers[i].out;
+    }
+
+    signal merkleRoot <== hashes[levels];
+
+    // 5. Calculate public inputs hash = Poseidon(2)(merkleRoot, nullifier)
     component publicHasher = Poseidon(2);
-    publicHasher.inputs[0] <== currentHash;
+    publicHasher.inputs[0] <== merkleRoot;
     publicHasher.inputs[1] <== calculatedNullifier;
     publicInputsHash <== publicHasher.out;
 }

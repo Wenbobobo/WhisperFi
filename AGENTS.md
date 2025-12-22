@@ -1,73 +1,340 @@
-# Repository Guidelines
+# WhisperFi Repository Guidelines & Engineering Principles
 
-This monorepo hosts WhisperFi (Private DeFi): Solidity privacy primitives, Circom circuits, a Next.js dApp, and a Flashbots relayer.  
-This file defines how humans and AI agents should work here, combining project layout, workflows, and the core engineering principles from `docs/` and `Virtues.md`.
+This monorepo hosts WhisperFi (Private DeFi): Solidity privacy primitives, Circom circuits, a Next.js dApp, and a Flashbots relayer.
 
-**Single sources of truth**
-- Architecture, interfaces, and current design decisions live in `docs/TECHNICAL_SPECIFICATION.md`.
-- Project status and roadmap live in `docs/MASTER_TASK_TRACKING.md` and `docs/NEXT_DEV_NOTES.md`.
-- Risks and remediation live in `docs/CODE_REVIEW.md` and `docs/DEV_HANDOVER_NOTES.md`.
-- Testing strategy and commands live in `docs/TESTING_GUIDE.md`.
+This file defines how humans and AI agents should work here, combining project layout, workflows, coding style, and core engineering principles.
+
+---
+
+## Part 1: Single Sources of Truth
+
+| Document | Purpose |
+|----------|---------|
+| `docs/TECHNICAL_SPECIFICATION.md` | Architecture, interfaces, design decisions |
+| `docs/MILESTONES.md` | Roadmap, task breakdown, progress tracking |
+| `docs/MASTER_TASK_TRACKING.md` | Status timeline and completion log |
+| `docs/CODE_REVIEW.md` | Risks and remediation tracking |
+| `docs/TESTING_GUIDE.md` | Testing strategy and commands |
+| `docs/RUNBOOK.md` | Daily operations and handover notes |
 
 Before making non-trivial changes, skim the relevant doc(s) above and prefer reusing existing patterns over inventing new ones.
 
-## Project Structure & Module Organization
-Monorepo splits Solidity privacy primitives in `contracts/`, circom workflows in `circuits/`, and deployment helpers in `scripts/`. Hardhat + zk tests live in `test/` (segmented into `unit/`, `integration/`, `e2e/` with shared fixtures in `test/environment.ts` and `test/setup.ts`), while the Next.js dApp sits under `frontend/` and the Flashbots relayer under `relayer/`. Reference materials stay in `docs/` and `legacy-tests/`; new automation belongs in `tasks/` so it loads from `hardhat.config.ts` and `tasks/test_all.py`.
+---
 
-When touching core flows (Poseidon, Merkle, withdraw, AA, relayer), always check the relevant sections in `docs/TECHNICAL_SPECIFICATION.md` and `docs/CODE_REVIEW.md` first to stay aligned with the intended architecture and known risks.
+## Part 2: Project Structure & Module Organization
 
-## Build, Test, and Development Commands
-- `npm install` then `npm run compile` to refresh Solidity artifacts with Cancun settings.
-- `npm run compile-circuits` whenever `circuits/*.circom` or Poseidon parameters change; record important artifact hashes or regeneration notes in `docs/DEV_HANDOVER_NOTES.md` when they matter for verification.
-- Contracts: `npx hardhat test` for the full Hardhat suite; `npx hardhat coverage` before security-sensitive merges or when touching critical paths like withdraw/Paymaster/Poseidon.
-- Frontend: inside `frontend/` use `npm install`, `npm run dev`, `npm run build`, and `npm run test` for logic/UX changes.
-- Playwright flows (cache sync, fee flow, broader E2E) should be wrapped with `tools/scripts/timeout-wrapper.ps1` to avoid hung browsers, as described in `docs/TESTING_GUIDE.md`.
-- Unified runs on Windows: prefer `uv run python tasks/test_all.py` (add `--contracts`, `--frontend`, `--e2e`, `--coverage` as needed) for a realistic “definition of done” check.
+```
+private-defi/
+├── contracts/              # Solidity privacy primitives
+│   ├── PrivacyPool.sol     # Core privacy pool
+│   ├── Groth16Verifier.sol # ZK proof verifier
+│   ├── SmartAccount.sol    # ERC-4337 account
+│   ├── SmartAccountFactory.sol
+│   ├── Paymaster.sol       # Gas sponsorship
+│   └── lib/                # Utility libraries
+├── circuits/               # Circom ZK circuits
+│   ├── deposit.circom
+│   ├── withdraw.circom
+│   └── build/              # Compiled artifacts
+├── frontend/               # Next.js dApp
+│   ├── src/components/     # React components
+│   ├── src/lib/            # Business logic
+│   ├── src/utils/          # Crypto utilities
+│   └── tests/              # Vitest + Playwright
+├── relayer/                # Flashbots MEV protection
+├── test/                   # Hardhat test suite
+│   ├── unit/               # Contract unit tests
+│   ├── integration/        # Cross-component tests
+│   ├── e2e/                # End-to-end AA flows
+│   └── utils/              # Test helpers
+├── scripts/                # Deployment scripts
+├── tasks/                  # Automation tasks
+└── docs/                   # Documentation
+```
 
-**Definition of Done**
-- Functionality is implemented according to the relevant docs/specs (see above).
-- No placeholder logic or mock data remains in production code paths.
-- The code compiles and runs (contracts/front-end and, if relevant, circuits).
-- All relevant tests pass with **no new failing or unexpectedly skipped tests**:
-  - At minimum: `npx hardhat test` for contract changes; `cd frontend && npm run test` for frontend logic changes.
-  - For cross-stack changes or handover-level work, run `uv run python tasks/test_all.py` with appropriate flags.
-- Temporary servers/processes started for debugging (e.g. local Hardhat, Playwright) are stopped or managed via scripts (e.g. the timeout wrapper) so they don’t linger.
+When touching core flows (Poseidon, Merkle, withdraw, AA, relayer), always check `docs/TECHNICAL_SPECIFICATION.md` and `docs/CODE_REVIEW.md` first.
 
-Never declare a task “done” if tests are failing, silently skipped, or if key flows (withdraw, fee splitting, Merkle, Poseidon) are only partially covered by tests.
+---
 
-## Coding Style & Naming Conventions
-TypeScript and TSX follow Prettier defaults (2-space indent, trailing commas, single quotes) backed by Next ESLint; export React components in PascalCase and hooks in camelCase. Favor strong typing and avoid `any` unless absolutely necessary; if you must use `any`, briefly explain why in a comment next to the declaration. Prefer async/await over raw promises.
+## Part 3: Build, Test, and Development Commands
 
-Solidity sources require SPDX headers, 4-space indentation, explicit visibility, and NatSpec on public/external APIs. Keep contract interfaces in sync with `docs/TECHNICAL_SPECIFICATION.md`; when you change a public API, update the doc and tests in the same change. Error types and revert reasons should be clear and specific.
+### Setup
+```bash
+npm install                    # Root dependencies
+cd frontend && npm install     # Frontend dependencies
+```
 
-Task scripts, relayer services, and tests should use async/await with descriptive filenames like `PrivacyPool.deposits.multiple.test.ts`. Names should reflect intent, not implementation details. Remove dead code and large commented-out blocks instead of leaving them in place; rely on git history instead of comments like “// fixed bug” or “// temporary change”.
+### Contracts
+```bash
+npx hardhat compile            # Compile with Cancun settings
+npx hardhat test               # Full test suite
+npx hardhat coverage           # Coverage report
+```
 
-Good code should be self-explanatory. Use comments sparingly to explain *why* something is done (business rules, security tradeoffs, ZK constraints), not *what* each line does. Never weaken linting or type checks just to “get it to compile”; fix the underlying issues instead.
+### ZK Circuits
+```bash
+npm run compile-circuits       # Compile circuits (or use WSL)
+npm run zkey:withdraw          # Generate zkey
+npm run verifier:withdraw      # Export Solidity verifier
+```
 
-## Testing Guidelines
-- Leverage `test/setup.ts` fixtures and `test/utils/` helpers for deterministic Hardhat state; prefer existing fixtures over ad-hoc deployments.
-- Name new suites `{Contract|Feature}.{behavior}.test.ts` to mirror existing organization and keep tests discoverable.
-- Target the coverage expectations recorded in `docs/TESTING_GUIDE.md`; if coverage thresholds or scope materially change, update that doc alongside your code.
-- Frontend specs belong in `frontend/tests/` (Vitest) with wagmi mocks from `vitest.setup.ts`; reserve Playwright for cross-stack flows that hit the relayer, commitment cache, or withdraw UI.
-- For critical flows (Merkle consistency, Poseidon hashing, withdraw with relayer fee, AA paths), ensure tests assert **non-trivial work** happened: non-zero items processed, balances mutated as expected, events emitted, or UI states transitioned. Avoid vacuous tests that pass without exercising core logic.
-- Treat any failing test (existing or new) as a bug that blocks completion. Do not comment out tests, add `skip`/`only`, or reduce assertions to “make things green” unless the underlying specification has changed and the docs were updated first.
+### Frontend
+```bash
+cd frontend
+npm run dev                    # Development server
+npm run build                  # Production build
+npm run test                   # Vitest with coverage
+```
 
-For ZK-heavy and on-chain proof tests, follow `docs/TESTING_GUIDE.md` for commands and artifact locations. If you change circuit behavior or asset paths, update both the tests and the doc.
+### E2E Tests (Playwright)
+```bash
+# Windows: use timeout wrapper to prevent hung browsers
+./tools/scripts/timeout-wrapper.ps1 -Command 'npx playwright test' -TimeoutSeconds 240
+```
 
-## Commit & Pull Request Guidelines
-Prefer conventional commit prefixes (`feat:`, `fix:`, `docs:`, `chore:`) as already used in `git log`, and keep subjects imperative. PR descriptions should:
-- Outline scope and user-visible behavior changes.
-- List verification commands you actually ran (e.g. `npx hardhat test`, `cd frontend && npm run test`, `uv run python tasks/test_all.py --contracts integration --frontend`, Playwright commands with the timeout wrapper).
-- Link relevant roadmap issues or sections in `docs/MASTER_TASK_TRACKING.md` / `docs/NEXT_DEV_NOTES.md` when the change advances a tracked item.
-- Attach UI screenshots or relayer logs when behavior changes materially (withdraw flow, cache status, fee display, relayer payout).
+### Unified Run (Windows + uv)
+```bash
+uv run python tasks/test_all.py                 # All tests
+uv run python tasks/test_all.py --contracts     # Contracts only
+uv run python tasks/test_all.py --frontend      # Frontend only
+uv run python tasks/test_all.py --e2e           # Include Playwright
+uv run python tasks/test_all.py --coverage      # With coverage
+```
 
-Never commit generated outputs (`artifacts/`, `cache/`, `circuits/build/`, `frontend/.next/`, Playwright `test-results/`); extend `.gitignore` if new build assets appear. Keep diffs as focused as possible: avoid drive-by reformatting or broad refactors mixed into bug fixes or feature PRs.
+---
 
-For AI or automation-based contributions, keep changes small and well-scoped, do not introduce new dependencies without clear justification, and never disable or weaken tests to get a passing run.
+## Part 4: Definition of Done
 
-## Security & Configuration Tips
-Store RPC keys, paymaster secrets, and Flashbots auth data in untracked `.env` files and reference them via Hardhat or Next runtime config. Do not hard-code secrets or commit `.env*` files. When in doubt, treat anything that could reveal private keys, mnemonics, or infrastructure endpoints as sensitive.
+A task is "Done" **only** when ALL of the following are satisfied:
 
-After touching circom inputs or zkey material, regenerate with `npm run compile-circuits`, ensure artifacts are wired to both contracts and frontend as per `docs/TESTING_GUIDE.md`, archive hashes or regeneration notes in `docs/DEV_HANDOVER_NOTES.md`, and sanitize relayer logs before sharing. Preserve Poseidon alignment across contracts, circuits, and frontend (`crypto.ts`); changes that might affect hashing or Merkle behavior must be backed by updated tests and an explicit note in `docs/TECHNICAL_SPECIFICATION.md` or `docs/CODE_REVIEW.md`.
+### ✅ Must Have
+1. **Functionality implemented** according to requirements and specifications
+2. **No placeholder logic** or mock data in production code paths
+3. **Code compiles and runs** (contracts, frontend, circuits if applicable)
+4. **All tests pass** with zero failures and zero unexpected skips:
+   - Contracts: `npx hardhat test`
+   - Frontend: `cd frontend && npm run test`
+   - Cross-stack: `uv run python tasks/test_all.py`
+5. **Temporary resources cleaned up** (test servers, processes)
 
-Relayer and trade paths are currently partially experimental as documented in `docs/CODE_REVIEW.md` and `docs/NEXT_DEV_NOTES.md`. Keep experimental code paths guarded and clearly labeled; do not silently promote them to production-critical paths without updating docs, tests, and deployment runbooks.
+### ❌ Never Acceptable
+- Claiming "done" with partial implementation
+- Declaring "done" with any failing tests
+- Describing intermediate steps as "major milestone"
+- Committing code when tests are failing
+- Leaving zombie processes running
+
+---
+
+## Part 5: Engineering Principles
+
+### 5.1 Integrity and Test-Driven Diligence
+
+**Principle:** Code without tests is broken by default. A failing test is a bug in the application code, not the test.
+
+**Actions:**
+- Execute the **entire** test suite after any code change
+- Treat any failure as a **critical stop-work event**
+- Fix the **application code** to make tests pass
+- Never modify tests just to make them pass
+- Iterate until the entire suite passes cleanly
+
+**Never:**
+- Comment out tests or add `skip` directives to silence errors
+- Stop test execution after first failure
+- Weaken assertions to "get things green"
+
+### 5.2 Holistic Contextual Awareness
+
+**Principle:** Before writing code, understand its place in the system architecture.
+
+**Actions:**
+- Review existing codebase and architecture docs
+- Ask: "Is there an existing implementation for this?"
+- Prioritize reusing validated modules and patterns
+
+**Never:**
+- Blindly reimplement existing features
+- View problems in isolation
+
+### 5.3 Robustness and Prudence
+
+**Principle:** Code must be robust, secure, and handle errors gracefully.
+
+**Actions:**
+- Use strong typing; avoid `any` unless documented
+- Validate all external inputs rigorously
+- Use proper error handling (`Result`, `try-catch`)
+
+**Never:**
+- Sacrifice type safety for speed
+- Commit code that could panic in production
+
+### 5.4 Pragmatism and Simplicity (YAGNI)
+
+**Principle:** Avoid over-engineering, but never at the cost of correctness.
+
+**Actions:**
+- Focus strictly on current requirements
+- Choose the simplest solution that satisfies requirements
+
+**Never:**
+- Add complexity for "future needs"
+- Use YAGNI to skip tests or error handling
+
+### 5.5 Clarity and Self-Documenting Code
+
+**Principle:** Good code is self-explanatory. Comments explain "why", not "what".
+
+**Actions:**
+- Use clear, unambiguous naming
+- Comment only complex algorithms or business logic
+
+**Never:**
+- Write meta-comments like `// Fixed bug XX`
+- Leave large blocks of commented-out code
+- Use linter suppression to silence warnings
+
+### 5.6 Proof of Work and Meaningful Verification
+
+**Principle:** Tests must prove code *works*, not just that it *doesn't fail*.
+
+**Actions:**
+- Assert non-zero work in "happy path" tests
+- Verify test setup triggers the logic being tested
+- Test both inclusion and exclusion for filters
+
+**Never:**
+- Write vacuous tests that pass without exercising logic
+- Rely on empty-list tests for data processing features
+
+### 5.7 Resource Stewardship
+
+**Principle:** Keep the development environment clean and available.
+
+**Actions:**
+- Auto-shutdown temporary services after task completion
+- Provide clear start/stop instructions when manual management is needed
+
+**Never:**
+- Leave zombie processes or background services running
+
+---
+
+## Part 6: Coding Style & Naming Conventions
+
+### TypeScript/TSX
+- Prettier defaults: 2-space indent, trailing commas, single quotes
+- React components in PascalCase, hooks in camelCase
+- Strong typing; avoid `any` unless documented
+- Prefer async/await over raw promises
+
+### Solidity
+- SPDX headers required
+- 4-space indentation
+- Explicit visibility on all functions
+- NatSpec on public/external APIs
+- Clear error types and revert reasons
+- Keep interfaces in sync with `docs/TECHNICAL_SPECIFICATION.md`
+
+### General
+- Descriptive filenames: `PrivacyPool.deposits.multiple.test.ts`
+- Names reflect intent, not implementation
+- Remove dead code; rely on git history
+- Self-explanatory code with minimal comments
+
+---
+
+## Part 7: Testing Guidelines
+
+### Test Organization
+- Leverage `test/setup.ts` fixtures and `test/utils/` helpers
+- Name suites: `{Contract|Feature}.{behavior}.test.ts`
+- Target coverage expectations in `docs/TESTING_GUIDE.md`
+
+### Test Quality
+- Assert **non-trivial work**: items processed, balances mutated, events emitted
+- Avoid vacuous tests
+- Treat failing tests as bugs that block completion
+- Never comment out tests or reduce assertions
+
+### Critical Flows
+For Merkle consistency, Poseidon hashing, withdraw, and AA paths:
+- Ensure comprehensive edge case coverage
+- Follow `docs/TESTING_GUIDE.md` for ZK-heavy tests
+- Update docs when changing circuit behavior
+
+---
+
+## Part 8: Commit & Pull Request Guidelines
+
+### Commits
+- Use conventional prefixes: `feat:`, `fix:`, `docs:`, `chore:`, `test:`
+- Keep subjects imperative
+
+### Pull Requests
+- Outline scope and user-visible changes
+- List verification commands actually run
+- Link relevant roadmap items in `docs/MILESTONES.md`
+- Attach screenshots/logs for behavior changes
+
+### What NOT to Commit
+- Generated outputs: `artifacts/`, `cache/`, `circuits/build/`, `frontend/.next/`, `test-results/`
+- `.env` files or secrets
+- Drive-by reformatting mixed with feature PRs
+
+### For AI/Automation
+- Keep changes small and well-scoped
+- Don't introduce dependencies without justification
+- Never disable tests to get a passing run
+
+---
+
+## Part 9: Security & Configuration
+
+### Secrets Management
+- Store RPC keys, paymaster secrets, Flashbots auth in untracked `.env` files
+- Never hard-code secrets
+- Reference via Hardhat or Next runtime config
+
+### ZK Assets
+- After circuit changes, regenerate with `npm run compile-circuits`
+- Archive hashes in `docs/DEV_HANDOVER_NOTES.md`
+- Ensure wasm/zkey/verifier consistency across contracts and frontend
+
+### Poseidon Alignment
+- Preserve hash consistency across contracts, circuits, and frontend (`crypto.ts`)
+- Document any changes in `docs/TECHNICAL_SPECIFICATION.md`
+
+### Experimental Paths
+- Keep experimental code (relayer, trade) clearly labeled
+- Don't silently promote to production without updating docs and tests
+
+---
+
+## Part 10: AI Agent Instructions
+
+### Before Starting Work
+1. Read relevant documentation sections above
+2. Understand the existing architecture
+3. Check if similar functionality already exists
+
+### During Work
+1. Write tests before implementing features
+2. Run full test suite after changes
+3. Keep changes focused and well-scoped
+
+### Before Declaring Done
+1. Verify all tests pass (zero failures, zero skips)
+2. Clean up any temporary resources
+3. Update documentation if needed
+4. Provide evidence of verification in commit/PR
+
+### Communication
+- Be explicit about what was changed and why
+- Acknowledge limitations or uncertainties
+- Ask questions when requirements are unclear
+
+---
+
+*This document should be updated alongside significant codebase changes.*

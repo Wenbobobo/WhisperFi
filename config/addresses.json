@@ -1,0 +1,148 @@
+{
+  "$schema": "./addresses.schema.json",
+  "networks": {
+    "hardhat": {
+      "chainId": 31337,
+      "name": "Hardhat Local",
+      "contracts": {
+        "PrivacyPool": {
+          "address": "",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": false
+        },
+        "Groth16Verifier": {
+          "address": "",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": false
+        },
+        "PoseidonT3": {
+          "address": "",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": false
+        },
+        "EntryPoint": {
+          "address": "",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": false
+        },
+        "SimpleAccountFactory": {
+          "address": "",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": false
+        },
+        "Paymaster": {
+          "address": "",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": false
+        }
+      },
+      "metadata": {
+        "rpcUrl": "http://127.0.0.1:8545",
+        "explorer": "",
+        "lastUpdated": ""
+      }
+    },
+    "sepolia": {
+      "chainId": 11155111,
+      "name": "Sepolia Testnet",
+      "contracts": {
+        "PrivacyPool": {
+          "address": "",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": false
+        },
+        "Groth16Verifier": {
+          "address": "",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": false
+        },
+        "PoseidonT3": {
+          "address": "",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": false
+        },
+        "EntryPoint": {
+          "address": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": true,
+          "note": "Official ERC-4337 EntryPoint v0.6"
+        },
+        "SimpleAccountFactory": {
+          "address": "",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": false
+        },
+        "Paymaster": {
+          "address": "",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": false
+        }
+      },
+      "metadata": {
+        "rpcUrl": "https://sepolia.infura.io/v3/YOUR_INFURA_KEY",
+        "explorer": "https://sepolia.etherscan.io",
+        "lastUpdated": ""
+      }
+    },
+    "mainnet": {
+      "chainId": 1,
+      "name": "Ethereum Mainnet",
+      "contracts": {
+        "PrivacyPool": {
+          "address": "",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": false
+        },
+        "Groth16Verifier": {
+          "address": "",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": false
+        },
+        "PoseidonT3": {
+          "address": "",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": false
+        },
+        "EntryPoint": {
+          "address": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": true,
+          "note": "Official ERC-4337 EntryPoint v0.6"
+        },
+        "SimpleAccountFactory": {
+          "address": "",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": false
+        },
+        "Paymaster": {
+          "address": "",
+          "deployedAt": "",
+          "deploymentTx": "",
+          "verified": false
+        }
+      },
+      "metadata": {
+        "rpcUrl": "https://mainnet.infura.io/v3/YOUR_INFURA_KEY",
+        "explorer": "https://etherscan.io",
+        "lastUpdated": ""
+      }
+    }
+  }
+}

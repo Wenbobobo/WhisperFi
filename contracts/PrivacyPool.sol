@@ -70,15 +70,15 @@ contract PrivacyPool is Ownable {
     }
 
     function withdraw(
-        uint[2] calldata _pA,
-        uint[2][2] calldata _pB,
-        uint[2] calldata _pC,
+        uint256[2] calldata _pA,
+        uint256[2][2] calldata _pB,
+        uint256[2] calldata _pC,
         bytes32 _proofRoot,
         bytes32 _nullifier,
-    address payable _recipient,
-    uint256 _fee, // Fee for the relayer
-    address payable _relayer // Relayer address
-) external nonReentrant {
+        address payable _recipient,
+        uint256 _fee,
+        address payable _relayer
+    ) external nonReentrant {
         require(rootHistory[_proofRoot], "Invalid Merkle root");
         require(!nullifiers[_nullifier], "Nullifier has been used");
         require(_fee <= DEPOSIT_AMOUNT, "Fee exceeds deposit");
@@ -119,9 +119,9 @@ contract PrivacyPool is Ownable {
      * @param _callData Call data for the trade execution
      */
     function trade(
-        uint[2] calldata _pA,
-        uint[2][2] calldata _pB,
-        uint[2] calldata _pC,
+        uint256[2] calldata _pA,
+        uint256[2][2] calldata _pB,
+        uint256[2] calldata _pC,
         bytes32 _merkleRoot,
         bytes32 _nullifier,
         bytes32 _newCommitment,

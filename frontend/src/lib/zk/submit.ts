@@ -22,11 +22,19 @@ export function toWithdrawArgs(
   publicSignals: (string | bigint)[],
   recipient: `0x${string}`,
   fee: bigint,
-  relayer: `0x${string}`
+  relayer: `0x${string}`,
+  merkleRoot?: string | bigint,
+  nullifierHash?: string | bigint
 ) {
   const formatted = normalizeProof(proof);
-  const rootBytes32 = ethers.toBeHex(BigInt(publicSignals[0] as any), 32);
-  const nullifierBytes32 = ethers.toBeHex(BigInt(publicSignals[1] as any), 32);
+  // If merkleRoot and nullifierHash are provided explicitly, use them
+  // Otherwise fall back to extracting from publicSignals (legacy behavior)
+  const rootBytes32 = merkleRoot
+    ? ethers.toBeHex(BigInt(merkleRoot as any), 32)
+    : ethers.toBeHex(BigInt(publicSignals[0] as any), 32);
+  const nullifierBytes32 = nullifierHash
+    ? ethers.toBeHex(BigInt(nullifierHash as any), 32)
+    : ethers.toBeHex(BigInt(publicSignals[1] as any), 32);
   return [
     formatted.a,
     formatted.b,

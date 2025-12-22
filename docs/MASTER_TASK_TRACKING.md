@@ -1,10 +1,18 @@
 # WhisperFi 任务跟踪（精简版）
 唯一计划来源：`docs/MILESTONES.md`。本文件只记录里程碑的完成/变更日志。
 
-最后更新：2025-12-13  
-状态：核心功能全绿，进入“协议/前端/AA 并行打磨”阶段。
+最后更新：2025-12-19
+状态：M1 里程碑开发中，4条并行开发线同时推进。
 
 ## 近期进展
+- 2025-12-19
+  - MILESTONES.md 完善为详细分形结构（任务ID/状态/并行标识/详细步骤）。
+  - AGENTS.md 合并 Virtues.md，形成统一的开发规约文档（10个部分）。
+  - 启动 M1 并行开发：
+    - [线程1] A2.2 失败场景回归测试 (withdraw-negative.test.ts)
+    - [线程2] B3.1 错误映射表 (frontend/src/lib/errors/)
+    - [线程3] C1.3 时间窗/重放/nonce 安全测试 (Paymaster.security.test.ts)
+    - [线程4] A1.3 ZK 产物 Checksum 校验脚本 (scripts/verify-zk-artifacts.ts)
 - 2025-12-13
   - Groth16 链上验证测试绿灯（公输入哈希与 calldata 导出对齐）。
   - ZK 产物（wasm/zkey）已重编译并放置在 canonical 路径；多余副本清理。

@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["networks"],
+  "properties": {
+    "networks": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": {
+          "type": "object",
+          "required": ["chainId", "name", "contracts", "metadata"],
+          "properties": {
+            "chainId": {
+              "type": "number",
+              "description": "EVM chain ID"
+            },
+            "name": {
+              "type": "string",
+              "description": "Human-readable network name"
+            },
+            "contracts": {
+              "type": "object",
+              "properties": {
+                "PrivacyPool": { "$ref": "#/definitions/contract" },
+                "Groth16Verifier": { "$ref": "#/definitions/contract" },
+                "PoseidonT3": { "$ref": "#/definitions/contract" },
+                "EntryPoint": { "$ref": "#/definitions/contract" },
+                "SimpleAccountFactory": { "$ref": "#/definitions/contract" },
+                "Paymaster": { "$ref": "#/definitions/contract" }
+              }
+            },
+            "metadata": {
+              "type": "object",
+              "required": ["rpcUrl", "explorer"],
+              "properties": {
+                "rpcUrl": { "type": "string" },
+                "explorer": { "type": "string" },
+                "lastUpdated": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "contract": {
+      "type": "object",
+      "required": ["address", "deployedAt", "deploymentTx", "verified"],
+      "properties": {
+        "address": {
+          "type": "string",
+          "pattern": "^(0x[a-fA-F0-9]{40})?$",
+          "description": "Ethereum address or empty string"
+        },
+        "deployedAt": {
+          "type": "string",
+          "description": "Block number or timestamp"
+        },
+        "deploymentTx": {
+          "type": "string",
+          "pattern": "^(0x[a-fA-F0-9]{64})?$",
+          "description": "Transaction hash or empty string"
+        },
+        "verified": {
+          "type": "boolean",
+          "description": "Whether contract is verified on block explorer"
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional notes about the contract"
+        }
+      }
+    }
+  }
+}
