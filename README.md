@@ -1,8 +1,8 @@
 # WhisperFi – Next-Gen DeFi Privacy Infrastructure
 
 [![Sepolia Deployment](https://img.shields.io/badge/Sepolia-Deployed-success)](https://sepolia.etherscan.io/address/0x2c932Df97Cc37bc6E402eEe90f0bE1bdC623bc60)
-[![Tests](https://img.shields.io/badge/Withdrawal-Verified-success)](./SEPOLIA_TEST_REPORT.md)
-[![Hardhat](https://img.shields.io/badge/Hardhat-Known%20Bug-yellow)](./HARDHAT_BUG_REPORT.md)
+[![Tests](https://img.shields.io/badge/Withdrawal-Verified-success)](./docs/DEPLOYMENT.md)
+[![Hardhat](https://img.shields.io/badge/Hardhat-Known%20Bug-yellow)](./DEVELOPMENT.md#坑点-1-hardhat-evm-bug最重要)
 
 [[中文文档](./README_CN.md)]
 

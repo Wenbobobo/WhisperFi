@@ -1,456 +1,168 @@
-# WhisperFi Deployment Guide
+# WhisperFi 部署指南
 
-> **⚠️ SECURITY WARNING**: This guide contains sensitive deployment procedures. Always use testnet first before mainnet deployment.
-
-## Table of Contents
-
-1. [Pre-Deployment Checklist](#pre-deployment-checklist)
-2. [Environment Setup](#environment-setup)
-3. [Local Deployment](#local-deployment)
-4. [Testnet Deployment (Sepolia)](#testnet-deployment-sepolia)
-5. [Mainnet Deployment](#mainnet-deployment)
-6. [Post-Deployment Verification](#post-deployment-verification)
-7. [Rollback Procedures](#rollback-procedures)
-8. [Security Best Practices](#security-best-practices)
+**完整部署文档** - 合并了所有部署相关内容
 
 ---
 
-## Pre-Deployment Checklist
+## 当前部署状态
 
-### Code Quality
-- [ ] All tests passing (`npx hardhat test`)
-- [ ] Frontend tests passing (`cd frontend && npm run test`)
-- [ ] E2E tests passing (`npx playwright test`)
-- [ ] No compiler warnings (`npx hardhat compile`)
-- [ ] Code coverage ≥ 80% for contracts
-- [ ] Security audit completed (for mainnet)
+### Sepolia 测试网 ✅ 已部署
 
-### ZK Artifacts
-- [ ] Circuits compiled (`npm run circuit:compile`)
-- [ ] ZK artifacts checksums verified (`npm run verify:zk`)
-- [ ] Artifacts uploaded to CDN/IPFS (for production)
-- [ ] WASM/zkey files in correct paths
+- **网络**: Sepolia (Chain ID: 11155111)
+- **PrivacyPool**: `0x2c932Df97Cc37bc6E402eEe90f0bE1bdC623bc60`
+- **Etherscan**: https://sepolia.etherscan.io/address/0x2c932Df97Cc37bc6E402eEe90f0bE1bdC623bc60
+- **部署日期**: 2025-12-22
+- **Gas 消耗**: ~0.04 ETH
+- **状态**: ✅ 所有功能验证通过
 
-### Configuration
-- [ ] `.env` file configured (copy from `.env.template`)
-- [ ] Environment variables validated (`npx ts-node scripts/check-env.ts`)
-- [ ] Network configuration in `hardhat.config.ts`
-- [ ] Frontend contract addresses prepared
-- [ ] No secrets in git (`git grep -i "private.*key"` returns nothing)
+### 所有合约地址
 
-### Infrastructure
-- [ ] RPC endpoint tested and rate limits confirmed
-- [ ] Block explorer API key obtained (for verification)
-- [ ] Deployment wallet funded with gas
-- [ ] Backup wallet address recorded
+```typescript
+PoseidonHasher:      0xc335E47Febb4dB91973918DCcaF1194e29787f5f
+PoseidonHasher5:     0xe3ad03466D2D2010110c46736E63e45e4175FcC4
+Groth16Verifier:     0xe77Cc2398420C98CF4724f74dC376b87F34d9fdA
+Executor:            0x5b673e0482a68aeC2C86a18252f904fB9010Aa1b
+EntryPoint:          0xcEc9136Fe194287Ed34ed1C83094819249AD1D5A
+SmartAccountFactory: 0x73A227f2936b0E7d04D602544899254789d066Ad
+Paymaster:           0x8422D6E452166f4910cB29E02E832316B6216236
+```
 
 ---
 
-## Environment Setup
+## 快速部署
 
-### 1. Copy Environment Template
+### 1. 环境准备
 
-```powershell
+```bash
+# 配置环境变量
 cp .env.template .env
+
+# 编辑 .env，设置:
+# SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
+# PRIVATE_KEY=your_key_without_0x
+
+# 配置钱包（可选，自动从 config/wallet.env 加载）
+# config/wallet.env:
+# ADDRESS=0x...
+# KEY=your_key
 ```
 
-### 2. Configure Required Variables
-
-Edit `.env` and fill in:
+### 2. 检查余额
 
 ```bash
-# Network RPC
-INFURA_API_KEY=your_actual_infura_key
+npx hardhat run scripts/check-sepolia-balance.ts --network sepolia
 
-# Deployment wallet
-DEPLOYER_PRIVATE_KEY=0x...  # NEVER share this!
-
-# Block explorer
-ETHERSCAN_API_KEY=your_actual_etherscan_key
+# 需要至少 0.5 ETH 用于部署
+# 获取测试 ETH:
+# - https://sepoliafaucet.com/
+# - https://www.alchemy.com/faucets/ethereum-sepolia
 ```
 
-### 3. Validate Configuration
+### 3. 部署合约
 
-```powershell
-npx ts-node scripts/check-env.ts
-```
-
-Expected output:
-```
-✅ Environment variables loaded and validated
-✅ No secrets detected in git-tracked files
-✅ Environment configuration is valid!
-```
-
----
-
-## Local Deployment
-
-### 1. Start Hardhat Node
-
-```powershell
-npx hardhat node
-```
-
-Keep this terminal open.
-
-### 2. Deploy Contracts (New Terminal)
-
-```powershell
-npx hardhat run scripts/deploy.ts --network hardhat
-```
-
-### 3. Generate Address Registry
-
-```powershell
-npx ts-node scripts/generate-addresses.ts --network=hardhat
-```
-
-This creates `config/addresses.json` with deployed addresses.
-
-### 4. Validate Deployment
-
-```powershell
-npx ts-node scripts/validate-addresses.ts --network=hardhat --strict
-```
-
-### 5. Start Frontend
-
-```powershell
-cd frontend
-npm run dev
-```
-
-Visit `http://localhost:3000` to test.
-
----
-
-## Testnet Deployment (Sepolia)
-
-### 1. Fund Deployment Wallet
-
-Minimum gas needed: **~0.5 ETH** (for all contracts + verification)
-
-Get Sepolia ETH from faucets:
-- https://sepoliafaucet.com
-- https://faucet.sepolia.dev
-
-Verify balance:
-```powershell
-npx hardhat run scripts/check-balance.ts --network sepolia
-```
-
-### 2. Deploy to Sepolia
-
-```powershell
+```bash
 npx hardhat run scripts/deploy.ts --network sepolia
+
+# 自动执行:
+# 1. 部署 Poseidon Hasher
+# 2. 部署 Groth16 Verifier
+# 3. 部署 PrivacyPool
+# 4. 部署 AA 相关合约
+# 5. 更新 frontend/src/config/contracts.ts
 ```
 
-**Expected deployment time**: 5-10 minutes
-
-Contracts deployed in order:
-1. PoseidonT3 (library)
-2. Groth16Verifier
-3. PrivacyPool (links PoseidonT3)
-4. EntryPoint (ERC-4337, or use existing)
-5. SimpleAccountFactory
-6. Paymaster
-
-### 3. Verify Contracts on Etherscan
-
-```powershell
-npx hardhat verify --network sepolia <CONTRACT_ADDRESS> <CONSTRUCTOR_ARGS>
-```
-
-Example for PrivacyPool:
-```powershell
-npx hardhat verify --network sepolia 0x... 0x...verifier_address 0x...poseidon_address
-```
-
-### 4. Generate Address Registry
-
-```powershell
-npx ts-node scripts/generate-addresses.ts --network=sepolia
-```
-
-### 5. Validate Deployment
-
-```powershell
-npx ts-node scripts/validate-addresses.ts --network=sepolia --strict
-```
-
-### 6. Update Frontend Configuration
+### 4. 验证部署
 
 ```bash
-# In frontend/.env.local
-NEXT_PUBLIC_RPC_URL=https://sepolia.infura.io/v3/YOUR_KEY
-NEXT_PUBLIC_CHAIN_ID=11155111
-NEXT_PUBLIC_PRIVACY_POOL_ADDRESS=0x...
-NEXT_PUBLIC_VERIFIER_ADDRESS=0x...
-NEXT_PUBLIC_ENTRY_POINT_ADDRESS=0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789
-NEXT_PUBLIC_PAYMASTER_ADDRESS=0x...
+# 验证 withdraw 函数
+npx hardhat run scripts/test-sepolia-withdraw-call.ts --network sepolia
+
+# 验证合约地址
+npx ts-node scripts/validate-addresses.ts
+
+# 验证 Merkle 一致性
+npx ts-node scripts/verify-merkle-consistency.ts
 ```
-
-### 7. Deploy Frontend to Testnet Environment
-
-```powershell
-cd frontend
-npm run build
-npm run start
-```
-
-Or deploy to Vercel/Netlify for public testing.
 
 ---
 
-## Mainnet Deployment
+## 本地开发（Hardhat）
 
-### ⚠️ CRITICAL SECURITY CHECKS
+⚠️ **重要**: 由于 Hardhat EVM bug，完整 withdraw 测试必须在 Sepolia 上进行
 
-**Before proceeding:**
+```bash
+# 启动本地节点
+npx hardhat node
 
-1. **Security Audit Required**: Do NOT deploy without a professional audit
-2. **Bug Bounty Program**: Consider setting up a bug bounty
-3. **Gradual Rollout**: Start with limited deposit amounts
-4. **Multi-Sig Wallet**: Use Gnosis Safe for contract ownership
-5. **Insurance**: Consider DeFi insurance (Nexus Mutual, InsurAce)
+# 在另一个终端部署
+npx hardhat run scripts/deploy.ts --network localhost
 
-### Pre-Mainnet Checklist
+# 运行测试（部分功能）
+npx hardhat test
 
-- [ ] Security audit report reviewed and all issues resolved
-- [ ] Testnet deployment tested for ≥2 weeks
-- [ ] All E2E tests pass on testnet
-- [ ] Gas optimization completed
-- [ ] Emergency pause mechanism tested
-- [ ] Multi-sig wallet configured (3-of-5 recommended)
-- [ ] Deployment transaction simulated with Tenderly
-- [ ] Team ready for 24/7 monitoring for first week
+# ✅ 可测试: deposit, merkle tree, proof generation
+# ❌ 无法测试: 完整 withdraw 流程（需要 Sepolia）
+```
 
-### 1. Fund Deployment Wallet
+---
 
-Minimum gas needed: **~2 ETH** (Mainnet gas is higher)
+## 主网部署准备
 
-**IMPORTANT**: Use a fresh wallet with ONLY the deployment funds. Never reuse keys.
+### 安全检查清单
 
-### 2. Deploy to Mainnet
+- [ ] 完成安全审计
+- [ ] Gas 优化审查
+- [ ] 使用新的安全私钥
+- [ ] 考虑硬件钱包/多签
+- [ ] 准备充足 ETH（~0.5 ETH）
+- [ ] 设置监控和报警
+- [ ] 准备回滚方案
+- [ ] 所有测试通过
+- [ ] 文档完整
 
-```powershell
-# FINAL CONFIRMATION
-echo "⚠️ DEPLOYING TO MAINNET - ARE YOU SURE? (Ctrl+C to cancel)"
-timeout /t 10
+### 部署步骤
 
+```bash
+# 1. 更新配置
+# .env: MAINNET_RPC_URL
+
+# 2. 检查余额
+npx hardhat run scripts/check-balance.ts --network mainnet
+
+# 3. 部署（谨慎！）
 npx hardhat run scripts/deploy.ts --network mainnet
-```
 
-### 3. Transfer Ownership to Multi-Sig
-
-**CRITICAL**: Immediately after deployment, transfer ownership to Gnosis Safe:
-
-```powershell
-npx hardhat run scripts/transfer-ownership.ts --network mainnet
-```
-
-### 4. Verify Contracts
-
-```powershell
-# Verify each contract
-npx ts-node scripts/verify-all-contracts.ts --network mainnet
-```
-
-### 5. Post-Deployment Smoke Tests
-
-```powershell
-npx ts-node scripts/smoke-test.ts --network mainnet
-```
-
-Tests:
-- Contract code deployed correctly
-- ZK verification works on-chain
-- Deposit/withdraw flow (small amounts)
-- Fee distribution correct
-- Emergency pause functional
-
-### 6. Configure Monitoring
-
-- Set up Etherscan alerts for contract transactions
-- Configure Tenderly for real-time alerts
-- Set up Discord/Telegram webhook notifications
-- Monitor contract balance continuously
-
----
-
-## Post-Deployment Verification
-
-### Manual Verification Checklist
-
-#### Contract Verification
-- [ ] All contracts verified on Etherscan
-- [ ] Source code matches deployed bytecode
-- [ ] Constructor arguments correct
-- [ ] Read functions return expected values
-
-#### Functional Testing
-- [ ] Small test deposit succeeds
-- [ ] ZK proof generates and verifies
-- [ ] Test withdrawal succeeds
-- [ ] Fee split correct (recipient + relayer)
-- [ ] Nullifier prevents double-spend
-- [ ] Gas estimates reasonable
-
-#### Security Testing
-- [ ] Ownership transferred to multi-sig
-- [ ] Only EntryPoint can call protected functions
-- [ ] Replay attacks prevented
-- [ ] Merkle root validation works
-- [ ] Emergency pause functional
-
-#### Frontend Integration
-- [ ] Contract addresses loaded correctly
-- [ ] Wallet connection works
-- [ ] Transaction submission succeeds
-- [ ] Error messages user-friendly
-- [ ] ZK artifacts load from CDN
-
----
-
-## Rollback Procedures
-
-### If Deployment Fails
-
-1. **Do NOT panic** - funds are safe if deployment reverted
-2. Check error message in transaction receipt
-3. Verify environment variables: `npx ts-node scripts/check-env.ts`
-4. Check gas price and network congestion
-5. Re-run deployment with increased gas limit
-
-### If Bug Discovered Post-Deployment
-
-#### Severity: Critical (Funds at Risk)
-
-1. **IMMEDIATELY** activate emergency pause (if implemented)
-2. Announce issue on Discord/Twitter
-3. Coordinate with security team
-4. Prepare upgrade/migration strategy
-5. **DO NOT** rush - test fix thoroughly on testnet first
-
-#### Severity: High (Functional Issue)
-
-1. Disable affected features if possible
-2. Deploy fixed contracts to new addresses
-3. Update frontend to use new addresses
-4. Migrate users gradually
-
-#### Severity: Low (UI Issue)
-
-1. Fix in frontend only
-2. Redeploy frontend
-3. No contract changes needed
-
----
-
-## Security Best Practices
-
-### Key Management
-
-- **NEVER** commit private keys to git
-- Use hardware wallets (Ledger, Trezor) for mainnet
-- Store backup seeds in physical safe or bank vault
-- Use different keys for testnet and mainnet
-- Rotate keys regularly (every 6 months)
-
-### Access Control
-
-- Use multi-sig wallets (Gnosis Safe) for contract ownership
-- Require 3-of-5 signatures for critical operations
-- Time-lock critical parameter changes (24-48 hours)
-- Separate roles: deployer, owner, operator, pauser
-
-### Monitoring
-
-- Set up alerts for:
-  - Large withdrawals (> 1 ETH)
-  - Unusual transaction patterns
-  - Contract balance changes
-  - Failed transactions
-  - Gas price spikes
-
-### Incident Response Plan
-
-1. **Detection**: Automated alerts + manual monitoring
-2. **Assessment**: Determine severity (Critical/High/Medium/Low)
-3. **Containment**: Pause contracts if necessary
-4. **Communication**: Notify users within 1 hour
-5. **Resolution**: Deploy fix after thorough testing
-6. **Post-Mortem**: Document incident and improve processes
-
----
-
-## Useful Commands
-
-```powershell
-# Generate deployment addresses
-npx ts-node scripts/generate-addresses.ts --network=<network>
-
-# Validate addresses
-npx ts-node scripts/validate-addresses.ts --network=<network> --strict
-
-# Check environment configuration
-npx ts-node scripts/check-env.ts
-
-# Verify ZK artifacts
-npm run verify:zk
-
-# Run smoke tests
-npx ts-node scripts/smoke-test.ts --network=<network>
-
-# Check deployment wallet balance
-npx hardhat run scripts/check-balance.ts --network=<network>
+# 4. 验证
+npx hardhat verify --network mainnet CONTRACT_ADDRESS
 ```
 
 ---
 
-## Troubleshooting
+## 故障排除
 
-### "Insufficient funds for gas"
-- Check wallet balance: `npx hardhat run scripts/check-balance.ts --network sepolia`
-- Get testnet ETH from faucets
-- For mainnet, ensure ≥2 ETH available
+### Gas Limit 不足
 
-### "Nonce too low"
-- Reset nonce: `npx hardhat run scripts/reset-nonce.ts --network <network>`
-- Or wait for pending transactions to confirm
+```typescript
+// hardhat.config.ts
+networks: {
+  hardhat: {
+    blockGasLimit: 30000000,  // 必须设置
+  },
+}
+```
 
-### "Contract verification failed"
-- Ensure constructor arguments match exactly
-- Check Solidity version matches deployment
-- Try manual verification on Etherscan
+### RPC 连接失败
 
-### "Frontend can't connect to contracts"
-- Verify addresses in `frontend/.env.local`
-- Check RPC URL is correct and accessible
-- Ensure chain ID matches network
+- 检查 RPC URL 是否正确
+- 尝试备用 RPC 端点
+- 检查 API 限额
 
----
+### 余额不足
 
-## Additional Resources
-
-- [Hardhat Deployment Guide](https://hardhat.org/guides/deploying.html)
-- [Etherscan Verification Guide](https://info.etherscan.com/how-to-verify-a-smart-contract/)
-- [ERC-4337 Deployment Best Practices](https://docs.stackup.sh/docs/deployment-best-practices)
-- [Gnosis Safe Setup](https://help.gnosis-safe.io/)
-- [Tenderly Monitoring](https://docs.tenderly.co/monitoring-and-alerting/intro-to-alerting)
+- 从水龙头获取测试 ETH
+- 检查 gas price 设置
 
 ---
 
-## Support
-
-If you encounter issues during deployment:
-
-1. Check existing issues: https://github.com/whisperfi/whisperfi/issues
-2. Ask in Discord: https://discord.gg/whisperfi
-3. Emergency contact: security@whisperfi.io
-
----
-
-**Last Updated**: 2025-12-20
-**Version**: 1.0.0
+**维护者**: Claude Sonnet 4.5
+**最后更新**: 2025-12-22
