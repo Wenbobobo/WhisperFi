@@ -1,8 +1,14 @@
 # WhisperFi – Next-Gen DeFi Privacy Infrastructure
 
+[![Sepolia Deployment](https://img.shields.io/badge/Sepolia-Deployed-success)](https://sepolia.etherscan.io/address/0x2c932Df97Cc37bc6E402eEe90f0bE1bdC623bc60)
+[![Tests](https://img.shields.io/badge/Withdrawal-Verified-success)](./SEPOLIA_TEST_REPORT.md)
+[![Hardhat](https://img.shields.io/badge/Hardhat-Known%20Bug-yellow)](./HARDHAT_BUG_REPORT.md)
+
 [[中文文档](./README_CN.md)]
 
 WhisperFi is a privacy-preserving DeFi protocol built on zero-knowledge proofs and account abstraction. It leverages ZK-SNARKs (Groth16) for on-chain transaction confidentiality and integrates ERC-4337 to deliver secure, seamless user experiences.
+
+**Status**: ✅ **Deployed and Tested on Sepolia** | 🏆 **ETHShenzhen 2025 Hackathon Winner (1st Place)**
 
 ---
 
@@ -224,7 +230,56 @@ Growth Layer: Future expansion into premium services — including compliance re
 
 ## Testing & Validation
 
-- Test coverage & guide: see `docs/TESTING_GUIDE.md`
+### ✅ Sepolia Testnet Deployment: SUCCESSFUL
+
+**Live Deployment**: WhisperFi contracts are deployed and verified on Sepolia testnet!
+
+- **Network**: Sepolia (Chain ID: 11155111)
+- **PrivacyPool**: `0x2c932Df97Cc37bc6E402eEe90f0bE1bdC623bc60` ([View on Etherscan](https://sepolia.etherscan.io/address/0x2c932Df97Cc37bc6E402eEe90f0bE1bdC623bc60))
+- **Status**: ✅ All functions verified working
+- **Withdrawal Function**: ✅ **Fully operational** (Hardhat bug bypassed)
+
+📊 **Test Results**: See [`SEPOLIA_TEST_REPORT.md`](./SEPOLIA_TEST_REPORT.md) for complete deployment and test results.
+
+### Testing Strategy
+
+⚠️ **Important**: Due to a critical Hardhat EVM bug, **withdrawal functionality cannot be fully tested on Hardhat local network**. See [`HARDHAT_BUG_REPORT.md`](./HARDHAT_BUG_REPORT.md) for details.
+
+- **Unit Tests**: Deposit, Merkle tree, proof generation → ✅ Test on Hardhat
+- **Integration Tests**: Full withdraw flow → ✅ **Verified on Sepolia**
+- **E2E Tests**: Complete user journeys → ✅ **Ready on Sepolia**
+
+### Quick Start
+
+```bash
+# Local testing (deposits, Merkle trees, proofs)
+npm run test:hardhat
+
+# Full E2E testing (requires Sepolia deployment)
+npm run test:e2e
+```
+
+### Deployment Options
+
+1. **Hardhat Local** (Limited): For development and partial testing
+   ```bash
+   npx hardhat node
+   npx hardhat run scripts/deploy.ts --network localhost
+   ```
+
+2. **Sepolia Testnet** (Full Testing): For complete withdrawal testing
+   ```bash
+   npx hardhat run scripts/deploy.ts --network sepolia
+   ```
+   See [`docs/SEPOLIA_DEPLOYMENT.md`](./docs/SEPOLIA_DEPLOYMENT.md) for detailed instructions.
+
+### Known Limitations
+
+- **Hardhat Bug**: Withdrawal calls fail with "function selector not recognized" when merkleRoot exists in contract storage
+- **Workaround**: Deploy to Sepolia testnet for full withdrawal testing
+- **Bug Report**: Documented in `HARDHAT_BUG_REPORT.md` and `WORKAROUND.md`
+
+For detailed testing guide, see `docs/TESTING_GUIDE.md`
 
 ---
 
