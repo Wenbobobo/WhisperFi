@@ -23,6 +23,7 @@
     "@playwright/test": "^1.54.1",
     "circom": "^0.5.46",
     "circomlibjs": "^0.1.7",
+    "dotenv": "^17.2.3",
     "hardhat": "^2.25.0",
     "hardhat-preprocessor": "^0.1.5",
     "solidity-coverage": "^0.8.13"

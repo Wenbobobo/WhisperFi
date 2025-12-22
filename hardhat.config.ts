@@ -2,6 +2,20 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-chai-matchers";
 import "solidity-coverage";
+import * as dotenv from "dotenv";
+import * as fs from "fs";
+
+// Load environment variables
+dotenv.config();
+
+// Load wallet configuration if exists
+const walletEnvPath = "./config/wallet.env";
+if (fs.existsSync(walletEnvPath)) {
+  const walletEnv = dotenv.parse(fs.readFileSync(walletEnvPath));
+  if (walletEnv.KEY) {
+    process.env.PRIVATE_KEY = walletEnv.KEY;
+  }
+}
 
 const isCoverage = !!process.env.SOLIDITY_COVERAGE;
 
@@ -26,6 +40,11 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       hardfork: "cancun", // 为本地网络启用 Cancun
+    },
+    sepolia: {
+      url: process.env.SEPOLIA_RPC_URL || "https://eth-sepolia.g.alchemy.com/v2/demo",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 11155111,
     },
   },
   paths: {
